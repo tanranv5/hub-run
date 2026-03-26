@@ -1,0 +1,5 @@
+.ace-tool/
+.codex-tasks/
+node_modules/
+dist/
+.DS_Store

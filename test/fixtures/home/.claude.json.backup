@@ -1,0 +1,21 @@
+{
+  "installMethod": "unknown",
+  "autoUpdates": true,
+  "firstStartTime": "2026-03-18T15:00:14.977Z",
+  "userID": "abcebeaba17d5b3b96bda77d14916b0858ea488791995d1a473ec1d8ce50789a",
+  "projects": {
+    "/Users/tanran/aiCode/cw/hub-run": {
+      "allowedTools": [],
+      "history": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": false,
+      "projectOnboardingSeenCount": 0,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "hasClaudeMdExternalIncludesWarningShown": false
+    }
+  },
+  "sonnet45MigrationComplete": true
+}

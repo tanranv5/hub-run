@@ -1,0 +1,1658 @@
+
+> hub-run@0.1.0 test /Users/tanran/aiCode/cw/hub-run
+> tsx --test test/**/*.test.ts
+
+TAP version 13
+# Origin check failed (origin=http://127.0.0.1, host=127.0.0.1:12001, target=127.0.0.1:12001)
+# (node:12969) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: non-loopback host requires password
+ok 1 - non-loopback host requires password
+  ---
+  duration_ms: 5.20334
+  type: 'test'
+  ...
+# Subtest: providers route requires auth when password mode is enabled
+ok 2 - providers route requires auth when password mode is enabled
+  ---
+  duration_ms: 2539.55211
+  type: 'test'
+  ...
+# Subtest: login rejects invalid password
+ok 3 - login rejects invalid password
+  ---
+  duration_ms: 1151.676656
+  type: 'test'
+  ...
+# Subtest: login returns cookie and unlocks provider routes
+ok 4 - login returns cookie and unlocks provider routes
+  ---
+  duration_ms: 1890.736839
+  type: 'test'
+  ...
+# Subtest: login accepts localhost origin for loopback-bound server
+ok 5 - login accepts localhost origin for loopback-bound server
+  ---
+  duration_ms: 930.910567
+  type: 'test'
+  ...
+# Subtest: login accepts 127 origin when request host is localhost
+ok 6 - login accepts 127 origin when request host is localhost
+  ---
+  duration_ms: 882.753181
+  type: 'test'
+  ...
+# Subtest: login rejects bare 127 origin without explicit trusted origin
+ok 7 - login rejects bare 127 origin without explicit trusted origin
+  ---
+  duration_ms: 919.596015
+  type: 'test'
+  ...
+# Subtest: login accepts configured trusted origin without port
+ok 8 - login accepts configured trusted origin without port
+  ---
+  duration_ms: 908.816156
+  type: 'test'
+  ...
+# Subtest: login rejects invalid JSON with a 400 instead of a 500
+ok 9 - login rejects invalid JSON with a 400 instead of a 500
+  ---
+  duration_ms: 948.970572
+  type: 'test'
+  ...
+# Subtest: login marks the session cookie as Secure when the request is forwarded as https
+ok 10 - login marks the session cookie as Secure when the request is forwarded as https
+  ---
+  duration_ms: 900.678658
+  type: 'test'
+  ...
+# Subtest: refreshBrowserState ignores a late browser result after the request is aborted
+ok 11 - refreshBrowserState ignores a late browser result after the request is aborted
+  ---
+  duration_ms: 2.25659
+  type: 'test'
+  ...
+# Subtest: loadMoreBrowserSessions ignores a late page after the request is aborted
+ok 12 - loadMoreBrowserSessions ignores a late page after the request is aborted
+  ---
+  duration_ms: 1.856006
+  type: 'test'
+  ...
+# Subtest: applySentSessionSelection promotes the selected draft session into the real session
+ok 13 - applySentSessionSelection promotes the selected draft session into the real session
+  ---
+  duration_ms: 1.921176
+  type: 'test'
+  ...
+# Subtest: default asr registry exposes the built-in doubao provider
+ok 14 - default asr registry exposes the built-in doubao provider
+  ---
+  duration_ms: 2.143436
+  type: 'test'
+  ...
+# Subtest: asr registry can explicitly disable the doubao provider
+ok 15 - asr registry can explicitly disable the doubao provider
+  ---
+  duration_ms: 0.337677
+  type: 'test'
+  ...
+# (node:12972) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: asr providers route lists registered providers
+ok 16 - asr providers route lists registered providers
+  ---
+  duration_ms: 106.391223
+  type: 'test'
+  ...
+# Subtest: asr session routes create stream audio and finish against provider handle
+ok 17 - asr session routes create stream audio and finish against provider handle
+  ---
+  duration_ms: 135.09011
+  type: 'test'
+  ...
+# Subtest: asr create session accepts provider-specific encodings without shared route hardcoding
+ok 18 - asr create session accepts provider-specific encodings without shared route hardcoding
+  ---
+  duration_ms: 11.358389
+  type: 'test'
+  ...
+# Subtest: asr create session returns explicit provider error when registry is empty
+ok 19 - asr create session returns explicit provider error when registry is empty
+  ---
+  duration_ms: 11.286807
+  type: 'test'
+  ...
+# Subtest: asr service buffers events and lets subscribers read only newer items
+ok 20 - asr service buffers events and lets subscribers read only newer items
+  ---
+  duration_ms: 9.363469
+  type: 'test'
+  ...
+# Subtest: asr service advances terminal state and rejects writes after cancellation
+ok 21 - asr service advances terminal state and rejects writes after cancellation
+  ---
+  duration_ms: 1.6305
+  type: 'test'
+  ...
+# Subtest: asr service marks a failed finish as failed instead of leaving the session finishing
+ok 22 - asr service marks a failed finish as failed instead of leaving the session finishing
+  ---
+  duration_ms: 1.154558
+  type: 'test'
+  ...
+# Subtest: asr service does not overwrite a finished session with cancelled
+ok 23 - asr service does not overwrite a finished session with cancelled
+  ---
+  duration_ms: 0.690853
+  type: 'test'
+  ...
+# Subtest: asr service caps buffered events and evicts closed sessions after ttl
+ok 24 - asr service caps buffered events and evicts closed sessions after ttl
+  ---
+  duration_ms: 62.95432
+  type: 'test'
+  ...
+# Subtest: asr service ignores late provider events after session already finished
+ok 25 - asr service ignores late provider events after session already finished
+  ---
+  duration_ms: 0.915632
+  type: 'test'
+  ...
+# Subtest: asr service keeps session finishing until provider emits the real terminal event
+ok 26 - asr service keeps session finishing until provider emits the real terminal event
+  ---
+  duration_ms: 0.598898
+  type: 'test'
+  ...
+# Subtest: resolveInitialSelectedSessionId prefers stored preferred session even when it is not first
+ok 27 - resolveInitialSelectedSessionId prefers stored preferred session even when it is not first
+  ---
+  duration_ms: 1.744768
+  type: 'test'
+  ...
+# Subtest: resolveInitialSelectedSessionId still prefers explicit preferred session id
+ok 28 - resolveInitialSelectedSessionId still prefers explicit preferred session id
+  ---
+  duration_ms: 0.277744
+  type: 'test'
+  ...
+# Subtest: resolvePreferredSessionForProject ignores a preferred session from another project
+ok 29 - resolvePreferredSessionForProject ignores a preferred session from another project
+  ---
+  duration_ms: 0.259797
+  type: 'test'
+  ...
+# Subtest: claude send times out promptly and force-kills a CLI that ignores SIGTERM
+ok 30 - claude send times out promptly and force-kills a CLI that ignores SIGTERM
+  ---
+  duration_ms: 325.789931
+  type: 'test'
+  ...
+# Subtest: buildThreadState falls back to the latest completed turn when no requested turn id is provided
+ok 31 - buildThreadState falls back to the latest completed turn when no requested turn id is provided
+  ---
+  duration_ms: 3.211898
+  type: 'test'
+  ...
+# Subtest: buildThreadState falls back to the active turn when the latest turn is still generating
+ok 32 - buildThreadState falls back to the active turn when the latest turn is still generating
+  ---
+  duration_ms: 0.343315
+  type: 'test'
+  ...
+# Subtest: buildThreadState keeps explicit requested turn id lookup when one is provided
+ok 33 - buildThreadState keeps explicit requested turn id lookup when one is provided
+  ---
+  duration_ms: 0.308592
+  type: 'test'
+  ...
+# Subtest: thread read requests a refresh when app-server returns a notLoaded snapshot
+ok 34 - thread read requests a refresh when app-server returns a notLoaded snapshot
+  ---
+  duration_ms: 1.948181
+  type: 'test'
+  ...
+# Subtest: thread read does not re-resume already loaded snapshots
+ok 35 - thread read does not re-resume already loaded snapshots
+  ---
+  duration_ms: 0.291344
+  type: 'test'
+  ...
+# Subtest: buildCodexCliArgs builds create command with model and effort
+ok 36 - buildCodexCliArgs builds create command with model and effort
+  ---
+  duration_ms: 3.748032
+  type: 'test'
+  ...
+# Subtest: buildCodexCliArgs builds resume command for existing session
+ok 37 - buildCodexCliArgs builds resume command for existing session
+  ---
+  duration_ms: 0.663598
+  type: 'test'
+  ...
+# Subtest: parseCodexCliJsonLines extracts created session id and last agent message
+ok 38 - parseCodexCliJsonLines extracts created session id and last agent message
+  ---
+  duration_ms: 0.626667
+  type: 'test'
+  ...
+# Subtest: codex cli runner resolves once thread.started arrives
+ok 39 - codex cli runner resolves once thread.started arrives
+  ---
+  duration_ms: 6.256574
+  type: 'test'
+  ...
+# Subtest: codex cli runner rejects when process exits before thread.started
+ok 40 - codex cli runner rejects when process exits before thread.started
+  ---
+  duration_ms: 1.789358
+  type: 'test'
+  ...
+# Subtest: codex cli create args include model and reasoning effort overrides
+ok 41 - codex cli create args include model and reasoning effort overrides
+  ---
+  duration_ms: 3.147405
+  type: 'test'
+  ...
+# Subtest: codex cli resume args include model and reasoning effort overrides
+ok 42 - codex cli resume args include model and reasoning effort overrides
+  ---
+  duration_ms: 0.513889
+  type: 'test'
+  ...
+# Subtest: codex cli json parser extracts thread id and last assistant text
+ok 43 - codex cli json parser extracts thread id and last assistant text
+  ---
+  duration_ms: 1.138233
+  type: 'test'
+  ...
+# Subtest: static codex models expose a default cli-safe option
+ok 44 - static codex models expose a default cli-safe option
+  ---
+  duration_ms: 0.517509
+  type: 'test'
+  ...
+# Subtest: codex session context reads model effort and context window from recent records
+ok 45 - codex session context reads model effort and context window from recent records
+  ---
+  duration_ms: 19.297419
+  type: 'test'
+  ...
+# Subtest: codex session context leaves context percent unknown when only window size is known
+ok 46 - codex session context leaves context percent unknown when only window size is known
+  ---
+  duration_ms: 6.505576
+  type: 'test'
+  ...
+# Subtest: codex first user snippet skips pure instructions wrapper and picks next real prompt
+ok 47 - codex first user snippet skips pure instructions wrapper and picks next real prompt
+  ---
+  duration_ms: 19.469903
+  type: 'test'
+  ...
+# Subtest: codex first user snippet skips AGENTS boilerplate user message and keeps real task title
+ok 48 - codex first user snippet skips AGENTS boilerplate user message and keeps real task title
+  ---
+  duration_ms: 7.931652
+  type: 'test'
+  ...
+# Subtest: codex conversation parser keeps tool events, reasoning, and context statuses but drops token telemetry noise
+ok 49 - codex conversation parser keeps tool events, reasoning, and context statuses but drops token telemetry noise
+  ---
+  duration_ms: 8.735605
+  type: 'test'
+  ...
+# Subtest: codex conversation parser keeps task_started after the triggering user message
+ok 50 - codex conversation parser keeps task_started after the triggering user message
+  ---
+  duration_ms: 4.628569
+  type: 'test'
+  ...
+# Subtest: conversation header shows codex runtime status without a duplicate interrupt action
+ok 51 - conversation header shows codex runtime status without a duplicate interrupt action
+  ---
+  duration_ms: 75.089583
+  type: 'test'
+  ...
+# Subtest: conversation timeline renders pending codex user input requests
+ok 52 - conversation timeline renders pending codex user input requests
+  ---
+  duration_ms: 3.271663
+  type: 'test'
+  ...
+# Subtest: conversation header status reflects completed turn when generation has ended
+ok 53 - conversation header status reflects completed turn when generation has ended
+  ---
+  duration_ms: 2.912861
+  type: 'test'
+  ...
+# Subtest: conversation header status does not infer generating from a live stream heartbeat when runtime already reports interrupted
+not ok 54 - conversation header status does not infer generating from a live stream heartbeat when runtime already reports interrupted
+  ---
+  duration_ms: 16.434223
+  type: 'test'
+  location: '/Users/tanran/aiCode/cw/hub-run/test/codex-thread-ui.test.ts:1:4015'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /title="当前回合已中断"/. Input:
+    
+    '<div class="flex-none border-b border-bdr px-4 py-3 md:px-6 md:py-4"><div class="flex items-start gap-3 md:items-center"><div class="flex min-w-0 flex-1 items-start gap-3"><button type="button" class="hidden h-9 w-9 items-center justify-center rounded-xl border border-bdr bg-surface text-txt transition hover:bg-surface-hover lg:inline-flex" aria-label="切换侧边栏"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-panel-left h-4 w-4" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18"></path></svg></button><div data-region="conversation-header-meta" class="min-w-0 flex-1"><h2 class="truncate text-base font-semibold text-txt md:text-lg">补齐 codex app-server 状态监控</h2><p class="mt-1 flex items-center justify-between gap-2 text-xs text-muted"><span class="min-w-0 flex flex-1 items-center gap-2 overflow-hidden"><span class="truncate">hub-run</span><span class="shrink-0">2026/2/2</span></span><span class="ml-auto inline-flex shrink-0 items-center gap-2"><button type="button" aria-label="复制会话 ID" title="复制会话 ID: thread-1" class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-bdr bg-surface text-muted transition hover:bg-surface-hover"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy h-4 w-4" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg></button><span data-slot="conversation-session-status" class="group relative inline-flex"><button type="button" aria-label="正在生成..." title="正在生成..." class="inline-flex h-4 w-4 items-center justify-center rounded-full"><span class="h-2.5 w-2.5 rounded-full bg-sky-400"></span></button><span class="pointer-events-none absolute left-5 top-1/2 z-10 hidden -translate-y-1/2 whitespace-nowrap rounded-full border border-bdr bg-panel px-2.5 py-1 text-[11px] text-txt shadow-lg shadow-black/10 dark:shadow-black/30 group-hover:flex group-focus-within:flex">正在生成...</span></span></span></p></div></div></div></div>'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: '<div class="flex-none border-b border-bdr px-4 py-3 md:px-6 md:py-4"><div class="flex items-start gap-3 md:items-center"><div class="flex min-w-0 flex-1 items-start gap-3"><button type="button" class="hidden h-9 w-9 items-center justify-center rounded-xl border border-bdr bg-surface text-txt transition hover:bg-surface-hover lg:inline-flex" aria-label="切换侧边栏"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-panel-left h-4 w-4" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18"></path></svg></button><div data-region="conversation-header-meta" class="min-w-0 flex-1"><h2 class="truncate text-base font-semibold text-txt md:text-lg">补齐 codex app-server 状态监控</h2><p class="mt-1 flex items-center justify-between gap-2 text-xs text-muted"><span class="min-w-0 flex flex-1 items-center gap-2 overflow-hidden"><span class="truncate">hub-run</span><span class="shrink-0">2026/2/2</span></span><span class="ml-auto inline-flex shrink-0 items-center gap-2"><button type="button" aria-label="复制会话 ID" title="复制会话 ID: thread-1" class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-bdr bg-surface text-muted transition hover:bg-surface-hover"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy h-4 w-4" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg></button><span data-slot="conversation-session-status" class="group relative inline-flex"><button type="button" aria-label="正在生成..." title="正在生成..." class="inline-flex h-4 w-4 items-center justify-center rounded-full"><span class="h-2.5 w-2.5 rounded-full bg-sky-400"></span></button><span class="pointer-events-none absolute left-5 top-1/2 z-10 hidden -translate-y-1/2 whitespace-nowrap rounded-full border border-bdr bg-panel px-2.5 py-1 text-[11px] text-txt shadow-lg shadow-black/10 dark:shadow-black/30 group-hover:flex group-focus-within:flex">正在生成...</span></span></span></p></div></div></div></div>'
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (/Users/tanran/aiCode/cw/hub-run/test/codex-thread-ui.test.ts:189:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: conversation header status uses a neutral ready color before any task starts
+ok 55 - conversation header status uses a neutral ready color before any task starts
+  ---
+  duration_ms: 4.59912
+  type: 'test'
+  ...
+# Subtest: interrupt action ignores heartbeat-only live stream when the runtime state is already completed
+ok 56 - interrupt action ignores heartbeat-only live stream when the runtime state is already completed
+  ---
+  duration_ms: 0.43216
+  type: 'test'
+  ...
+# Subtest: browser sidebar no longer renders list stream status chip
+ok 57 - browser sidebar no longer renders list stream status chip
+  ---
+  duration_ms: 21.993901
+  type: 'test'
+  ...
+# Subtest: composer keeps model and effort on one row and shows compact usage badge
+ok 58 - composer keeps model and effort on one row and shows compact usage badge
+  ---
+  duration_ms: 49.480477
+  type: 'test'
+  ...
+# Subtest: message content uses a smaller mobile font to fit more history
+ok 59 - message content uses a smaller mobile font to fit more history
+  ---
+  duration_ms: 66.015568
+  type: 'test'
+  ...
+# Subtest: composer shows existing draft plus live voice text inside the textarea while recording
+ok 60 - composer shows existing draft plus live voice text inside the textarea while recording
+  ---
+  duration_ms: 8.502366
+  type: 'test'
+  ...
+# Subtest: shouldSubmitOnEnter returns true for plain Enter
+ok 61 - shouldSubmitOnEnter returns true for plain Enter
+  ---
+  duration_ms: 1.93032
+  type: 'test'
+  ...
+# Subtest: shouldSubmitOnEnter ignores Shift+Enter for newline
+ok 62 - shouldSubmitOnEnter ignores Shift+Enter for newline
+  ---
+  duration_ms: 0.258904
+  type: 'test'
+  ...
+# Subtest: shouldSubmitOnEnter ignores composing Enter
+ok 63 - shouldSubmitOnEnter ignores composing Enter
+  ---
+  duration_ms: 0.237516
+  type: 'test'
+  ...
+# Subtest: shouldSubmitOnEnter ignores non-Enter keys
+ok 64 - shouldSubmitOnEnter ignores non-Enter keys
+  ---
+  duration_ms: 0.302245
+  type: 'test'
+  ...
+# Subtest: tool label maps bash style messages to 脚本
+ok 65 - tool label maps bash style messages to 脚本
+  ---
+  duration_ms: 1.980854
+  type: 'test'
+  ...
+# Subtest: tool result inherits tool title from previous tool_use message
+ok 66 - tool result inherits tool title from previous tool_use message
+  ---
+  duration_ms: 0.772285
+  type: 'test'
+  ...
+# Subtest: tool result preview collapses long output into one summary line
+ok 67 - tool result preview collapses long output into one summary line
+  ---
+  duration_ms: 0.63273
+  type: 'test'
+  ...
+# Subtest: sanitize conversation text removes codex IDE scaffolding and keeps the real request
+ok 68 - sanitize conversation text removes codex IDE scaffolding and keeps the real request
+  ---
+  duration_ms: 4.429206
+  type: 'test'
+  ...
+# Subtest: sanitize conversation text returns empty when only noise remains
+ok 69 - sanitize conversation text returns empty when only noise remains
+  ---
+  duration_ms: 3.538951
+  type: 'test'
+  ...
+# Subtest: sanitize conversation text removes trailing oai memory citation block
+ok 70 - sanitize conversation text removes trailing oai memory citation block
+  ---
+  duration_ms: 2.326775
+  type: 'test'
+  ...
+# Subtest: user message card strips codex scaffolding and keeps only real request text
+ok 71 - user message card strips codex scaffolding and keeps only real request text
+  ---
+  duration_ms: 69.212935
+  type: 'test'
+  ...
+# Subtest: thinking message stays collapsed by default like claude-run
+ok 72 - thinking message stays collapsed by default like claude-run
+  ---
+  duration_ms: 1.493884
+  type: 'test'
+  ...
+# Subtest: skill invocation message stays collapsed by default
+ok 73 - skill invocation message stays collapsed by default
+  ---
+  duration_ms: 5.301824
+  type: 'test'
+  ...
+# Subtest: skill header stays collapsed while the trailing user request remains visible
+ok 74 - skill header stays collapsed while the trailing user request remains visible
+  ---
+  duration_ms: 3.169887
+  type: 'test'
+  ...
+# Subtest: wrapped skill block keeps embedded skill body collapsed by default
+ok 75 - wrapped skill block keeps embedded skill body collapsed by default
+  ---
+  duration_ms: 8.686691
+  type: 'test'
+  ...
+# Subtest: wrapped tagged status message stays collapsed by default
+ok 76 - wrapped tagged status message stays collapsed by default
+  ---
+  duration_ms: 2.124618
+  type: 'test'
+  ...
+# Subtest: subagent notification message stays collapsed by default
+ok 77 - subagent notification message stays collapsed by default
+  ---
+  duration_ms: 8.080181
+  type: 'test'
+  ...
+# Subtest: subagent notification header stays collapsed while trailing user text remains visible
+ok 78 - subagent notification header stays collapsed while trailing user text remains visible
+  ---
+  duration_ms: 1.61445
+  type: 'test'
+  ...
+# Subtest: script tool use keeps title-only by default with layered collapse
+ok 79 - script tool use keeps title-only by default with layered collapse
+  ---
+  duration_ms: 10.589094
+  type: 'test'
+  ...
+# Subtest: assistant message card hides trailing oai memory citation block
+ok 80 - assistant message card hides trailing oai memory citation block
+  ---
+  duration_ms: 91.691151
+  type: 'test'
+  ...
+# Subtest: assistant markdown block renders rich markdown instead of plain pre text
+ok 81 - assistant markdown block renders rich markdown instead of plain pre text
+  ---
+  duration_ms: 16.892422
+  type: 'test'
+  ...
+# Subtest: assistant message card shows exact timestamp in bottom-right metadata
+ok 82 - assistant message card shows exact timestamp in bottom-right metadata
+  ---
+  duration_ms: 16.712443
+  type: 'test'
+  ...
+# Subtest: turn aborted message renders as a dedicated interrupted card
+ok 83 - turn aborted message renders as a dedicated interrupted card
+  ---
+  duration_ms: 1.954847
+  type: 'test'
+  ...
+# Subtest: request user input tool card exposes compact question count preview
+ok 84 - request user input tool card exposes compact question count preview
+  ---
+  duration_ms: 2.000871
+  type: 'test'
+  ...
+# Subtest: tool card also shows exact timestamp in bottom-right metadata
+ok 85 - tool card also shows exact timestamp in bottom-right metadata
+  ---
+  duration_ms: 2.869514
+  type: 'test'
+  ...
+# Subtest: bootstrapConversationPanel keeps optimistic send state when the initial reload returns stale messages
+ok 86 - bootstrapConversationPanel keeps optimistic send state when the initial reload returns stale messages
+  ---
+  duration_ms: 4.892754
+  type: 'test'
+  ...
+# Subtest: bootstrapConversationPanel scopes composer drafts per session and restores cached draft
+ok 87 - bootstrapConversationPanel scopes composer drafts per session and restores cached draft
+  ---
+  duration_ms: 0.894596
+  type: 'test'
+  ...
+# Subtest: bootstrapConversationPanel skips the immediate reload when the session was preloaded
+ok 88 - bootstrapConversationPanel skips the immediate reload when the session was preloaded
+  ---
+  duration_ms: 0.498486
+  type: 'test'
+  ...
+# Subtest: poll merge preserves accepted send lifecycle before runtime progress arrives
+ok 89 - poll merge preserves accepted send lifecycle before runtime progress arrives
+  ---
+  duration_ms: 4.71346
+  type: 'test'
+  ...
+# Subtest: poll merge advances send lifecycle when runtime state starts generating
+ok 90 - poll merge advances send lifecycle when runtime state starts generating
+  ---
+  duration_ms: 0.599884
+  type: 'test'
+  ...
+# Subtest: poll merge clears interrupting once runtime leaves generating and exposes interrupted status
+ok 91 - poll merge clears interrupting once runtime leaves generating and exposes interrupted status
+  ---
+  duration_ms: 0.862479
+  type: 'test'
+  ...
+# Subtest: poll merge keeps timeline unchanged when the requested turn finishes
+ok 92 - poll merge keeps timeline unchanged when the requested turn finishes
+  ---
+  duration_ms: 0.556449
+  type: 'test'
+  ...
+# Subtest: poll merge keeps optimistic user message ahead of trailing task started status
+ok 93 - poll merge keeps optimistic user message ahead of trailing task started status
+  ---
+  duration_ms: 11.267202
+  type: 'test'
+  ...
+# Subtest: poll merge buffers the latest window while history browsing is frozen
+ok 94 - poll merge buffers the latest window while history browsing is frozen
+  ---
+  duration_ms: 0.642628
+  type: 'test'
+  ...
+# Subtest: runtime refresh requests latest messages when generating stream is stale
+ok 95 - runtime refresh requests latest messages when generating stream is stale
+  ---
+  duration_ms: 2.742692
+  type: 'test'
+  ...
+# Subtest: runtime refresh skips message poll while live stream is still fresh
+ok 96 - runtime refresh skips message poll while live stream is still fresh
+  ---
+  duration_ms: 0.307594
+  type: 'test'
+  ...
+# Subtest: runtime refresh still requests a final sync after runtime reaches terminal state
+ok 97 - runtime refresh still requests a final sync after runtime reaches terminal state
+  ---
+  duration_ms: 0.696404
+  type: 'test'
+  ...
+# Subtest: runtime refresh does not wait two full intervals before polling stale live stream
+ok 98 - runtime refresh does not wait two full intervals before polling stale live stream
+  ---
+  duration_ms: 2.574002
+  type: 'test'
+  ...
+# Subtest: preloadSessionPanelCache writes the loaded panel state and preserves the draft
+ok 99 - preloadSessionPanelCache writes the loaded panel state and preserves the draft
+  ---
+  duration_ms: 2.942209
+  type: 'test'
+  ...
+# Subtest: preloadSessionPanelCache ignores draft sessions
+ok 100 - preloadSessionPanelCache ignores draft sessions
+  ---
+  duration_ms: 0.636056
+  type: 'test'
+  ...
+# Subtest: respondToUserInputOption ignores a late reload after the session changed
+ok 101 - respondToUserInputOption ignores a late reload after the session changed
+  ---
+  duration_ms: 2.52088
+  type: 'test'
+  ...
+# Subtest: interruptConversationTurn ignores a late reload after the session changed
+ok 102 - interruptConversationTurn ignores a late reload after the session changed
+  ---
+  duration_ms: 0.598798
+  type: 'test'
+  ...
+# Subtest: interruptConversationTurn keeps interrupting while reload still reports generating
+ok 103 - interruptConversationTurn keeps interrupting while reload still reports generating
+  ---
+  duration_ms: 1.243749
+  type: 'test'
+  ...
+# Subtest: respondToUserInputOption preserves live stream state instead of resetting the panel
+ok 104 - respondToUserInputOption preserves live stream state instead of resetting the panel
+  ---
+  duration_ms: 2.672663
+  type: 'test'
+  ...
+# Subtest: optimistic codex send clears composer immediately after the message is shown
+ok 105 - optimistic codex send clears composer immediately after the message is shown
+  ---
+  duration_ms: 3.732971
+  type: 'test'
+  ...
+# Subtest: failed optimistic send restores the composer draft after rolling back the fake message
+ok 106 - failed optimistic send restores the composer draft after rolling back the fake message
+  ---
+  duration_ms: 71.591373
+  type: 'test'
+  ...
+# Subtest: accepted send does not roll back when sidebar refresh fails afterwards
+ok 107 - accepted send does not roll back when sidebar refresh fails afterwards
+  ---
+  duration_ms: 0.721551
+  type: 'test'
+  ...
+# Subtest: failed send ignores rollback when the request was aborted by a session switch
+ok 108 - failed send ignores rollback when the request was aborted by a session switch
+  ---
+  duration_ms: 0.975561
+  type: 'test'
+  ...
+# Subtest: accepted send ignores a late sync failure after the session changed
+ok 109 - accepted send ignores a late sync failure after the session changed
+  ---
+  duration_ms: 0.853929
+  type: 'test'
+  ...
+# Subtest: draft send keeps current panel state visible until the real session finishes loading
+ok 110 - draft send keeps current panel state visible until the real session finishes loading
+  ---
+  duration_ms: 0.681201
+  type: 'test'
+  ...
+# Subtest: late accepted send updates the original session snapshot after a session switch
+ok 111 - late accepted send updates the original session snapshot after a session switch
+  ---
+  duration_ms: 0.979468
+  type: 'test'
+  ...
+# Subtest: late failed send restores the original session draft after a session switch
+ok 112 - late failed send restores the original session draft after a session switch
+  ---
+  duration_ms: 3.082862
+  type: 'test'
+  ...
+# Subtest: claude send uses returned outputText immediately when the file snapshot is still stale
+ok 113 - claude send uses returned outputText immediately when the file snapshot is still stale
+  ---
+  duration_ms: 15.744756
+  type: 'test'
+  ...
+# Subtest: session cache key is stable per provider and session
+ok 114 - session cache key is stable per provider and session
+  ---
+  duration_ms: 2.212373
+  type: 'test'
+  ...
+# Subtest: session cache stores cloned panel state without persisting requested turn id
+ok 115 - session cache stores cloned panel state without persisting requested turn id
+  ---
+  duration_ms: 0.465797
+  type: 'test'
+  ...
+# Subtest: applySessionPanelUpdate writes cache and updates the active panel snapshot
+ok 116 - applySessionPanelUpdate writes cache and updates the active panel snapshot
+  ---
+  duration_ms: 1.99049
+  type: 'test'
+  ...
+# Subtest: applySessionPanelUpdate falls back to cached session snapshot when target session is inactive
+ok 117 - applySessionPanelUpdate falls back to cached session snapshot when target session is inactive
+  ---
+  duration_ms: 0.414169
+  type: 'test'
+  ...
+# Subtest: appendOptimisticUserMessage appends a local user message immediately
+ok 118 - appendOptimisticUserMessage appends a local user message immediately
+  ---
+  duration_ms: 3.389241
+  type: 'test'
+  ...
+# Subtest: hasConversationChanged returns false when server page is still stale
+ok 119 - hasConversationChanged returns false when server page is still stale
+  ---
+  duration_ms: 0.400831
+  type: 'test'
+  ...
+# Subtest: hasConversationChanged returns true once server page includes new content
+ok 120 - hasConversationChanged returns true once server page includes new content
+  ---
+  duration_ms: 0.323228
+  type: 'test'
+  ...
+# Subtest: conversation timeline reset token changes when the session changes
+ok 121 - conversation timeline reset token changes when the session changes
+  ---
+  duration_ms: 1.749039
+  type: 'test'
+  ...
+# Subtest: conversation timeline reset token changes when the summary changes within one session
+ok 122 - conversation timeline reset token changes when the summary changes within one session
+  ---
+  duration_ms: 0.272009
+  type: 'test'
+  ...
+# Subtest: send lifecycle advances from submitted to accepted to generating to synced to completed
+ok 123 - send lifecycle advances from submitted to accepted to generating to synced to completed
+  ---
+  duration_ms: 2.679429
+  type: 'test'
+  ...
+# Subtest: send lifecycle can enter failed state from runtime status
+ok 124 - send lifecycle can enter failed state from runtime status
+  ---
+  duration_ms: 0.379929
+  type: 'test'
+  ...
+# Subtest: send lifecycle can complete directly from accepted when runtime already finished
+ok 125 - send lifecycle can complete directly from accepted when runtime already finished
+  ---
+  duration_ms: 0.279061
+  type: 'test'
+  ...
+# Subtest: send lifecycle can enter interrupted state from runtime status
+ok 126 - send lifecycle can enter interrupted state from runtime status
+  ---
+  duration_ms: 0.262041
+  type: 'test'
+  ...
+# Subtest: send lifecycle enters timed out when accepted state makes no progress after extended wait
+ok 127 - send lifecycle enters timed out when accepted state makes no progress after extended wait
+  ---
+  duration_ms: 0.588431
+  type: 'test'
+  ...
+# Subtest: resolveSendStatus falls back to completed runtime state when lifecycle is missing
+ok 128 - resolveSendStatus falls back to completed runtime state when lifecycle is missing
+  ---
+  duration_ms: 0.327826
+  type: 'test'
+  ...
+# Subtest: resolveSendStatus prefers interrupted runtime status over a stale active lifecycle
+ok 129 - resolveSendStatus prefers interrupted runtime status over a stale active lifecycle
+  ---
+  duration_ms: 0.245261
+  type: 'test'
+  ...
+# Subtest: applyPanelRuntimeState emits terminal message on first completion then stabilises
+ok 130 - applyPanelRuntimeState emits terminal message on first completion then stabilises
+  ---
+  duration_ms: 2.873078
+  type: 'test'
+  ...
+# Subtest: conversation snapshot replaces latest window and clears loading state
+ok 131 - conversation snapshot replaces latest window and clears loading state
+  ---
+  duration_ms: 3.578764
+  type: 'test'
+  ...
+# Subtest: conversation snapshot preserves already loaded older messages ahead of the latest window
+ok 132 - conversation snapshot preserves already loaded older messages ahead of the latest window
+  ---
+  duration_ms: 0.418157
+  type: 'test'
+  ...
+# Subtest: conversation snapshot keeps an optimistic user message visible until the server confirms it
+ok 133 - conversation snapshot keeps an optimistic user message visible until the server confirms it
+  ---
+  duration_ms: 0.711283
+  type: 'test'
+  ...
+# Subtest: conversation snapshot marks realtime stream as live
+ok 134 - conversation snapshot marks realtime stream as live
+  ---
+  duration_ms: 0.426475
+  type: 'test'
+  ...
+# Subtest: conversation delta appends only unseen messages and advances stream offset
+ok 135 - conversation delta appends only unseen messages and advances stream offset
+  ---
+  duration_ms: 0.671287
+  type: 'test'
+  ...
+# Subtest: conversation delta clears reconnecting state after new messages arrive
+ok 136 - conversation delta clears reconnecting state after new messages arrive
+  ---
+  duration_ms: 0.299022
+  type: 'test'
+  ...
+# Subtest: conversation delta keeps the confirmed user message ahead of task_started and removes the optimistic duplicate
+ok 137 - conversation delta keeps the confirmed user message ahead of task_started and removes the optimistic duplicate
+  ---
+  duration_ms: 0.506709
+  type: 'test'
+  ...
+# Subtest: conversation snapshot buffers latest window while history view is frozen, and applies it only when requested
+ok 138 - conversation snapshot buffers latest window while history view is frozen, and applies it only when requested
+  ---
+  duration_ms: 0.58113
+  type: 'test'
+  ...
+# Subtest: conversation stream url includes limit and offset when provided
+ok 139 - conversation stream url includes limit and offset when provided
+  ---
+  duration_ms: 1.065825
+  type: 'test'
+  ...
+# Subtest: splitPcmFrames pads a short tail to a full 20ms frame
+ok 140 - splitPcmFrames pads a short tail to a full 20ms frame
+  ---
+  duration_ms: 2.890839
+  type: 'test'
+  ...
+# Subtest: classifyDoubaoResponse distinguishes heartbeat interim final and vad start
+ok 141 - classifyDoubaoResponse distinguishes heartbeat interim final and vad start
+  ---
+  duration_ms: 1.191886
+  type: 'test'
+  ...
+# Subtest: classifyDoubaoResponse surfaces invalid result_json instead of swallowing it
+ok 142 - classifyDoubaoResponse surfaces invalid result_json instead of swallowing it
+  ---
+  duration_ms: 0.343794
+  type: 'test'
+  ...
+# Subtest: buildStartTaskMessage encodes camelCase protobuf fields correctly
+ok 143 - buildStartTaskMessage encodes camelCase protobuf fields correctly
+  ---
+  duration_ms: 16.184316
+  type: 'test'
+  ...
+# Subtest: decodeDoubaoResponse reads protobuf response fields
+ok 144 - decodeDoubaoResponse reads protobuf response fields
+  ---
+  duration_ms: 6.230422
+  type: 'test'
+  ...
+# Subtest: withTimeout rejects a hanging operation with a diagnostic label
+ok 145 - withTimeout rejects a hanging operation with a diagnostic label
+  ---
+  duration_ms: 22.111927
+  type: 'test'
+  ...
+# Subtest: fetchWithTimeout preserves upstream abort signals
+ok 146 - fetchWithTimeout preserves upstream abort signals
+  ---
+  duration_ms: 12.145646
+  type: 'test'
+  ...
+# Subtest: ensureDoubaoCredentials refreshes token when deviceId override differs from cached file
+ok 147 - ensureDoubaoCredentials refreshes token when deviceId override differs from cached file
+  ---
+  duration_ms: 55.006944
+  type: 'test'
+  ...
+# Subtest: ensureDoubaoCredentials fails fast when token fetch hangs
+ok 148 - ensureDoubaoCredentials fails fast when token fetch hangs
+  ---
+  duration_ms: 26.43206
+  type: 'test'
+  ...
+# Subtest: createDraftSession marks placeholder session for local-only creation
+ok 149 - createDraftSession marks placeholder session for local-only creation
+  ---
+  duration_ms: 1.793273
+  type: 'test'
+  ...
+# Subtest: insertDraftSession prepends placeholder and keeps other sessions
+ok 150 - insertDraftSession prepends placeholder and keeps other sessions
+  ---
+  duration_ms: 0.322942
+  type: 'test'
+  ...
+# Subtest: readJsonLinesFromOffset respects an explicit snapshot end offset
+ok 151 - readJsonLinesFromOffset respects an explicit snapshot end offset
+  ---
+  duration_ms: 12.164979
+  type: 'test'
+  ...
+# (node:13026) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: codex create rejects missing first message without creating an orphan thread
+ok 152 - codex create rejects missing first message without creating an orphan thread
+  ---
+  duration_ms: 299.025978
+  type: 'test'
+  ...
+# Subtest: codex create route uses app-server mainline and exposes state and user input
+ok 153 - codex create route uses app-server mainline and exposes state and user input
+  ---
+  duration_ms: 184.558033
+  type: 'test'
+  ...
+# Subtest: codex pending user input survives app-server client restart and can still be answered
+ok 154 - codex pending user input survives app-server client restart and can still be answered
+  ---
+  duration_ms: 330.811174
+  type: 'test'
+  ...
+# Subtest: codex request listing clears stale persisted user input after the turn already completed
+ok 155 - codex request listing clears stale persisted user input after the turn already completed
+  ---
+  duration_ms: 351.650639
+  type: 'test'
+  ...
+# Subtest: codex stale user input submission fails fast and clears persisted request
+ok 156 - codex stale user input submission fails fast and clears persisted request
+  ---
+  duration_ms: 284.29509
+  type: 'test'
+  ...
+# (node:13027) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: codex send route uses app-server mainline and supports interrupt
+ok 157 - codex send route uses app-server mainline and supports interrupt
+  ---
+  duration_ms: 358.526206
+  type: 'test'
+  ...
+# (node:13028) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: codex state route delegates to provider adapter
+ok 158 - codex state route delegates to provider adapter
+  ---
+  duration_ms: 167.08943
+  type: 'test'
+  ...
+# Subtest: codex state route can expose the latest turn status even when no turnId is supplied
+ok 159 - codex state route can expose the latest turn status even when no turnId is supplied
+  ---
+  duration_ms: 11.032634
+  type: 'test'
+  ...
+# Subtest: codex interrupt route delegates to provider adapter
+ok 160 - codex interrupt route delegates to provider adapter
+  ---
+  duration_ms: 36.681243
+  type: 'test'
+  ...
+# Subtest: codex state route returns 404 when the session no longer exists
+ok 161 - codex state route returns 404 when the session no longer exists
+  ---
+  duration_ms: 10.167339
+  type: 'test'
+  ...
+# Subtest: codex interrupt route returns 404 when the session no longer exists
+ok 162 - codex interrupt route returns 404 when the session no longer exists
+  ---
+  duration_ms: 10.02626
+  type: 'test'
+  ...
+# Subtest: codex user input request routes delegate to provider adapter
+ok 163 - codex user input request routes delegate to provider adapter
+  ---
+  duration_ms: 17.749147
+  type: 'test'
+  ...
+# Subtest: getEffortOptions falls back to all model efforts when selected model has no explicit list
+ok 164 - getEffortOptions falls back to all model efforts when selected model has no explicit list
+  ---
+  duration_ms: 2.824444
+  type: 'test'
+  ...
+# Subtest: getEffortOptions prefers selected model effort list when it exists
+ok 165 - getEffortOptions prefers selected model effort list when it exists
+  ---
+  duration_ms: 0.290832
+  type: 'test'
+  ...
+# Subtest: syncEffortSelection keeps the current effort when fallback options still include it
+ok 166 - syncEffortSelection keeps the current effort when fallback options still include it
+  ---
+  duration_ms: 0.347599
+  type: 'test'
+  ...
+# Subtest: getEffortOptions keeps the selected effort visible even if the model does not advertise it
+ok 167 - getEffortOptions keeps the selected effort visible even if the model does not advertise it
+  ---
+  duration_ms: 0.393631
+  type: 'test'
+  ...
+# Subtest: selected model prefers current session model before cached preference
+ok 168 - selected model prefers current session model before cached preference
+  ---
+  duration_ms: 0.272856
+  type: 'test'
+  ...
+# Subtest: selected model falls back to cached preference before default model
+ok 169 - selected model falls back to cached preference before default model
+  ---
+  duration_ms: 0.245731
+  type: 'test'
+  ...
+# Subtest: selected effort prefers current session effort before cached preference and default
+ok 170 - selected effort prefers current session effort before cached preference and default
+  ---
+  duration_ms: 0.386109
+  type: 'test'
+  ...
+# Subtest: session title strips AGENTS and INSTRUCTIONS noise from pasted prompt
+ok 171 - session title strips AGENTS and INSTRUCTIONS noise from pasted prompt
+  ---
+  duration_ms: 7.192975
+  type: 'test'
+  ...
+# Subtest: session title strips codex user instructions wrapper and IDE scaffolding
+ok 172 - session title strips codex user instructions wrapper and IDE scaffolding
+  ---
+  duration_ms: 3.097814
+  type: 'test'
+  ...
+# Subtest: session title keeps normal user prompt text intact
+ok 173 - session title keeps normal user prompt text intact
+  ---
+  duration_ms: 0.455863
+  type: 'test'
+  ...
+# Subtest: session title drops instruction-only AGENTS boilerplate
+ok 174 - session title drops instruction-only AGENTS boilerplate
+  ---
+  duration_ms: 3.8137
+  type: 'test'
+  ...
+# (node:13031) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: codex latest page uses opaque tail cursor for long session and supports older page
+ok 175 - codex latest page uses opaque tail cursor for long session and supports older page
+  ---
+  duration_ms: 2564.696951
+  type: 'test'
+  ...
+# Subtest: codex watcher invalidates cached session display after file change
+ok 176 - codex watcher invalidates cached session display after file change
+  ---
+  duration_ms: 2031.827995
+  type: 'test'
+  ...
+# (node:13032) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: codex sessions route returns fixture-backed sessions
+ok 177 - codex sessions route returns fixture-backed sessions
+  ---
+  duration_ms: 2210.222163
+  type: 'test'
+  ...
+# Subtest: codex sessions route hides subagent threads from session list
+ok 178 - codex sessions route hides subagent threads from session list
+  ---
+  duration_ms: 1655.812644
+  type: 'test'
+  ...
+# Subtest: provider summary routes and create route use live provider status instead of boot snapshot
+ok 179 - provider summary routes and create route use live provider status instead of boot snapshot
+  ---
+  duration_ms: 6.842798
+  type: 'test'
+  ...
+# Subtest: codex projects route includes session-meta projects missing from history
+ok 180 - codex projects route includes session-meta projects missing from history
+  ---
+  duration_ms: 1617.103049
+  type: 'test'
+  ...
+# Subtest: codex models route returns static CLI-backed model metadata
+ok 181 - codex models route returns static CLI-backed model metadata
+  ---
+  duration_ms: 1633.477297
+  type: 'test'
+  ...
+# Subtest: claude projects route returns distinct projects
+ok 182 - claude projects route returns distinct projects
+  ---
+  duration_ms: 1667.978552
+  type: 'test'
+  ...
+# Subtest: claude sessions route includes project files missing from history
+ok 183 - claude sessions route includes project files missing from history
+  ---
+  duration_ms: 1567.365785
+  type: 'test'
+  ...
+# Subtest: claude sessions route sanitizes session title noise from history and files
+ok 184 - claude sessions route sanitizes session title noise from history and files
+  ---
+  duration_ms: 1581.334279
+  type: 'test'
+  ...
+# Subtest: sessions route paginates latest items first and supports before cursor
+ok 185 - sessions route paginates latest items first and supports before cursor
+  ---
+  duration_ms: 1560.091099
+  type: 'test'
+  ...
+# Subtest: sessions route filters by exact project before pagination
+ok 186 - sessions route filters by exact project before pagination
+  ---
+  duration_ms: 1561.844713
+  type: 'test'
+  ...
+# Subtest: codex message route loads latest page first and older page via before cursor
+ok 187 - codex message route loads latest page first and older page via before cursor
+  ---
+  duration_ms: 1706.622268
+  type: 'test'
+  ...
+# Subtest: claude message route preserves summary and latest-first order
+ok 188 - claude message route preserves summary and latest-first order
+  ---
+  duration_ms: 1606.755077
+  type: 'test'
+  ...
+# (node:13033) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: send route requires text
+ok 189 - send route requires text
+  ---
+  duration_ms: 110.44307
+  type: 'test'
+  ...
+# Subtest: send route delegates to provider adapter
+ok 190 - send route delegates to provider adapter
+  ---
+  duration_ms: 11.405527
+  type: 'test'
+  ...
+# Subtest: send route returns 404 when the session no longer exists
+ok 191 - send route returns 404 when the session no longer exists
+  ---
+  duration_ms: 30.783975
+  type: 'test'
+  ...
+# Subtest: send route rejects providers without send capability before calling the adapter
+ok 192 - send route rejects providers without send capability before calling the adapter
+  ---
+  duration_ms: 35.594883
+  type: 'test'
+  ...
+# Subtest: models route delegates to provider adapter
+ok 193 - models route delegates to provider adapter
+  ---
+  duration_ms: 7.185852
+  type: 'test'
+  ...
+# Subtest: create session route delegates to provider adapter
+ok 194 - create session route delegates to provider adapter
+  ---
+  duration_ms: 9.264705
+  type: 'test'
+  ...
+# Subtest: create session route requires text when provider does not allow empty create
+ok 195 - create session route requires text when provider does not allow empty create
+  ---
+  duration_ms: 12.66119
+  type: 'test'
+  ...
+# (node:13034) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: provider session context route delegates to provider adapter
+ok 196 - provider session context route delegates to provider adapter
+  ---
+  duration_ms: 118.805234
+  type: 'test'
+  ...
+# (node:13035) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: provider sessions stream requires auth
+ok 197 - provider sessions stream requires auth
+  ---
+  duration_ms: 278.996044
+  type: 'test'
+  ...
+# Subtest: codex sessions stream emits snapshot and loaded-window diff updates
+ok 198 - codex sessions stream emits snapshot and loaded-window diff updates
+  ---
+  duration_ms: 260.888829
+  type: 'test'
+  ...
+# Subtest: sessions stream does not miss an update that lands while the initial snapshot is loading
+ok 199 - sessions stream does not miss an update that lands while the initial snapshot is loading
+  ---
+  duration_ms: 8.767923
+  type: 'test'
+  ...
+# Subtest: sessions stream serializes concurrent updates instead of emitting a stale rollback
+ok 200 - sessions stream serializes concurrent updates instead of emitting a stale rollback
+  ---
+  duration_ms: 153.305957
+  type: 'test'
+  ...
+# Subtest: sessions stream catches async pump failures instead of leaking unhandled rejections
+ok 201 - sessions stream catches async pump failures instead of leaking unhandled rejections
+  ---
+  duration_ms: 207.400173
+  type: 'test'
+  ...
+# Subtest: codex conversation stream emits recent snapshot and byte-offset deltas
+ok 202 - codex conversation stream emits recent snapshot and byte-offset deltas
+  ---
+  duration_ms: 120.040259
+  type: 'test'
+  ...
+# Subtest: conversation stream coalesces concurrent change notifications into one delta
+ok 203 - conversation stream coalesces concurrent change notifications into one delta
+  ---
+  duration_ms: 196.059378
+  type: 'test'
+  ...
+# Subtest: conversation stream survives synchronous subscription updates on offset replay
+ok 204 - conversation stream survives synchronous subscription updates on offset replay
+  ---
+  duration_ms: 154.934171
+  type: 'test'
+  ...
+# Subtest: conversation stream catches async delta pump failures instead of leaking unhandled rejections
+ok 205 - conversation stream catches async delta pump failures instead of leaking unhandled rejections
+  ---
+  duration_ms: 204.699718
+  type: 'test'
+  ...
+# Subtest: realtime stream error stops reconnecting when auth expires
+ok 206 - realtime stream error stops reconnecting when auth expires
+  ---
+  duration_ms: 2.230051
+  type: 'test'
+  ...
+# Subtest: realtime stream error keeps reconnecting on transient failures
+ok 207 - realtime stream error keeps reconnecting on transient failures
+  ---
+  duration_ms: 0.636361
+  type: 'test'
+  ...
+# Subtest: realtime stream disconnect watchdog trips after heartbeat silence
+ok 208 - realtime stream disconnect watchdog trips after heartbeat silence
+  ---
+  duration_ms: 1.833896
+  type: 'test'
+  ...
+# Subtest: realtime stream disconnect watchdog stays quiet while heartbeat is still fresh
+ok 209 - realtime stream disconnect watchdog stays quiet while heartbeat is still fresh
+  ---
+  duration_ms: 0.83499
+  type: 'test'
+  ...
+# Subtest: disconnected stream status preserves last event timestamp and retry count
+ok 210 - disconnected stream status preserves last event timestamp and retry count
+  ---
+  duration_ms: 0.312278
+  type: 'test'
+  ...
+# Subtest: idle stream never becomes disconnected through the watchdog
+ok 211 - idle stream never becomes disconnected through the watchdog
+  ---
+  duration_ms: 0.440978
+  type: 'test'
+  ...
+# Subtest: probeHealth returns true for a 200 response
+ok 212 - probeHealth returns true for a 200 response
+  ---
+  duration_ms: 83.151705
+  type: 'test'
+  ...
+# Subtest: waitForHealth resolves once a delayed server starts responding
+ok 213 - waitForHealth resolves once a delayed server starts responding
+  ---
+  duration_ms: 332.789844
+  type: 'test'
+  ...
+# Subtest: getDefaultRuntimeConfigPath uses user config directory
+ok 214 - getDefaultRuntimeConfigPath uses user config directory
+  ---
+  duration_ms: 3.15713
+  type: 'test'
+  ...
+# Subtest: buildLaunchAgentLabel creates stable per-instance label
+ok 215 - buildLaunchAgentLabel creates stable per-instance label
+  ---
+  duration_ms: 0.34561
+  type: 'test'
+  ...
+# Subtest: buildProgramArguments includes host port password and trusted origins
+ok 216 - buildProgramArguments includes host port password and trusted origins
+  ---
+  duration_ms: 1.504196
+  type: 'test'
+  ...
+# Subtest: buildLaunchAgentPlist enables keepalive and writes logs per instance
+ok 217 - buildLaunchAgentPlist enables keepalive and writes logs per instance
+  ---
+  duration_ms: 1.123734
+  type: 'test'
+  ...
+# Subtest: mergeConfig requires an explicit password for a new runtime instance
+ok 218 - mergeConfig requires an explicit password for a new runtime instance
+  ---
+  duration_ms: 0.98942
+  type: 'test'
+  ...
+# Subtest: sessions snapshot replaces loaded window and keeps selected session when still present
+ok 219 - sessions snapshot replaces loaded window and keeps selected session when still present
+  ---
+  duration_ms: 3.68657
+  type: 'test'
+  ...
+# Subtest: sessions snapshot marks realtime stream as live once the snapshot arrives
+ok 220 - sessions snapshot marks realtime stream as live once the snapshot arrives
+  ---
+  duration_ms: 0.314778
+  type: 'test'
+  ...
+# Subtest: sessions snapshot does not re-inject a selected session from another project
+ok 221 - sessions snapshot does not re-inject a selected session from another project
+  ---
+  duration_ms: 0.305614
+  type: 'test'
+  ...
+# Subtest: sessions update merges upserts removes vanished items and falls back selection
+ok 222 - sessions update merges upserts removes vanished items and falls back selection
+  ---
+  duration_ms: 0.417146
+  type: 'test'
+  ...
+# Subtest: sessions update clears reconnecting state after receiving fresh data
+ok 223 - sessions update clears reconnecting state after receiving fresh data
+  ---
+  duration_ms: 0.425937
+  type: 'test'
+  ...
+# Subtest: sessions stream still connects after initial load even when the list is empty
+ok 224 - sessions stream still connects after initial load even when the list is empty
+  ---
+  duration_ms: 0.295759
+  type: 'test'
+  ...
+# Subtest: sessions stream subscription state only tracks loaded size and draft presence
+ok 225 - sessions stream subscription state only tracks loaded size and draft presence
+  ---
+  duration_ms: 0.265481
+  type: 'test'
+  ...
+# Subtest: sessions stream url encodes loaded count and project filter
+ok 226 - sessions stream url encodes loaded count and project filter
+  ---
+  duration_ms: 0.325435
+  type: 'test'
+  ...
+# Subtest: project label keeps the full project path
+ok 227 - project label keeps the full project path
+  ---
+  duration_ms: 2.061273
+  type: 'test'
+  ...
+# Subtest: session filter matches full project path search
+ok 228 - session filter matches full project path search
+  ---
+  duration_ms: 0.336185
+  type: 'test'
+  ...
+# Subtest: session title normalizes whitespace and truncates long prompts
+ok 229 - session title normalizes whitespace and truncates long prompts
+  ---
+  duration_ms: 0.365547
+  type: 'test'
+  ...
+# Subtest: session title falls back to unnamed when display is empty
+ok 230 - session title falls back to unnamed when display is empty
+  ---
+  duration_ms: 0.428638
+  type: 'test'
+  ...
+# Subtest: resume command uses provider specific cli command
+ok 231 - resume command uses provider specific cli command
+  ---
+  duration_ms: 0.306622
+  type: 'test'
+  ...
+# Subtest: selected project only resolves on exact project path match
+ok 232 - selected project only resolves on exact project path match
+  ---
+  duration_ms: 0.26873
+  type: 'test'
+  ...
+# Subtest: virtual window math keeps only visible rows plus overscan
+ok 233 - virtual window math keeps only visible rows plus overscan
+  ---
+  duration_ms: 1.600609
+  type: 'test'
+  ...
+# Subtest: selected row scroll target reveals an item outside the current viewport
+ok 234 - selected row scroll target reveals an item outside the current viewport
+  ---
+  duration_ms: 0.344928
+  type: 'test'
+  ...
+# Subtest: session browser does not fully render a long list on first paint
+ok 235 - session browser does not fully render a long list on first paint
+  ---
+  duration_ms: 30.863152
+  type: 'test'
+  ...
+# Subtest: formatContextLabel shows used percent instead of context left percent
+ok 236 - formatContextLabel shows used percent instead of context left percent
+  ---
+  duration_ms: 2.572533
+  type: 'test'
+  ...
+# Subtest: formatContextDetails shows raw used/window tokens for tooltip
+ok 237 - formatContextDetails shows raw used/window tokens for tooltip
+  ---
+  duration_ms: 0.348878
+  type: 'test'
+  ...
+# Subtest: formatContextLabel can derive used percent when only left percent and window exist
+ok 238 - formatContextLabel can derive used percent when only left percent and window exist
+  ---
+  duration_ms: 0.289811
+  type: 'test'
+  ...
+# Subtest: formatContextLabel stays empty when used tokens and left percent are both unknown
+ok 239 - formatContextLabel stays empty when used tokens and left percent are both unknown
+  ---
+  duration_ms: 0.240615
+  type: 'test'
+  ...
+# Subtest: sessionKey round-trip preserves provider session reference
+ok 240 - sessionKey round-trip preserves provider session reference
+  ---
+  duration_ms: 2.998913
+  type: 'test'
+  ...
+# Subtest: decodeSessionKey rejects malformed payload
+ok 241 - decodeSessionKey rejects malformed payload
+  ---
+  duration_ms: 0.840361
+  type: 'test'
+  ...
+# Subtest: sidebar width clamps into desktop bounds
+ok 242 - sidebar width clamps into desktop bounds
+  ---
+  duration_ms: 2.417803
+  type: 'test'
+  ...
+# Subtest: sidebar width reader falls back to default for missing or invalid values
+ok 243 - sidebar width reader falls back to default for missing or invalid values
+  ---
+  duration_ms: 0.817626
+  type: 'test'
+  ...
+# Subtest: sidebar width writer persists normalized width to storage
+ok 244 - sidebar width writer persists normalized width to storage
+  ---
+  duration_ms: 0.370949
+  type: 'test'
+  ...
+# Subtest: app header renders real provider status instead of placeholder language toggle
+ok 245 - app header renders real provider status instead of placeholder language toggle
+  ---
+  duration_ms: 15.936119
+  type: 'test'
+  ...
+# Subtest: conversation panel keeps composer focused on send controls instead of provider badges
+ok 246 - conversation panel keeps composer focused on send controls instead of provider badges
+  ---
+  duration_ms: 10.377906
+  type: 'test'
+  ...
+# Subtest: session browser shows create-session controls and session totals
+ok 247 - session browser shows create-session controls and session totals
+  ---
+  duration_ms: 5.453569
+  type: 'test'
+  ...
+# Subtest: desktop browser sidebar exposes resize handle and default width
+ok 248 - desktop browser sidebar exposes resize handle and default width
+  ---
+  duration_ms: 3.62757
+  type: 'test'
+  ...
+# Subtest: browser sidebar shows blocking spinner while sessions are still loading
+ok 249 - browser sidebar shows blocking spinner while sessions are still loading
+  ---
+  duration_ms: 1.467067
+  type: 'test'
+  ...
+# Subtest: browser sidebar blocks interaction during project-switch loading even with stale sessions
+ok 250 - browser sidebar blocks interaction during project-switch loading even with stale sessions
+  ---
+  duration_ms: 3.607274
+  type: 'test'
+  ...
+# Subtest: conversation body blocks composer while first page is still loading
+ok 251 - conversation body blocks composer while first page is still loading
+  ---
+  duration_ms: 1.310092
+  type: 'test'
+  ...
+# Subtest: script tool messages keep layered collapse and hide preview by default
+ok 252 - script tool messages keep layered collapse and hide preview by default
+  ---
+  duration_ms: 10.407934
+  type: 'test'
+  ...
+# Subtest: composer shows generating state near the send button instead of timeline banner text
+ok 253 - composer shows generating state near the send button instead of timeline banner text
+  ---
+  duration_ms: 3.944488
+  type: 'test'
+  ...
+# Subtest: composer shows task completion placeholder after the current turn finishes
+ok 254 - composer shows task completion placeholder after the current turn finishes
+  ---
+  duration_ms: 3.326181
+  type: 'test'
+  ...
+# Subtest: thinking message renders as a dedicated reasoning block
+ok 255 - thinking message renders as a dedicated reasoning block
+  ---
+  duration_ms: 2.794506
+  type: 'test'
+  ...
+# Subtest: selected session preference round-trips by provider and project
+ok 256 - selected session preference round-trips by provider and project
+  ---
+  duration_ms: 3.221237
+  type: 'test'
+  ...
+# Subtest: selected session preference falls back to latest provider session when only project-specific cache exists
+ok 257 - selected session preference falls back to latest provider session when only project-specific cache exists
+  ---
+  duration_ms: 0.54374
+  type: 'test'
+  ...
+# Subtest: provider control preference round-trips selected model and effort
+ok 258 - provider control preference round-trips selected model and effort
+  ---
+  duration_ms: 0.432995
+  type: 'test'
+  ...
+# Subtest: preferred session is merged back into the latest window when it is missing
+ok 259 - preferred session is merged back into the latest window when it is missing
+  ---
+  duration_ms: 0.701373
+  type: 'test'
+  ...
+# Subtest: downsampleFloat32ToInt16 converts browser float audio to 16k pcm16
+ok 260 - downsampleFloat32ToInt16 converts browser float audio to 16k pcm16
+  ---
+  duration_ms: 3.072859
+  type: 'test'
+  ...
+# Subtest: encodePcm16Chunk writes little-endian audio bytes
+ok 261 - encodePcm16Chunk writes little-endian audio bytes
+  ---
+  duration_ms: 0.383901
+  type: 'test'
+  ...
+# Subtest: mergeDraftWithTranscript appends transcript without losing existing draft
+ok 262 - mergeDraftWithTranscript appends transcript without losing existing draft
+  ---
+  duration_ms: 0.347598
+  type: 'test'
+  ...
+# Subtest: mergeTranscriptSegments deduplicates overlap between finalized chunks
+ok 263 - mergeTranscriptSegments deduplicates overlap between finalized chunks
+  ---
+  duration_ms: 0.570824
+  type: 'test'
+  ...
+# Subtest: voice transcript buffer keeps committed chunks and overlays live interim text
+ok 264 - voice transcript buffer keeps committed chunks and overlays live interim text
+  ---
+  duration_ms: 0.439712
+  type: 'test'
+  ...
+# Subtest: voice input ignores EventSource disconnect after a terminal ASR event
+ok 265 - voice input ignores EventSource disconnect after a terminal ASR event
+  ---
+  duration_ms: 1.889373
+  type: 'test'
+  ...
+# Subtest: voice input keeps latest transcript when final result arrives
+ok 266 - voice input keeps latest transcript when final result arrives
+  ---
+  duration_ms: 0.574075
+  type: 'test'
+  ...
+# Subtest: voice input accumulates multiple finalized chunks instead of overwriting older text
+ok 267 - voice input accumulates multiple finalized chunks instead of overwriting older text
+  ---
+  duration_ms: 0.498066
+  type: 'test'
+  ...
+1..267
+# tests 267
+# suites 0
+# pass 266
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 21771.336967
+ ELIFECYCLE  Test failed. See above for more details.

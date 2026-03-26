@@ -1,0 +1,103 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: var(--theme-bg);
+  --color-panel: var(--theme-panel);
+  --color-panel-2: var(--theme-panel-2);
+  --color-bdr: var(--theme-border);
+  --color-txt: var(--theme-text);
+  --color-muted: var(--theme-muted);
+  --color-accent: var(--theme-accent);
+  --color-accent-2: var(--theme-accent-2);
+  --color-danger: var(--theme-danger);
+  --color-surface: var(--theme-surface);
+  --color-surface-hover: var(--theme-surface-hover);
+}
+
+:root {
+  color-scheme: light;
+  --theme-bg: #f8fafc;
+  --theme-panel: #ffffff;
+  --theme-panel-2: #f1f5f9;
+  --theme-border: rgba(0, 0, 0, 0.1);
+  --theme-text: #0f172a;
+  --theme-muted: #64748b;
+  --theme-accent: #0ea5e9;
+  --theme-accent-2: #16a34a;
+  --theme-danger: #ef4444;
+  --theme-surface: rgba(0, 0, 0, 0.04);
+  --theme-surface-hover: rgba(0, 0, 0, 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --theme-bg: #000000;
+    --theme-panel: #0d1117;
+    --theme-panel-2: #161b22;
+    --theme-border: rgba(255, 255, 255, 0.1);
+    --theme-text: #c9d1d9;
+    --theme-muted: #8b949e;
+    --theme-accent: #58a6ff;
+    --theme-accent-2: #3fb950;
+    --theme-danger: #f85149;
+    --theme-surface: rgba(255, 255, 255, 0.05);
+    --theme-surface-hover: rgba(255, 255, 255, 0.1);
+  }
+}
+
+.dark {
+  color-scheme: dark;
+  --theme-bg: #000000;
+  --theme-panel: #0d1117;
+  --theme-panel-2: #161b22;
+  --theme-border: rgba(255, 255, 255, 0.1);
+  --theme-text: #c9d1d9;
+  --theme-muted: #8b949e;
+  --theme-accent: #58a6ff;
+  --theme-accent-2: #3fb950;
+  --theme-danger: #f85149;
+  --theme-surface: rgba(255, 255, 255, 0.05);
+  --theme-surface-hover: rgba(255, 255, 255, 0.1);
+}
+
+html.light, .light {
+  color-scheme: light;
+  --theme-bg: #f8fafc;
+  --theme-panel: #ffffff;
+  --theme-panel-2: #f1f5f9;
+  --theme-border: rgba(0, 0, 0, 0.1);
+  --theme-text: #0f172a;
+  --theme-muted: #64748b;
+  --theme-accent: #0ea5e9;
+  --theme-accent-2: #16a34a;
+  --theme-danger: #ef4444;
+  --theme-surface: rgba(0, 0, 0, 0.04);
+  --theme-surface-hover: rgba(0, 0, 0, 0.08);
+}
+
+html,
+body,
+#root {
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  background: var(--theme-bg);
+  color: var(--theme-text);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}

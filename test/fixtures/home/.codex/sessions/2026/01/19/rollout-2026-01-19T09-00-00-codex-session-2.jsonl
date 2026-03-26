@@ -1,0 +1,3 @@
+{"timestamp":"2026-01-19T09:00:00.000Z","type":"session_meta","payload":{"id":"codex-session-2","timestamp":"2026-01-19T09:00:00.000Z","cwd":"/workspace/release-app"}}
+{"timestamp":"2026-01-19T09:00:01.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"给我一份发布计划"}]}}
+{"timestamp":"2026-01-19T09:00:02.000Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"先定义风险，再拆部署步骤。"}]}}

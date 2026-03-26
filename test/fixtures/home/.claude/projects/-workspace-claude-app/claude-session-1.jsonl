@@ -1,0 +1,5 @@
+{"type":"summary","summary":"支付问题排查"}
+{"type":"user","sessionId":"claude-session-1","timestamp":"2026-01-19T10:00:00.000Z","message":{"role":"user","content":[{"type":"text","text":"修复支付超时"}]}}
+{"type":"assistant","sessionId":"claude-session-1","timestamp":"2026-01-19T10:00:01.000Z","message":{"role":"assistant","content":[{"type":"thinking","thinking":"先看超时发生在哪一层。"}]}}
+{"type":"assistant","sessionId":"claude-session-1","timestamp":"2026-01-19T10:00:02.000Z","message":{"role":"assistant","content":[{"type":"tool_use","name":"Read","input":{"file_path":"src/pay.ts"}}]}}
+{"type":"assistant","sessionId":"claude-session-1","timestamp":"2026-01-19T10:00:03.000Z","message":{"role":"assistant","content":[{"type":"tool_result","content":"发现 timeout 写死在 2s。"}]}}
