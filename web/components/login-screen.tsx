@@ -13,40 +13,41 @@ export default function LoginScreen(props: LoginScreenProps) {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-5 py-10">
-      <div className="w-full max-w-md rounded-[28px] border border-bdr bg-panel/70 p-7 shadow-2xl shadow-sky-950/5 dark:shadow-sky-950/30 backdrop-blur">
+    <main className="flex min-h-screen items-center justify-center px-5 py-10 bg-bg transition-colors duration-500">
+      <div className="w-full max-w-md rounded-[32px] border border-bdr bg-panel p-8 shadow-xl shadow-black/5 dark:shadow-black/20">
         <div className="mb-8">
-          <p className="text-sm uppercase tracking-[0.24em] text-sky-700/80 dark:text-sky-300/80">
-            hub-run
-          </p>
-          <h1 className="mt-3 text-3xl font-semibold text-slate-50">
-            Password Login
+          <div className="flex items-center gap-2 mb-2">
+            <span className="h-2 w-2 rounded-full bg-accent animate-pulse" />
+            <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-accent">
+              hub-run
+            </p>
+          </div>
+          <h1 className="mt-4 text-3xl font-bold tracking-tight text-txt">
+            密码登录
           </h1>
-          <p className="mt-3 text-sm leading-6 text-muted">
-            一期只做本地 password 鉴权。登录成功后，前端会通过同一 cookie
-            访问 provider 路由和后续 SSE。
-          </p>
         </div>
 
         <form
           action={handleSubmit}
-          className="space-y-4"
+          className="space-y-6"
         >
-          <label className="block">
-            <span className="mb-2 block text-sm text-muted">Password</span>
+          <div className="space-y-2">
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-muted px-1">
+              访问密码
+            </label>
             <input
               type="password"
               name="password"
               autoComplete="current-password"
               placeholder="输入 hub-run password"
-              className="w-full rounded-2xl border border-bdr bg-panel-2/80 px-4 py-3 text-txt outline-none transition focus:border-accent/70"
+              className="w-full rounded-2xl border border-bdr bg-panel-2 px-5 py-3.5 text-sm text-txt outline-none ring-accent/20 transition-all focus:border-accent focus:ring-4 placeholder:text-muted/50"
               disabled={busy}
               required
             />
-          </label>
+          </div>
 
           {error ? (
-            <div className="rounded-2xl border border-rose-400/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:text-rose-200">
+            <div className="rounded-2xl border border-danger/20 bg-danger/5 px-4 py-3.5 text-xs font-medium text-danger animate-in fade-in slide-in-from-top-1">
               {error}
             </div>
           ) : null}
@@ -54,9 +55,14 @@ export default function LoginScreen(props: LoginScreenProps) {
           <button
             type="submit"
             disabled={busy}
-            className="w-full rounded-2xl bg-sky-400 px-4 py-3 font-medium text-slate-950 transition hover:bg-sky-300 disabled:cursor-not-allowed disabled:bg-panel disabled:text-muted"
+            className="group relative w-full overflow-hidden rounded-2xl bg-accent px-4 py-4 font-bold text-white transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {busy ? "登录中..." : "进入 hub-run"}
+            <div className="relative flex items-center justify-center gap-2">
+              {busy ? (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              ) : null}
+              <span>{busy ? "验证中..." : "进入控制台"}</span>
+            </div>
           </button>
         </form>
       </div>

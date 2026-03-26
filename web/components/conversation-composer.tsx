@@ -182,7 +182,7 @@ function ComposerControls(props: {
         onChange={(value) => onSelectModel(value || null)}
       />
       <ComposerSelect
-        label="Effort"
+        label="思考深度"
         options={effortOptions.map((effort) => ({
           label: effort,
           value: effort,
