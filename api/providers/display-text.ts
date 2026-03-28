@@ -12,6 +12,7 @@ const NOISE_INLINE_PATTERNS = [
   /<command-message>[^<]*<\/command-message>/g,
   /<command-args>[^<]*<\/command-args>/g,
   /<local-command-stdout>[^<]*<\/local-command-stdout>/g,
+  /\[Image #\d+\]/g,
 ];
 
 const NOISE_LINE_PATTERNS = [
@@ -29,6 +30,8 @@ const NOISE_LINE_PATTERNS = [
   /^\s*Their purpose is to pass along human guidance\b.*$/gim,
   /^\s*Each AGENTS\.md governs the entire directory\b.*$/gim,
   /^\s*When two AGENTS\.md files disagree\b.*$/gim,
+  /^\s*<image name=\[[^\]]+\]>\s*$/gim,
+  /^\s*<\/image>\s*$/gim,
 ];
 
 function stripConversationNoise(text: string): string {
@@ -38,11 +41,11 @@ function stripConversationNoise(text: string): string {
     cleaned = cleaned.replace(pattern, "\n");
   }
 
-  for (const pattern of NOISE_INLINE_PATTERNS) {
+  for (const pattern of NOISE_LINE_PATTERNS) {
     cleaned = cleaned.replace(pattern, "");
   }
 
-  for (const pattern of NOISE_LINE_PATTERNS) {
+  for (const pattern of NOISE_INLINE_PATTERNS) {
     cleaned = cleaned.replace(pattern, "");
   }
 

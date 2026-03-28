@@ -19,22 +19,30 @@ interface DatabaseSyncConstructor {
     path: string,
     options?: {
       readOnly?: boolean;
+      timeout?: number;
     },
   ): DatabaseSyncLike;
 }
 
 const SUBAGENT_SOURCE_PREFIX = '{"subagent"';
+const STATE_DB_BUSY_TIMEOUT_MS = 1_000;
 const require = createRequire(import.meta.url);
 const { DatabaseSync } = require("node:sqlite") as {
   DatabaseSync: DatabaseSyncConstructor;
 };
 
-export function readHiddenCodexSessionIds(stateDbPath: string): Set<string> {
+export function readHiddenCodexSessionIds(
+  stateDbPath: string,
+  databaseCtor: DatabaseSyncConstructor = DatabaseSync,
+): Set<string> {
   if (!existsSync(stateDbPath)) {
     return new Set();
   }
 
-  const database = new DatabaseSync(stateDbPath, { readOnly: true });
+  const database = new databaseCtor(stateDbPath, {
+    readOnly: true,
+    timeout: STATE_DB_BUSY_TIMEOUT_MS,
+  });
   try {
     const rows = database
       .prepare(

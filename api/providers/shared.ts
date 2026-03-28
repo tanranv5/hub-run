@@ -106,5 +106,6 @@ export function paginateSessions(
   return {
     sessions: sessions.slice(start, end),
     nextBefore: end < sessions.length ? String(end) : null,
+    totalCount: sessions.length,
   };
 }

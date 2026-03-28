@@ -53,8 +53,9 @@ export async function readCodexFirstUserSnippet(filePath: string): Promise<strin
       continue;
     }
 
-    const text = readFirstTextBlock(Array.isArray(payload.content) ? payload.content : []);
-    const display = text ? extractMeaningfulDisplay(text) : null;
+    const display = readFirstMeaningfulTextBlock(
+      Array.isArray(payload.content) ? payload.content : [],
+    );
     if (display) {
       return display;
     }
@@ -107,7 +108,7 @@ export function fallbackCodexSessionIdFromFileName(filePath: string): string {
   return match?.[1] ?? fileName;
 }
 
-function readFirstTextBlock(content: unknown[]): string | null {
+function readFirstMeaningfulTextBlock(content: unknown[]): string | null {
   for (const item of content) {
     if (!item || typeof item !== "object") {
       continue;
@@ -115,7 +116,10 @@ function readFirstTextBlock(content: unknown[]): string | null {
 
     const block = item as Record<string, unknown>;
     if (typeof block.text === "string") {
-      return block.text;
+      const display = extractMeaningfulDisplay(block.text);
+      if (display) {
+        return display;
+      }
     }
   }
 

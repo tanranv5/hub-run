@@ -117,6 +117,7 @@ export function buildThreadState(
     requestedTurnId: normalizedRequestedTurnId,
     requestedTurnStatus,
   });
+  const snapshotAt = extractThreadUpdatedAt(result);
 
   return {
     threadId,
@@ -124,6 +125,7 @@ export function buildThreadState(
     isGenerating: activeTurnId !== null,
     requestedTurnId: resolvedRequestedTurn.turnId,
     requestedTurnStatus: resolvedRequestedTurn.turnStatus,
+    ...(snapshotAt ? { snapshotAt } : {}),
   };
 }
 
@@ -226,6 +228,26 @@ function extractTurnsFromThreadReadResult(result: unknown): unknown[] {
   return Array.isArray(nestedTurns) ? nestedTurns : [];
 }
 
+function extractThreadUpdatedAt(result: unknown): string | null {
+  if (!result || typeof result !== "object") {
+    return null;
+  }
+
+  const topLevelUpdatedAt = normalizeTimestamp(
+    (result as { updatedAt?: unknown }).updatedAt,
+  );
+  if (topLevelUpdatedAt) {
+    return topLevelUpdatedAt;
+  }
+
+  const thread = (result as { thread?: unknown }).thread;
+  if (!thread || typeof thread !== "object") {
+    return null;
+  }
+
+  return normalizeTimestamp((thread as { updatedAt?: unknown }).updatedAt);
+}
+
 function toTurnStatus(value: unknown): ProviderTurnStatus | null {
   if (value === "inProgress" || value === "completed" || value === "failed" || value === "interrupted") {
     return value;
@@ -244,4 +266,32 @@ function toTurnStatus(value: unknown): ProviderTurnStatus | null {
 
 function asString(value: unknown): string | null {
   return typeof value === "string" ? value : null;
+}
+
+function normalizeTimestamp(value: unknown): string | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const millis = value >= 1_000_000_000_000 ? value : value * 1_000;
+    return toIsoTimestamp(millis);
+  }
+  if (typeof value === "string" && value.trim()) {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric)) {
+      const millis = numeric >= 1_000_000_000_000 ? numeric : numeric * 1_000;
+      return toIsoTimestamp(millis);
+    }
+
+    const parsed = Date.parse(value);
+    if (Number.isFinite(parsed)) {
+      return toIsoTimestamp(parsed);
+    }
+  }
+  return null;
+}
+
+function toIsoTimestamp(value: number): string | null {
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+  const timestamp = new Date(value);
+  return Number.isNaN(timestamp.getTime()) ? null : timestamp.toISOString();
 }

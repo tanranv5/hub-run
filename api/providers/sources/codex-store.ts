@@ -43,6 +43,8 @@ interface CodexStoreState {
   displayCache: Map<string, string>;
 }
 
+const HIDDEN_DISPLAY_VALUES = new Set(["(no prompt text)", "(empty)"]);
+
 export function createCodexSessionStore(rootPath: string) {
   const historyPath = join(rootPath, "history.jsonl");
   const sessionsDir = join(rootPath, "sessions");
@@ -100,7 +102,9 @@ export function createCodexSessionStore(rootPath: string) {
         }),
     );
 
-    return sessions.sort((left, right) => right.timestamp - left.timestamp);
+    return sessions
+      .filter((session) => isVisibleCodexSession(session.display))
+      .sort((left, right) => right.timestamp - left.timestamp);
   }
 
   return {
@@ -313,4 +317,8 @@ function isCodexStateFile(relativePath: string): boolean {
     relativePath === "state_5.sqlite-wal" ||
     relativePath === "state_5.sqlite-shm"
   );
+}
+
+function isVisibleCodexSession(display: string): boolean {
+  return !HIDDEN_DISPLAY_VALUES.has(display.trim());
 }
