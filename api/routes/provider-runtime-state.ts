@@ -43,9 +43,13 @@ export async function resolveProviderThreadStateSnapshot(props: {
 }) {
   const { adapter, providerId, requestedTurnId, sessionId } = props;
   const threadState = await adapter.getThreadState(sessionId, requestedTurnId);
+  // 仅对 codex 最新 turn（未指定历史 turnId 或匹配当前 turn）做 desync 检测
+  const isHistoricalTurn =
+    requestedTurnId !== null &&
+    requestedTurnId !== threadState.requestedTurnId;
   if (
     providerId !== "codex" ||
-    requestedTurnId !== null ||
+    isHistoricalTurn ||
     threadState.isGenerating ||
     !isTerminalTurnStatus(threadState.requestedTurnStatus)
   ) {

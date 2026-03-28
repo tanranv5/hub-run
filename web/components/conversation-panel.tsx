@@ -169,7 +169,7 @@ export const ConversationBody = memo(function ConversationBody(props: Conversati
   return (
     <div
       aria-busy={refreshing}
-      className="relative flex min-h-0 flex-1 flex-col"
+      className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
     >
       <ConversationTimeline
         error={error}
@@ -286,7 +286,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
   });
 
   return (
-    <section className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-transparent">
+    <section className="flex h-full min-h-0 flex-1 flex-col bg-transparent">
       <ConversationHeader
         conversationStatus={conversationStatus}
         session={session}
