@@ -70,10 +70,15 @@ test("conversation header shows codex runtime status without a duplicate interru
     }),
   );
 
-  assert.match(markup, /title="正在生成..."/);
   assert.doesNotMatch(markup, /turn-9/);
   assert.match(markup, /data-slot="conversation-session-status"/);
+  assert.match(markup, /data-slot="conversation-session-status-tooltip"/);
+  assert.match(markup, />正在生成\.\.\.</);
   assert.match(markup, /aria-label="复制会话 ID"/);
+  assert.match(markup, /data-slot="session-copy-tooltip"/);
+  assert.match(markup, /thread-1/);
+  assert.doesNotMatch(markup, /title="复制会话 ID: thread-1"/);
+  assert.doesNotMatch(markup, /title="正在生成\.\.\."/);
   assert.match(markup, /bg-sky-400/);
   const metaIndex = markup.indexOf('data-region="conversation-header-meta"');
   const copyIndex = markup.indexOf('aria-label="复制会话 ID"');
@@ -155,8 +160,39 @@ test("conversation header status reflects completed turn when generation has end
     }),
   );
 
-  assert.match(markup, /title="当前回合已完成"/);
+  assert.match(markup, /data-slot="conversation-session-status-tooltip"/);
+  assert.match(markup, />当前回合已完成</);
   assert.match(markup, /bg-emerald-400/);
+});
+
+test("conversation header status keeps runtime completed state over a live message stream heartbeat", () => {
+  const conversationStatus = resolveConversationStatus({
+    interrupting: false,
+    lifecycle: null,
+    loading: false,
+    pendingUserInputRequests: [],
+    providerId: "codex",
+    respondingRequestId: null,
+    sendAvailable: true,
+    streamStatus: { phase: "live", lastEventAt: Date.now(), retryCount: 0 },
+    threadState: {
+      threadId: SESSION.id,
+      activeTurnId: null,
+      isGenerating: false,
+      requestedTurnId: "turn-10",
+      requestedTurnStatus: "completed",
+    },
+  });
+  const markup = renderToStaticMarkup(
+    React.createElement(ConversationHeader as unknown as React.ComponentType<any>, {
+      conversationStatus,
+      session: SESSION,
+      onToggleDesktopSidebar: () => {},
+    }),
+  );
+
+  assert.match(markup, />当前回合已完成</);
+  assert.doesNotMatch(markup, />正在生成\.\.\.</);
 });
 
 test("conversation header status does not infer generating from a live stream heartbeat when runtime already reports interrupted", () => {
@@ -186,9 +222,43 @@ test("conversation header status does not infer generating from a live stream he
     }),
   );
 
-  assert.match(markup, /title="当前回合已中断"/);
+  assert.match(markup, /data-slot="conversation-session-status-tooltip"/);
+  assert.match(markup, />当前回合已中断</);
   assert.match(markup, /bg-rose-400/);
   assert.doesNotMatch(markup, /title="正在生成..."/);
+});
+
+test("conversation header status shows syncing when the runtime snapshot is marked desynced", () => {
+  const conversationStatus = resolveConversationStatus({
+    interrupting: false,
+    lifecycle: null,
+    loading: false,
+    pendingUserInputRequests: [],
+    providerId: "codex",
+    respondingRequestId: null,
+    sendAvailable: true,
+    streamStatus: { phase: "idle", lastEventAt: null, retryCount: 0 },
+    threadState: {
+      threadId: SESSION.id,
+      activeTurnId: null,
+      isGenerating: false,
+      requestedTurnId: "turn-11",
+      requestedTurnStatus: null,
+      desynced: true,
+      rawRequestedTurnStatus: "interrupted",
+      desyncReason: "messageTailAheadOfThreadSnapshot",
+    } as any,
+  });
+  const markup = renderToStaticMarkup(
+    React.createElement(ConversationHeader as unknown as React.ComponentType<any>, {
+      conversationStatus,
+      session: SESSION,
+      onToggleDesktopSidebar: () => {},
+    }),
+  );
+
+  assert.match(markup, /状态同步中/);
+  assert.match(markup, /bg-sky-400/);
 });
 
 test("conversation header status uses a neutral ready color before any task starts", () => {
@@ -211,7 +281,8 @@ test("conversation header status uses a neutral ready color before any task star
     }),
   );
 
-  assert.match(markup, /title="就绪"/);
+  assert.match(markup, /data-slot="conversation-session-status-tooltip"/);
+  assert.match(markup, />就绪</);
   assert.match(markup, /bg-slate-400/);
 });
 

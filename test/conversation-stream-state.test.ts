@@ -143,6 +143,82 @@ test("conversation snapshot keeps an optimistic user message visible until the s
   );
 });
 
+test("conversation snapshot drops optimistic user message once the server confirms it even with codex noise blocks", () => {
+  const nextState = applyConversationSnapshot(
+    {
+      ...INITIAL_PANEL_STATE,
+      messages: [USER_MESSAGE, OPTIMISTIC_USER_MESSAGE],
+      nextBefore: "9",
+    },
+    {
+      messages: [
+        USER_MESSAGE,
+        {
+          id: "user-2",
+          role: "user",
+          kind: "text",
+          text:
+            "<user_instructions>\nAGENTS.md - test\n</user_instructions>\n" +
+            "<environment_context>\n<cwd>/tmp/demo</cwd>\n</environment_context>\n" +
+            OPTIMISTIC_USER_MESSAGE.text,
+          timestamp: "2026-03-22T00:00:03.000Z",
+        },
+        {
+          id: "assistant-3",
+          role: "assistant",
+          kind: "text",
+          text: "已确认收到。",
+          timestamp: "2026-03-22T00:00:04.000Z",
+        },
+      ],
+      nextBefore: "8",
+      nextOffset: 1024,
+      summary: null,
+    },
+  );
+
+  assert.deepEqual(
+    nextState.messages.map((message) => message.id),
+    ["user-1", "user-2", "assistant-3"],
+  );
+});
+
+test("conversation delta drops optimistic user message once the server confirms it even with codex noise blocks", () => {
+  const nextState = applyConversationDelta(
+    {
+      ...INITIAL_PANEL_STATE,
+      messages: [USER_MESSAGE, OPTIMISTIC_USER_MESSAGE],
+      streamOffset: 512,
+    },
+    {
+      messages: [
+        {
+          id: "user-2",
+          role: "user",
+          kind: "text",
+          text:
+            "<user_instructions>\nAGENTS.md - test\n</user_instructions>\n" +
+            OPTIMISTIC_USER_MESSAGE.text,
+          timestamp: "2026-03-22T00:00:03.000Z",
+        },
+        {
+          id: "assistant-3",
+          role: "assistant",
+          kind: "text",
+          text: "已确认收到。",
+          timestamp: "2026-03-22T00:00:04.000Z",
+        },
+      ],
+      nextOffset: 768,
+    },
+  );
+
+  assert.deepEqual(
+    nextState.messages.map((message) => message.id),
+    ["user-1", "user-2", "assistant-3"],
+  );
+});
+
 test("conversation snapshot marks realtime stream as live", () => {
   const nextState = applyConversationSnapshot(
     {

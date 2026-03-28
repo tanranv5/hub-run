@@ -235,6 +235,201 @@ test("provider sessions stream requires auth", async (t) => {
   assert.equal(response.status, 401);
 });
 
+test("codex runtime state stream emits snapshot and later status updates", async () => {
+  const summary = {
+    ...createSummary("/tmp/runtime-stream-codex"),
+    capabilities: {
+      ...createSummary("/tmp/runtime-stream-codex").capabilities,
+      threadState: true,
+      userInput: true,
+    },
+  } as ProviderSummary;
+  let currentThreadState = {
+    threadId: "session-1",
+    activeTurnId: "turn-1",
+    isGenerating: true,
+    requestedTurnId: "turn-1",
+    requestedTurnStatus: "inProgress" as const,
+  };
+  let currentRequests = [
+    {
+      requestId: "req-1",
+      threadId: "session-1",
+      turnId: "turn-1",
+      itemId: "item-1",
+      questions: [],
+    },
+  ];
+
+  const app = createApp(
+    buildRuntimeConfig({
+      host: "127.0.0.1",
+      port: 12001,
+      password: "secret-123",
+    }),
+    {
+      registry: {
+        codex: {
+          summary,
+          listSessions: async () => [],
+          listProjects: async () => [],
+          listModels: async () => [],
+          getConversationPage: async () => ({
+            messages: [],
+            nextBefore: null,
+            summary: null,
+          }),
+          createSession: async () => ({
+            sessionId: "session-1",
+            turnId: null,
+          }),
+          sendMessage: async () => ({
+            turnId: null,
+            outputText: null,
+          }),
+          getThreadState: async () => currentThreadState,
+          listUserInputRequests: async () => currentRequests,
+        } as unknown as ProviderAdapter,
+        claude: createClaudeAdapter(),
+      },
+    },
+  );
+
+  const cookie = await login(app);
+  const controller = new AbortController();
+  const response = await app.request(
+    "/api/providers/codex/sessions/session-1/state/stream",
+    {
+      headers: { cookie },
+      signal: controller.signal,
+    },
+  );
+
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type") ?? "", /text\/event-stream/);
+  const sse = createSseReader(response, controller);
+
+  const snapshot = await sse.readJsonEvent<{
+    threadState: typeof currentThreadState;
+    pendingUserInputRequests: typeof currentRequests;
+  }>("runtimeState");
+  assert.deepEqual(snapshot.threadState, currentThreadState);
+  assert.deepEqual(snapshot.pendingUserInputRequests, currentRequests);
+
+  currentThreadState = {
+    threadId: "session-1",
+    activeTurnId: null,
+    isGenerating: false,
+    requestedTurnId: "turn-1",
+    requestedTurnStatus: "interrupted",
+  };
+  currentRequests = [];
+
+  const update = await sse.readJsonEvent<{
+    threadState: typeof currentThreadState;
+    pendingUserInputRequests: typeof currentRequests;
+  }>("runtimeState");
+  assert.deepEqual(update.threadState, currentThreadState);
+  assert.deepEqual(update.pendingUserInputRequests, []);
+
+  await sse.close();
+});
+
+test("codex runtime state stream downgrades stale terminal snapshots when the latest message tail is newer", async () => {
+  const summary = {
+    ...createSummary("/tmp/runtime-stream-codex"),
+    capabilities: {
+      ...createSummary("/tmp/runtime-stream-codex").capabilities,
+      threadState: true,
+      userInput: true,
+    },
+  } as ProviderSummary;
+
+  const app = createApp(
+    buildRuntimeConfig({
+      host: "127.0.0.1",
+      port: 12001,
+      password: "secret-123",
+    }),
+    {
+      registry: {
+        codex: {
+          summary,
+          listSessions: async () => [],
+          listProjects: async () => [],
+          listModels: async () => [],
+          getConversationPage: async () => ({
+            messages: [
+              {
+                id: "msg-1",
+                role: "assistant",
+                kind: "text",
+                text: "更晚写入的最新消息",
+                timestamp: "2026-03-27T07:40:04.631Z",
+              },
+            ],
+            nextBefore: null,
+            summary: null,
+          }),
+          createSession: async () => ({
+            sessionId: "session-1",
+            turnId: null,
+          }),
+          sendMessage: async () => ({
+            turnId: null,
+            outputText: null,
+          }),
+          getThreadState: async () => ({
+            threadId: "session-1",
+            activeTurnId: null,
+            isGenerating: false,
+            requestedTurnId: "turn-1",
+            requestedTurnStatus: "interrupted" as const,
+            snapshotAt: "2026-03-27T07:29:58.000Z",
+          }),
+          listUserInputRequests: async () => [],
+        } as unknown as ProviderAdapter,
+        claude: createClaudeAdapter(),
+      },
+    },
+  );
+
+  const cookie = await login(app);
+  const controller = new AbortController();
+  const response = await app.request(
+    "/api/providers/codex/sessions/session-1/state/stream",
+    {
+      headers: { cookie },
+      signal: controller.signal,
+    },
+  );
+
+  assert.equal(response.status, 200);
+  const sse = createSseReader(response, controller);
+  const snapshot = await sse.readJsonEvent<{
+    threadState: Record<string, unknown>;
+    pendingUserInputRequests: [];
+  }>("runtimeState");
+
+  assert.deepEqual(snapshot, {
+    threadState: {
+      threadId: "session-1",
+      activeTurnId: null,
+      isGenerating: false,
+      requestedTurnId: "turn-1",
+      requestedTurnStatus: null,
+      rawRequestedTurnStatus: "interrupted",
+      desynced: true,
+      desyncReason: "messageTailAheadOfThreadSnapshot",
+      snapshotAt: "2026-03-27T07:29:58.000Z",
+      latestMessageAt: "2026-03-27T07:40:04.631Z",
+    },
+    pendingUserInputRequests: [],
+  });
+
+  await sse.close();
+});
+
 test("codex sessions stream emits snapshot and loaded-window diff updates", async (t) => {
   const setup = createCodexStreamApp();
   t.after(async () => {
@@ -258,6 +453,7 @@ test("codex sessions stream emits snapshot and loaded-window diff updates", asyn
   const snapshot = await sse.readJsonEvent<{
     sessions: Array<{ id: string }>;
     nextBefore: string | null;
+    totalCount: number;
   }>("sessions");
 
   assert.deepEqual(
@@ -265,6 +461,7 @@ test("codex sessions stream emits snapshot and loaded-window diff updates", asyn
     ["codex-session-3", "codex-session-2"],
   );
   assert.equal(snapshot.nextBefore, "2");
+  assert.equal(snapshot.totalCount, 3);
 
   const sessionFile = join(
     setup.codexRoot,
@@ -293,6 +490,7 @@ test("codex sessions stream emits snapshot and loaded-window diff updates", asyn
     upserts: Array<{ id: string }>;
     removedIds: string[];
     nextBefore: string | null;
+    totalCount: number;
   }>("sessionsUpdate");
 
   assert.deepEqual(
@@ -301,6 +499,7 @@ test("codex sessions stream emits snapshot and loaded-window diff updates", asyn
   );
   assert.deepEqual(update.removedIds, ["codex-session-2"]);
   assert.equal(update.nextBefore, "2");
+  assert.equal(update.totalCount, 4);
 
   await sse.close();
 });

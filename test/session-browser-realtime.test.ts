@@ -47,6 +47,7 @@ const OTHER_PROJECT_SESSION: SessionSummary = {
 const BASE_BROWSER: BrowserState = {
   sessions: [SESSION_2, SESSION_1],
   nextBefore: "2",
+  totalSessionCount: 2,
   selectedSessionId: SESSION_2.id,
   streamStatus: {
     phase: "idle",
@@ -68,6 +69,7 @@ test("sessions snapshot replaces loaded window and keeps selected session when s
   const nextState = applySessionsSnapshot(BASE_BROWSER, {
     sessions: [SESSION_3, SESSION_2],
     nextBefore: "2",
+    totalCount: 27,
   });
 
   assert.deepEqual(
@@ -75,6 +77,7 @@ test("sessions snapshot replaces loaded window and keeps selected session when s
     ["session-3", "session-2"],
   );
   assert.equal(nextState.selectedSessionId, "session-2");
+  assert.equal(nextState.totalSessionCount, 27);
   assert.equal(nextState.loading, false);
   assert.equal(nextState.error, null);
 });
@@ -92,6 +95,7 @@ test("sessions snapshot marks realtime stream as live once the snapshot arrives"
     {
       sessions: [SESSION_3, SESSION_2],
       nextBefore: "2",
+      totalCount: 27,
     },
   ) as BrowserState & {
     streamStatus?: { phase?: string; lastEventAt?: number | null };
@@ -111,6 +115,7 @@ test("sessions snapshot does not re-inject a selected session from another proje
     {
       sessions: [SESSION_3, SESSION_2],
       nextBefore: "2",
+      totalCount: 27,
     },
     "/workspace/app",
   );
@@ -127,6 +132,7 @@ test("sessions update merges upserts removes vanished items and falls back selec
     upserts: [SESSION_3],
     removedIds: ["session-2"],
     nextBefore: "2",
+    totalCount: 28,
   });
 
   assert.deepEqual(
@@ -135,6 +141,7 @@ test("sessions update merges upserts removes vanished items and falls back selec
   );
   assert.equal(nextState.selectedSessionId, "session-3");
   assert.equal(nextState.nextBefore, "2");
+  assert.equal(nextState.totalSessionCount, 28);
 });
 
 test("sessions update clears reconnecting state after receiving fresh data", () => {
@@ -151,6 +158,7 @@ test("sessions update clears reconnecting state after receiving fresh data", () 
       upserts: [SESSION_3],
       removedIds: [],
       nextBefore: "2",
+      totalCount: 28,
     },
   ) as BrowserState & {
     streamStatus?: { phase?: string; retryCount?: number };

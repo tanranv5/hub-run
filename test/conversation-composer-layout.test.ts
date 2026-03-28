@@ -48,7 +48,9 @@ test("composer keeps model and effort on one row and shows compact usage badge",
   assert.match(markup, /data-slot="composer-controls"/);
   assert.match(markup, /data-slot="composer-actions"/);
   assert.doesNotMatch(markup, /flex-wrap/);
-  assert.match(markup, /grid-cols-\[minmax\(0,1\.4fr\)_minmax\(0,0\.9fr\)\]/);
+  assert.match(markup, /grid-cols-\[minmax\(0,1fr\)_minmax\(6\.25rem,0\.8fr\)\]/);
+  assert.match(markup, />模型</);
+  assert.match(markup, />思考</);
   assert.match(markup, /justify-end/);
   assert.match(markup, /placeholder="等待输入"/);
   assert.doesNotMatch(markup, />生成中</);

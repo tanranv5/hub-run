@@ -167,6 +167,54 @@ test("poll merge keeps optimistic user message ahead of trailing task started st
   );
 });
 
+test("poll merge drops optimistic user message once the server confirms it even with codex noise blocks", () => {
+  const current = {
+    ...createAcceptedPanelState(),
+    messages: [
+      BASE_MESSAGE,
+      {
+        id: "optimistic-user:2000",
+        role: "user" as const,
+        kind: "text" as const,
+        text: "继续执行",
+        timestamp: "2026-03-20T12:00:02.000Z",
+      },
+    ],
+  };
+  const merged = mergePolledPanelState({
+    current,
+    nextState: {
+      ...INITIAL_PANEL_STATE,
+      messages: [
+        BASE_MESSAGE,
+        {
+          id: "user-2",
+          role: "user" as const,
+          kind: "text" as const,
+          text:
+            "<user_instructions>\nAGENTS.md - test\n</user_instructions>\n" +
+            "继续执行",
+          timestamp: "2026-03-20T12:00:03.000Z",
+        },
+        {
+          id: "assistant-2",
+          role: "assistant" as const,
+          kind: "text" as const,
+          text: "继续执行中",
+          timestamp: "2026-03-20T12:00:04.000Z",
+        },
+      ],
+    } as PanelState,
+    providerId: "codex",
+    now: 1_750,
+  });
+
+  assert.deepEqual(
+    merged.messages.map((message) => message.id),
+    [BASE_MESSAGE.id, "user-2", "assistant-2"],
+  );
+});
+
 test("poll merge buffers the latest window while history browsing is frozen", () => {
   const current = {
     ...createAcceptedPanelState(),

@@ -253,3 +253,89 @@ test("bootstrapConversationPanel skips the immediate reload when the session was
     false,
   );
 });
+
+test("bootstrapConversationPanel keeps preloaded runtime state when refreshing the active session", () => {
+  const staleState: PanelState = {
+    ...INITIAL_PANEL_STATE,
+    threadState: {
+      threadId: SESSION.id,
+      activeTurnId: null,
+      isGenerating: false,
+      requestedTurnId: "turn-stale",
+      requestedTurnStatus: "interrupted",
+    },
+  };
+  const preloadedState: PanelState = {
+    ...INITIAL_PANEL_STATE,
+    messages: [
+      {
+        id: "msg-fresh",
+        role: "assistant",
+        kind: "text",
+        text: "刷新后拿到的最新消息",
+      },
+    ],
+    threadState: {
+      threadId: SESSION.id,
+      activeTurnId: null,
+      isGenerating: true,
+      requestedTurnId: "turn-fresh",
+      requestedTurnStatus: "inProgress",
+    },
+  };
+  const draftStore = createStringStore("当前输入框里的草稿");
+  const stateStore = createPanelStateStore(staleState);
+  const generationRef = { current: 0 } as MutableRefObject<number>;
+  const previousSessionRef = {
+    current: {
+      providerId: "codex" as const,
+      sessionId: SESSION.id,
+    },
+  } as MutableRefObject<{
+    providerId: "codex" | "claude";
+    sessionId: string;
+  } | null>;
+  const stateRef = { current: staleState } as MutableRefObject<PanelState>;
+  const draftRef = { current: draftStore.read() } as MutableRefObject<string>;
+  const sessionCacheRef = {
+    current: new Map<string, SessionPanelCacheEntry>([
+      [
+        createSessionPanelCacheKey("codex", SESSION.id),
+        {
+          draft: "旧缓存草稿",
+          skipReloadOnce: true,
+          state: preloadedState,
+        },
+      ],
+    ]),
+  } as MutableRefObject<Map<string, SessionPanelCacheEntry>>;
+  let loadPageCalled = false;
+
+  bootstrapConversationPanel({
+    draftRef,
+    generationRef,
+    loadPage: async () => {
+      loadPageCalled = true;
+      return INITIAL_PANEL_STATE;
+    },
+    previousSessionRef,
+    providerId: "codex",
+    session: SESSION,
+    sessionCacheRef,
+    setDraft: draftStore.setValue,
+    setState: stateStore.setValue,
+    stateRef,
+  });
+
+  assert.equal(loadPageCalled, false);
+  assert.deepEqual(stateStore.read(), preloadedState);
+  assert.equal(draftStore.read(), "当前输入框里的草稿");
+  assert.deepEqual(
+    sessionCacheRef.current.get(createSessionPanelCacheKey("codex", SESSION.id)),
+    {
+      draft: "当前输入框里的草稿",
+      skipReloadOnce: false,
+      state: preloadedState,
+    },
+  );
+});

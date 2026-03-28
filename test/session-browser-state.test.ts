@@ -42,6 +42,13 @@ test("session title falls back to unnamed when display is empty", () => {
   assert.equal(getSessionTitle("   "), "未命名会话");
 });
 
+test("session title falls back to unnamed for placeholder-only displays", () => {
+  assert.equal(getSessionTitle("(no prompt text)"), "未命名会话");
+  assert.equal(getSessionTitle("(empty)"), "未命名会话");
+  assert.equal(getSessionTitle("<image name=[Image #1]>"), "未命名会话");
+  assert.equal(getSessionTitle("</image>"), "未命名会话");
+});
+
 test("resume command uses provider specific cli command", () => {
   assert.equal(
     buildResumeCommand("codex", "session-1", "/Users/tanran/aiCode/cw"),

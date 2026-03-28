@@ -198,6 +198,26 @@ test("resolveSendStatus prefers interrupted runtime status over a stale active l
   assert.equal(status, "当前回合已中断");
 });
 
+test("resolveSendStatus keeps completed runtime state even when the message stream is still live", () => {
+  const status = resolveSendStatus({
+    interrupting: false,
+    lifecycle: null,
+    pendingUserInputRequests: [],
+    providerId: "codex",
+    respondingRequestId: null,
+    streamActive: true,
+    threadState: {
+      threadId: "thread-1",
+      activeTurnId: null,
+      isGenerating: false,
+      requestedTurnId: "turn-1",
+      requestedTurnStatus: "completed",
+    },
+  });
+
+  assert.equal(status, "当前回合已完成");
+});
+
 test("applyPanelRuntimeState emits terminal message on first completion then stabilises", () => {
   const completedThread = {
     threadId: "thread-1",

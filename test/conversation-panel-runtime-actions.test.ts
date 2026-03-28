@@ -173,12 +173,6 @@ test("interruptConversationTurn keeps interrupting while reload still reports ge
 });
 
 test("respondToUserInputOption preserves live stream state instead of resetting the panel", async (t) => {
-  const originalNow = Date.now;
-  Date.now = () => 456;
-  t.after(() => {
-    Date.now = originalNow;
-  });
-
   const sendLifecycle = createSubmittedSendLifecycle("codex", "thread-1", 123);
   sendLifecycle.phase = "generating";
   const stateStore = createPanelStateStore({
@@ -238,7 +232,7 @@ test("respondToUserInputOption preserves live stream state instead of resetting 
   const nextState = stateStore.read();
   assert.equal(nextState.streamOffset, 18);
   assert.equal(nextState.streamStatus.phase, "live");
-  assert.equal(nextState.streamStatus.lastEventAt, 456);
+  assert.equal(nextState.streamStatus.lastEventAt, 123);
   assert.equal(nextState.respondingRequestId, null);
   assert.equal(nextState.sendLifecycle, sendLifecycle);
   assert.equal(nextState.sendStatus, "Codex 已接受，正在生成...");

@@ -2,9 +2,38 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { ConversationMessageCard } from "../web/components/conversation-message";
+import type { ProviderSummary } from "../api/types";
+import {
+  ConversationMessageCard,
+  EmptyConversationState,
+} from "../web/components/conversation-message";
 
 Object.assign(globalThis, { React });
+
+const PROVIDER: ProviderSummary = {
+  id: "codex",
+  label: "Codex",
+  description: "OpenAI Codex provider shell",
+  rootPath: "/Users/tanran/.codex",
+  capabilities: {
+    history: true,
+    send: true,
+    stream: false,
+    attach: true,
+    createSession: true,
+    emptyCreateSession: false,
+    modelSelection: true,
+    threadState: false,
+    interrupt: false,
+    userInput: false,
+  },
+  status: {
+    historyReadable: true,
+    sendAvailable: true,
+    configResolved: true,
+    lastError: null,
+  },
+};
 
 test("user message card strips codex scaffolding and keeps only real request text", () => {
   const markup = renderToStaticMarkup(
@@ -254,6 +283,40 @@ test("assistant markdown block renders rich markdown instead of plain pre text",
   assert.match(markup, /<ul/);
   assert.match(markup, /<code/);
   assert.doesNotMatch(markup, /<pre/);
+});
+
+test("assistant plain text bubble can stretch to full width on desktop", () => {
+  const markup = renderToStaticMarkup(
+    React.createElement(ConversationMessageCard, {
+      message: {
+        id: "assistant-wide-1",
+        role: "assistant",
+        kind: "text",
+        text: "这是一条需要铺满剩余宽度的普通助手消息。",
+      },
+    }),
+  );
+
+  assert.match(markup, /mr-auto max-w-full/);
+  assert.doesNotMatch(markup, /md:max-w-\[78%\]/);
+});
+
+test("empty conversation state keeps a fixed-height composer shell at the bottom", () => {
+  const markup = renderToStaticMarkup(
+    React.createElement(EmptyConversationState, {
+      provider: PROVIDER,
+      onOpenBrowser: () => {},
+    }),
+  );
+
+  assert.match(markup, /data-slot="empty-conversation-state"/);
+  assert.match(markup, /data-slot="empty-conversation-composer-shell"/);
+  assert.match(markup, /flex-none p-3 md:p-5/);
+  assert.match(markup, /min-h-\[128px\]/);
+  assert.match(markup, /flex flex-1 flex-col px-6 pt-6/);
+  assert.doesNotMatch(markup, /flex flex-1 items-center justify-center p-6/);
+  assert.match(markup, /flex min-h-0 w-full flex-1 flex-col items-center justify-center/);
+  assert.doesNotMatch(markup, /w-full flex-none flex-col items-center justify-center/);
 });
 
 test("assistant message card shows exact timestamp in bottom-right metadata", () => {

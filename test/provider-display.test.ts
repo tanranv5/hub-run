@@ -44,3 +44,11 @@ test("session title drops instruction-only AGENTS boilerplate", () => {
 
   assert.equal(display, null);
 });
+
+test("session title drops standalone image placeholder lines", () => {
+  const display = extractMeaningfulDisplay(
+    "<image name=[Image #1]>\n</image>\n[Image #1]请分析这个报错截图 [Image #2]",
+  );
+
+  assert.equal(display, "请分析这个报错截图");
+});

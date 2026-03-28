@@ -121,6 +121,50 @@ test("codex first user snippet skips AGENTS boilerplate user message and keeps r
   }
 });
 
+test("codex first user snippet skips image placeholder blocks and keeps later text in the same message", async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), "hub-run-codex-session-"));
+  const filePath = join(tempDir, "session.jsonl");
+  const lines = [
+    JSON.stringify({
+      type: "session_meta",
+      payload: {
+        id: "session-image",
+        cwd: "/Users/tanran/aiCode/cw/hub-run",
+      },
+    }),
+    JSON.stringify({
+      type: "response_item",
+      payload: {
+        type: "message",
+        role: "user",
+        content: [
+          {
+            type: "input_text",
+            text: "<image name=[Image #1]>",
+          },
+          {
+            type: "input_text",
+            text: "</image>",
+          },
+          {
+            type: "input_text",
+            text: "[Image #1]现在会话有空会话，顺手把标题也修一下",
+          },
+        ],
+      },
+    }),
+  ];
+
+  await writeFile(filePath, `${lines.join("\n")}\n`, "utf-8");
+
+  try {
+    const display = await readCodexFirstUserSnippet(filePath);
+    assert.equal(display, "现在会话有空会话，顺手把标题也修一下");
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
 test("codex conversation parser keeps tool events, reasoning, and context statuses but drops token telemetry noise", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "hub-run-codex-conversation-"));
   const filePath = join(tempDir, "session.jsonl");

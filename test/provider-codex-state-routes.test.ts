@@ -168,6 +168,60 @@ test("codex state route can expose the latest turn status even when no turnId is
   });
 });
 
+test("codex state route downgrades stale terminal snapshots when the latest message tail is newer", async () => {
+  const app = createApp(
+    buildRuntimeConfig({
+      host: "127.0.0.1",
+      port: 12001,
+      password: "secret-123",
+    }),
+    {
+      registry: createRegistry({
+        getConversationPage: async () => ({
+          messages: [
+            {
+              id: "msg-1",
+              role: "assistant",
+              kind: "text",
+              text: "更晚写入的最新消息",
+              timestamp: "2026-03-27T07:40:04.631Z",
+            },
+          ],
+          nextBefore: null,
+          summary: null,
+        }),
+        getThreadState: async () => ({
+          threadId: "session-1",
+          activeTurnId: null,
+          isGenerating: false,
+          requestedTurnId: "turn-8",
+          requestedTurnStatus: "interrupted",
+          snapshotAt: "2026-03-27T07:29:58.000Z",
+        }),
+      }),
+    },
+  );
+
+  const cookie = await login(app);
+  const response = await app.request("/api/providers/codex/sessions/session-1/state", {
+    headers: { cookie },
+  });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    threadId: "session-1",
+    activeTurnId: null,
+    isGenerating: false,
+    requestedTurnId: "turn-8",
+    requestedTurnStatus: null,
+    rawRequestedTurnStatus: "interrupted",
+    desynced: true,
+    desyncReason: "messageTailAheadOfThreadSnapshot",
+    snapshotAt: "2026-03-27T07:29:58.000Z",
+    latestMessageAt: "2026-03-27T07:40:04.631Z",
+  });
+});
+
 test("codex interrupt route delegates to provider adapter", async () => {
   let interruptedSessionId: string | null = null;
   const app = createApp(

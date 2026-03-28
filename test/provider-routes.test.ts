@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { resolve } from "path";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { createApp } from "../api/app";
 import { buildRuntimeConfig } from "../api/config";
 import type { ProviderAdapter, ProviderSummary } from "../api/types";
@@ -113,6 +114,22 @@ function createMutableSummary(sendAvailable: boolean): ProviderSummary {
   };
 }
 
+async function createFixtureCodexSessionFile(options: {
+  id: string;
+  lines: string[];
+  rolloutFileName: string;
+}) {
+  const filePath = resolve(
+    FIXTURE_HOME,
+    `.codex/sessions/2026/01/19/${options.rolloutFileName}`,
+  );
+  await mkdir(resolve(filePath, ".."), { recursive: true });
+  await writeFile(filePath, `${options.lines.join("\n")}\n`, "utf-8");
+  return async () => {
+    await rm(filePath, { force: true });
+  };
+}
+
 test("codex sessions route returns fixture-backed sessions", async () => {
   const app = createFixtureApp();
   const cookie = await login(app);
@@ -124,6 +141,7 @@ test("codex sessions route returns fixture-backed sessions", async () => {
   const payload = await response.json();
   assert.equal(payload.sessions.length, 3);
   assert.equal(payload.nextBefore, null);
+  assert.equal(payload.totalCount, 3);
   assert.equal(payload.sessions[0].id, "codex-session-3");
   assert.equal(payload.sessions[1].projectName, "release-app");
 });
@@ -152,6 +170,57 @@ test("codex sessions route hides subagent threads from session list", async () =
     );
   } finally {
     cleanup();
+  }
+});
+
+test("codex sessions route hides sessions without meaningful user title", async () => {
+  const cleanup = await createFixtureCodexSessionFile({
+    id: "codex-session-empty",
+    rolloutFileName: "rollout-2026-01-19T11-00-00-codex-session-empty.jsonl",
+    lines: [
+      JSON.stringify({
+        timestamp: "2026-01-19T11:00:00.000Z",
+        type: "session_meta",
+        payload: {
+          id: "codex-session-empty",
+          timestamp: "2026-01-19T11:00:00.000Z",
+          cwd: "/workspace/no-title",
+        },
+      }),
+      JSON.stringify({
+        timestamp: "2026-01-19T11:00:01.000Z",
+        type: "response_item",
+        payload: {
+          type: "message",
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text:
+                "# AGENTS.md instructions for /workspace/no-title\n" +
+                "<environment_context>\n<cwd>/workspace/no-title</cwd>\n</environment_context>",
+            },
+          ],
+        },
+      }),
+    ],
+  });
+
+  try {
+    const app = createFixtureApp();
+    const cookie = await login(app);
+    const response = await app.request("/api/providers/codex/sessions", {
+      headers: { cookie },
+    });
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(
+      payload.sessions.some((session: { id: string }) => session.id === "codex-session-empty"),
+      false,
+    );
+  } finally {
+    await cleanup();
   }
 });
 
