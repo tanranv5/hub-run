@@ -91,6 +91,8 @@ export async function loadMoreBrowserSessions(props: {
       ...current,
       sessions: [...current.sessions, ...page.sessions],
       nextBefore: page.nextBefore,
+      totalSessionCount:
+        page.totalCount ?? current.totalSessionCount ?? current.sessions.length,
       loadingMore: false,
     }));
   } catch (cause) {

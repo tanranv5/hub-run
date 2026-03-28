@@ -6,7 +6,6 @@ import type {
 import { hasConversationChanged } from "./conversation-panel-state-helpers";
 import { stripOptimisticUserMessages } from "./conversation-panel-state-helpers";
 import type { PanelState } from "./conversation-panel-state-types";
-import { isStreamActivelyDelivering } from "./realtime-stream-status";
 import {
   acceptSendLifecycle,
   advanceSendLifecycle,
@@ -135,7 +134,6 @@ export function resolveSendStatus(props: {
     pendingUserInputRequests,
     providerId,
     respondingRequestId,
-    streamActive = false,
     threadState,
   } = props;
   if (interrupting) {
@@ -147,12 +145,9 @@ export function resolveSendStatus(props: {
   if (pendingUserInputRequests.length > 0) {
     return "Codex 等待用户输入";
   }
-  // If stream is actively delivering messages, don't show terminal status from a stale RPC
-  if (!streamActive) {
-    const runtimeTerminalStatus = getRuntimeTerminalStatus(providerId, threadState);
-    if (runtimeTerminalStatus) {
-      return runtimeTerminalStatus;
-    }
+  const runtimeTerminalStatus = getRuntimeTerminalStatus(providerId, threadState);
+  if (runtimeTerminalStatus) {
+    return runtimeTerminalStatus;
   }
   if (lifecycle) {
     return getSendLifecycleStatus(lifecycle);
@@ -190,8 +185,7 @@ function applySendLifecycle(
   const wasActive = current.sendLifecycle ? isSendLifecycleActive(current.sendLifecycle) : false;
   const isActive = lifecycle ? isSendLifecycleActive(lifecycle) : false;
   const becameTerminal = wasActive && !isActive;
-  const streamActive = isStreamActivelyDelivering(current.streamStatus);
-  const inferredGenerating = current.threadState?.isGenerating || streamActive;
+  const inferredGenerating = current.threadState?.isGenerating ?? false;
   return {
     ...current,
     messages: becameTerminal ? stripOptimisticUserMessages(current.messages) : current.messages,
@@ -203,7 +197,6 @@ function applySendLifecycle(
       pendingUserInputRequests: current.pendingUserInputRequests,
       providerId,
       respondingRequestId: current.respondingRequestId,
-      streamActive,
       threadState: current.threadState,
     }),
   };

@@ -32,23 +32,23 @@ export function ConversationToolCard(props: {
 
   return (
     <article className="mx-auto max-w-full">
-      <div className="rounded-[22px] border border-cyan-400/18 bg-cyan-400/6 px-3 py-3 text-txt shadow-lg shadow-slate-950/15 md:rounded-[26px] md:px-4 md:py-4">
+      <div className="rounded-[22px] border border-accent/20 bg-accent/8 px-3 py-3 text-txt shadow-lg shadow-black/10 md:rounded-[26px] md:px-4 md:py-4">
         <button
           aria-expanded={expanded}
-          className="flex w-full items-center justify-between gap-3 rounded-2xl border border-cyan-200/10 bg-slate-950/20 px-3 py-2 text-left"
+          className="flex w-full items-center justify-between gap-3 rounded-2xl border border-bdr bg-surface px-3 py-2 text-left"
           onClick={() => setExpanded((current) => !current)}
           type="button"
         >
-          <span className="flex min-w-0 flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-cyan-700/80 dark:text-cyan-100/80 md:text-[11px]">
+          <span className="flex min-w-0 flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-accent/80 md:text-[11px]">
             <span>{toolLabel}</span>
             {toolTitle ? (
               <>
-                <span className="text-cyan-700/25 dark:text-cyan-200/25">/</span>
-                <span className="normal-case tracking-normal text-cyan-700/60 dark:text-cyan-100/60">{toolTitle}</span>
+                <span className="text-accent/30">/</span>
+                <span className="normal-case tracking-normal text-accent/60">{toolTitle}</span>
               </>
             ) : null}
           </span>
-          <span className="text-[11px] text-cyan-700 dark:text-cyan-100">{toggleLabel}</span>
+          <span className="text-[11px] text-accent">{toggleLabel}</span>
         </button>
         {!layeredCollapse || expanded ? (
           <p className="mt-3 whitespace-pre-wrap break-words text-[13px] leading-6 text-txt/90 md:text-sm md:leading-7">
@@ -63,7 +63,7 @@ export function ConversationToolCard(props: {
             setResultExpanded={setResultExpanded}
           />
         ) : null}
-        <ConversationTimestamp className="text-cyan-700/55 dark:text-cyan-100/55" timestamp={timestamp} />
+        <ConversationTimestamp className="text-accent/55" timestamp={timestamp} />
       </div>
     </article>
   );
@@ -105,7 +105,7 @@ function ToolExpandedBody(props: {
         aria-expanded={resultExpanded}
         data-slot="tool-result-nested-toggle"
         onClick={() => setResultExpanded((current) => !current)}
-        className="inline-flex items-center rounded-lg border border-cyan-200/10 bg-slate-950/25 px-2.5 py-1.5 text-[11px] text-cyan-700 dark:text-cyan-100 transition hover:bg-slate-950/40"
+        className="inline-flex items-center rounded-lg border border-bdr bg-surface px-2.5 py-1.5 text-[11px] text-accent transition hover:bg-surface-hover"
       >
         {resultExpanded ? "收起执行结果" : "展开执行结果"}
       </button>
@@ -130,14 +130,14 @@ function ToolValueContent(props: { block: ConversationBlock }) {
   const parsed = typeof value === "string" ? parseJsonLikeText(value) : value;
   if (parsed && typeof parsed === "object") {
     return (
-      <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-all rounded-2xl border border-cyan-200/10 bg-slate-950/25 px-3 py-3 text-xs leading-6 text-txt/90">
+      <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-all rounded-2xl border border-bdr bg-surface px-3 py-3 text-xs leading-6 text-txt/90">
         {JSON.stringify(parsed, null, 2)}
       </pre>
     );
   }
 
   return (
-    <div className="mt-3 rounded-2xl border border-cyan-200/10 bg-slate-950/25 px-3 py-3">
+    <div className="mt-3 rounded-2xl border border-bdr bg-surface px-3 py-3">
       <MarkdownRenderer content={formatToolText(text, block.type)} />
     </div>
   );
@@ -195,10 +195,10 @@ function TodoInputView(props: { items: unknown[] }) {
   }
 
   return (
-    <ul className="overflow-hidden rounded-2xl border border-cyan-200/10 bg-slate-950/25">
+    <ul className="overflow-hidden rounded-2xl border border-bdr bg-surface">
       {items.map((item, index) => (
-        <li key={`${item.content}-${index}`} className="border-b border-cyan-200/10 px-3 py-2 last:border-b-0">
-          <div className="text-[11px] uppercase tracking-[0.18em] text-cyan-700/60 dark:text-cyan-100/60">{item.status}</div>
+        <li key={`${item.content}-${index}`} className="border-b border-bdr px-3 py-2 last:border-b-0">
+          <div className="text-[11px] uppercase tracking-[0.18em] text-accent/60">{item.status}</div>
           <div className="mt-1 text-sm leading-6 text-txt/90">{item.content}</div>
         </li>
       ))}
@@ -223,8 +223,8 @@ function QuestionInputView(props: { questions: unknown[] }) {
   return (
     <div className="space-y-3">
       {questions.map((question, index) => (
-        <div key={`${question.header}-${index}`} className="rounded-2xl border border-cyan-200/10 bg-slate-950/25 px-3 py-3">
-          <div className="text-[11px] uppercase tracking-[0.18em] text-cyan-700/60 dark:text-cyan-100/60">{question.header}</div>
+        <div key={`${question.header}-${index}`} className="rounded-2xl border border-bdr bg-surface px-3 py-3">
+          <div className="text-[11px] uppercase tracking-[0.18em] text-accent/60">{question.header}</div>
           <div className="mt-2 text-sm leading-6 text-txt/90">{question.question}</div>
           <ul className="mt-3 space-y-2">
             {question.options.map((option, optionIndex) => {
@@ -235,8 +235,8 @@ function QuestionInputView(props: { questions: unknown[] }) {
                 return null;
               }
               return (
-                <li key={`${label}-${optionIndex}`} className="rounded-xl border border-cyan-200/10 bg-cyan-400/6 px-3 py-2">
-                  <div className="text-sm font-medium text-cyan-700 dark:text-cyan-100">{label}</div>
+                <li key={`${label}-${optionIndex}`} className="rounded-xl border border-bdr bg-accent/6 px-3 py-2">
+                  <div className="text-sm font-medium text-accent">{label}</div>
                   {description ? <div className="mt-1 text-xs text-muted">{description}</div> : null}
                 </li>
               );
@@ -255,8 +255,8 @@ function TaskInputView(props: {
 }) {
   const { description, prompt, subagentType } = props;
   return (
-    <div className="rounded-2xl border border-cyan-200/10 bg-slate-950/25 px-3 py-3">
-      <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-cyan-700/60 dark:text-cyan-100/60">
+    <div className="rounded-2xl border border-bdr bg-surface px-3 py-3">
+      <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-accent/60">
         {subagentType ? <span>{subagentType}</span> : null}
         {description ? <span className="normal-case tracking-normal text-muted">{description}</span> : null}
       </div>

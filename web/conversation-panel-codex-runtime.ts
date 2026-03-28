@@ -1,5 +1,6 @@
 import type {
   ProviderId,
+  ProviderRuntimeStateSnapshot,
   ProviderThreadState,
   ProviderUserInputRequest,
 } from "../api/types";
@@ -17,8 +18,6 @@ import type { PanelState } from "./conversation-panel-state-types";
 import type { SendLifecycle } from "./conversation-send-state";
 import type { Dispatch, SetStateAction } from "react";
 import { loadInitialPage } from "./conversation-panel-state-ops";
-import { hasConversationChanged } from "./conversation-panel-state-helpers";
-import { touchRealtimeStreamActivity } from "./realtime-stream-status";
 
 export function getCodexSendStatus(
   threadState: ProviderThreadState | null,
@@ -40,7 +39,7 @@ export function getCodexSendStatus(
 export async function loadRuntimeState(
   providerId: ProviderId,
   sessionId: string,
-) {
+): Promise<ProviderRuntimeStateSnapshot> {
   if (providerId !== "codex") {
     return {
       threadState: null,
@@ -145,9 +144,7 @@ function mergeReloadedPanelState(
     messages: nextState.messages,
     nextBefore: nextState.nextBefore,
     summary: nextState.summary,
-    streamStatus: hasConversationChanged(current.messages, nextState.messages)
-      ? touchRealtimeStreamActivity(current.streamStatus, now)
-      : current.streamStatus,
+    streamStatus: current.streamStatus,
     loading: false,
     loadingOlder: false,
     error: null,

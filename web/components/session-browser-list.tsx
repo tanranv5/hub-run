@@ -11,12 +11,14 @@ import {
 import { formatTime } from "../utils";
 
 interface SessionBrowserListProps {
+  disabled?: boolean;
   sessions: SessionSummary[];
   selectedSessionId: string | null;
   onSelectSession: (sessionId: string) => void;
 }
 
 interface LoadMoreButtonProps {
+  disabled?: boolean;
   loadingMore: boolean;
   nextBefore: string | null;
   onLoadMore: () => void;
@@ -31,15 +33,17 @@ function readViewportHeight(element: HTMLDivElement | null): number {
 
 function SessionRow(props: {
   active: boolean;
+  disabled?: boolean;
   session: SessionSummary;
   onSelectSession: (sessionId: string) => void;
 }) {
-  const { active, session, onSelectSession } = props;
+  const { active, disabled = false, session, onSelectSession } = props;
   const title = getSessionTitle(session.display);
 
   return (
     <button
       type="button"
+      disabled={disabled}
       onClick={() => onSelectSession(session.id)}
       className={`group mb-1 block h-[72px] w-full rounded-lg px-3 py-3 text-left transition last:mb-0 ${
         active ? "bg-surface-hover" : "bg-transparent hover:bg-surface"
@@ -48,18 +52,18 @@ function SessionRow(props: {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="truncate text-sm font-medium text-txt group-hover:text-sky-700 dark:text-sky-400">
+            <span className="truncate text-sm font-medium text-txt group-hover:text-accent">
               {title}
             </span>
             {active ? (
-              <span className="shrink-0 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-700 dark:text-emerald-400">
+              <span className="shrink-0 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-700">
                 进行中
               </span>
             ) : null}
           </div>
           <div className="mt-1 flex items-center gap-2 text-xs text-muted">
             <span className="truncate">{session.projectName || "未命名项目"}</span>
-            <span className="text-slate-700">•</span>
+            <span className="text-muted">•</span>
             <span className="shrink-0">{formatTime(session.timestamp)}</span>
           </div>
         </div>
@@ -72,7 +76,7 @@ function SessionRow(props: {
 }
 
 export function SessionBrowserList(props: SessionBrowserListProps) {
-  const { sessions, selectedSessionId, onSelectSession } = props;
+  const { disabled = false, sessions, selectedSessionId, onSelectSession } = props;
   const containerRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef(0);
   const [scrollTop, setScrollTop] = useState(0);
@@ -156,6 +160,7 @@ export function SessionBrowserList(props: SessionBrowserListProps) {
         <SessionRow
           key={session.id}
           active={session.id === selectedSessionId}
+          disabled={disabled}
           session={session}
           onSelectSession={onSelectSession}
         />
@@ -166,7 +171,7 @@ export function SessionBrowserList(props: SessionBrowserListProps) {
 }
 
 export function LoadMoreButton(props: LoadMoreButtonProps) {
-  const { loadingMore, nextBefore, onLoadMore } = props;
+  const { disabled = false, loadingMore, nextBefore, onLoadMore } = props;
 
   if (!nextBefore) {
     return null;
@@ -177,7 +182,7 @@ export function LoadMoreButton(props: LoadMoreButtonProps) {
       <button
         type="button"
         onClick={onLoadMore}
-        disabled={loadingMore}
+        disabled={loadingMore || disabled}
         className="w-full rounded-lg border border-bdr bg-surface py-2.5 text-sm text-muted transition hover:bg-surface-hover hover:text-txt disabled:cursor-not-allowed disabled:text-muted"
       >
         {loadingMore ? "加载中..." : "加载更多历史"}

@@ -18,7 +18,7 @@ export default function ProviderSwitcher(props: ProviderSwitcherProps) {
   const { providers, selectedProviderId, onSelect } = props;
 
   return (
-    <section className="rounded-[28px] border border-bdr bg-panel/70 p-3 shadow-xl shadow-slate-900/5 dark:shadow-slate-950/30">
+    <section className="rounded-[28px] border border-bdr bg-panel/70 p-3 shadow-xl shadow-black/10">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-[11px] uppercase tracking-[0.24em] text-muted">
@@ -46,7 +46,7 @@ export default function ProviderSwitcher(props: ProviderSwitcherProps) {
               }`}
             >
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-slate-50">
+                <span className="text-sm font-medium text-txt">
                   {provider.label}
                 </span>
                 <span className="rounded-full border border-bdr px-2 py-0.5 text-[10px] text-muted">

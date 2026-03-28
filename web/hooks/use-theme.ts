@@ -2,13 +2,24 @@ import { useEffect, useState } from "react";
 
 export type ThemeMode = "system" | "light" | "dark";
 
+function readStoredTheme(): ThemeMode {
+  if (typeof window === "undefined") {
+    return "system";
+  }
+  const storedTheme = window.localStorage.getItem("theme-mode");
+  return storedTheme === "light" || storedTheme === "dark" || storedTheme === "system"
+    ? storedTheme
+    : "system";
+}
+
 export function useTheme() {
-  const [theme, setTheme] = useState<ThemeMode>(() => {
-    return (localStorage.getItem("theme-mode") as ThemeMode) || "system";
-  });
+  const [theme, setTheme] = useState<ThemeMode>(readStoredTheme);
 
   useEffect(() => {
-    localStorage.setItem("theme-mode", theme);
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.localStorage.setItem("theme-mode", theme);
     const html = document.documentElement;
     if (theme === "dark") {
       html.classList.add("dark");
@@ -23,7 +34,8 @@ export function useTheme() {
 
   const toggleTheme = () => {
     if (theme === "system") {
-      const isSystemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const isSystemDark = typeof window !== "undefined" &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches;
       setTheme(isSystemDark ? "light" : "dark");
     } else if (theme === "dark") {
       setTheme("light");

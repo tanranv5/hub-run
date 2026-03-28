@@ -13,8 +13,9 @@ export function ErrorBanner(props: { message: string | null }) {
 
 export function LoadingScreen() {
   return (
-    <main className="flex min-h-screen items-center justify-center px-6">
-      <div className="rounded-[28px] border border-bdr bg-panel/70 px-6 py-5 text-sm text-txt backdrop-blur">
+    <main className="flex min-h-screen items-center justify-center bg-bg px-6">
+      <div className="flex items-center gap-3 rounded-[28px] border border-bdr bg-panel/80 px-6 py-5 text-sm text-txt shadow-lg backdrop-blur">
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-bdr border-t-accent" />
         正在初始化 hub-run...
       </div>
     </main>

@@ -14,6 +14,7 @@ import SessionBrowser from "./session-browser";
 interface BrowserStateLike {
   sessions: SessionSummary[];
   nextBefore: string | null;
+  totalSessionCount?: number | null;
   selectedSessionId: string | null;
   streamStatus: RealtimeStreamStatus;
   loading: boolean;
@@ -23,6 +24,7 @@ interface BrowserStateLike {
 interface BrowserSidebarProps {
   browser: BrowserStateLike;
   creatingSession: boolean;
+  refreshing?: boolean;
   newSessionCwd: string;
   open: boolean;
   desktopOpen?: boolean;
@@ -41,6 +43,7 @@ function SidebarContent(props: Omit<BrowserSidebarProps, "desktopOpen" | "open" 
   const {
     browser,
     creatingSession,
+    refreshing = false,
     newSessionCwd,
     projects,
     selectedProject,
@@ -61,10 +64,12 @@ function SidebarContent(props: Omit<BrowserSidebarProps, "desktopOpen" | "open" 
       <SessionBrowser
         provider={provider}
         sessions={browser.sessions}
+        totalSessionCount={browser.totalSessionCount}
         nextBefore={browser.nextBefore}
         loading={browser.loading}
         loadingMore={browser.loadingMore}
         creatingSession={creatingSession}
+        refreshing={refreshing}
         newSessionCwd={newSessionCwd}
         projects={projects}
         selectedProject={selectedProject}
@@ -99,6 +104,7 @@ export default function BrowserSidebar(props: BrowserSidebarProps) {
   const {
     browser,
     creatingSession,
+    refreshing = false,
     newSessionCwd,
     open,
     desktopOpen = true,
@@ -168,10 +174,11 @@ export default function BrowserSidebar(props: BrowserSidebarProps) {
         className={`${desktopOpen ? "lg:flex" : "hidden"} relative hidden h-full flex-none`}
         style={{ width: `${desktopWidth}px` }}
       >
-        <aside className="flex h-full w-full flex-col border-r border-[#30363d]/30 dark:border-[#30363d]/50 bg-panel">
+        <aside className="flex h-full w-full flex-col border-r border-bdr bg-panel">
           <SidebarContent
             browser={browser}
             creatingSession={creatingSession}
+            refreshing={refreshing}
             newSessionCwd={newSessionCwd}
             projects={projects}
             selectedProject={selectedProject}
@@ -189,21 +196,22 @@ export default function BrowserSidebar(props: BrowserSidebarProps) {
           onPointerDown={handleResizeStart}
           className="absolute inset-y-0 right-0 z-10 hidden w-3 translate-x-1/2 cursor-col-resize items-center justify-center bg-transparent lg:flex"
         >
-          <span className="h-18 w-px rounded-full bg-white/12 transition hover:bg-white/25" />
+          <span className="h-18 w-px rounded-full bg-[var(--theme-border)] transition hover:bg-[var(--theme-border-strong)]" />
         </button>
       </div>
       {open ? (
-        <div className="fixed inset-0 z-40 bg-slate-950/75 p-3 backdrop-blur lg:hidden">
+        <div className="fixed inset-0 z-40 bg-black/60 p-3 backdrop-blur lg:hidden">
           <button
             type="button"
             onClick={onClose}
             className="absolute inset-0"
             aria-label="关闭会话面板"
           />
-          <div className="relative ml-auto h-full w-full max-w-md overflow-y-auto rounded-[30px] border border-white/10 bg-[#08101d] p-3 shadow-[0_30px_80px_rgba(2,6,23,0.6)]">
+          <div className="relative ml-auto h-full w-full max-w-md overflow-y-auto rounded-[30px] border border-bdr bg-panel p-3 shadow-[0_30px_80px_rgba(2,6,23,0.28)] dark:shadow-[0_30px_80px_rgba(2,6,23,0.6)]">
             <SidebarContent
               browser={browser}
               creatingSession={creatingSession}
+              refreshing={refreshing}
               newSessionCwd={newSessionCwd}
               projects={projects}
               selectedProject={selectedProject}

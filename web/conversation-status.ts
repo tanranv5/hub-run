@@ -2,7 +2,6 @@ import type { ProviderId, ProviderThreadState, ProviderUserInputRequest } from "
 import type { RealtimeStreamStatus } from "./realtime-stream-status";
 import type { SendLifecycle } from "./conversation-send-state";
 import { isSendLifecycleActive } from "./conversation-send-state";
-import { isStreamActivelyDelivering } from "./realtime-stream-status";
 
 export type ConversationStatusPhase =
   | "loading"
@@ -10,6 +9,7 @@ export type ConversationStatusPhase =
   | "interrupting"
   | "respondingInput"
   | "waitingInput"
+  | "syncing"
   | "sending"
   | "generating"
   | "completed"
@@ -82,10 +82,9 @@ export function resolveConversationStatus(props: {
     return { phase: "sending", label: getSendingLabel(lifecycle), tone: "active" };
   }
 
-  // 7. 正在生成（threadState 或 stream 活跃）
-  const streamActive = isStreamActivelyDelivering(streamStatus);
-  if (threadState?.isGenerating || streamActive) {
-    return { phase: "generating", label: "正在生成...", tone: "active" };
+  // 7. 状态同步中
+  if (threadState?.desynced) {
+    return { phase: "syncing", label: "状态同步中", tone: "active" };
   }
 
   // 8. 终态：完成/中断/失败
@@ -99,7 +98,12 @@ export function resolveConversationStatus(props: {
     return { phase: "failed", label: "当前回合执行失败", tone: "danger" };
   }
 
-  // 9. 连接异常
+  // 9. 正在生成
+  if (threadState?.isGenerating) {
+    return { phase: "generating", label: "正在生成...", tone: "active" };
+  }
+
+  // 10. 连接异常
   if (streamStatus.phase === "disconnected") {
     return { phase: "streamError", label: "消息流未连接", tone: "danger" };
   }
@@ -107,7 +111,7 @@ export function resolveConversationStatus(props: {
     return { phase: "streamError", label: "消息流重连中", tone: "active" };
   }
 
-  // 10. 空闲
+  // 11. 空闲
   return { phase: "idle", label: "就绪", tone: "neutral" };
 }
 
@@ -141,6 +145,8 @@ export function getStatusPlaceholder(status: ConversationStatus): string {
       return "提交中...";
     case "waitingInput":
       return "等待输入";
+    case "syncing":
+      return "状态同步中...";
     case "sending":
     case "generating":
       return "生成中...";
@@ -177,6 +183,7 @@ export function getStatusButtonLabel(status: ConversationStatus, sending: boolea
 export function isConversationBusy(status: ConversationStatus): boolean {
   return (
     status.phase === "sending" ||
+    status.phase === "syncing" ||
     status.phase === "generating" ||
     status.phase === "interrupting" ||
     status.phase === "respondingInput"

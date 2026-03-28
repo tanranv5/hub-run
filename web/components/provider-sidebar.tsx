@@ -10,8 +10,8 @@ interface ProviderSidebarProps {
 
 function getProviderTone(provider: ProviderSummary): string {
   return provider.status.configResolved
-    ? "border-sky-400/30 bg-sky-400/10 text-sky-700 dark:text-sky-100"
-    : "border-amber-400/30 bg-amber-400/10 text-amber-700 dark:text-amber-100";
+    ? "border-accent/30 bg-accent/10 text-accent"
+    : "border-amber-400/30 bg-amber-400/10 text-amber-700";
 }
 
 export default function ProviderSidebar(props: ProviderSidebarProps) {
@@ -23,7 +23,7 @@ export default function ProviderSidebar(props: ProviderSidebarProps) {
         <button
           type="button"
           aria-label="Close sidebar"
-          className="fixed inset-0 z-20 bg-slate-950/50 lg:hidden"
+          className="fixed inset-0 z-20 bg-bg/50 lg:hidden"
           onClick={onClose}
         />
       ) : null}

@@ -59,6 +59,19 @@ export async function bootstrapApp(
   }
 }
 
+export async function reloadProviders(
+  setBootstrap: Dispatch<SetStateAction<BootstrapState>>,
+) {
+  try {
+    await refreshProviders(setBootstrap);
+  } catch (cause) {
+    setBootstrap((current) => ({
+      ...current,
+      error: getErrorMessage(cause, "Failed to refresh providers"),
+    }));
+  }
+}
+
 export async function handleLogin(
   password: string,
   setBootstrap: Dispatch<SetStateAction<BootstrapState>>,

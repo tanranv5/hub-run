@@ -15,22 +15,22 @@ import { ConversationToolCard } from "./conversation-tool-card";
 
 function roleLabel(role: ConversationMessage["role"]) {
   if (role === "user") {
-    return "User";
+    return "用户";
   }
   if (role === "assistant") {
-    return "Assistant";
+    return "助手";
   }
-  return "System";
+  return "系统";
 }
 
 function bubbleTone(message: ConversationMessage) {
   if (message.role === "user") {
-    return "border-accent/20 bg-accent/10 text-txt";
+    return "border-accent/30 bg-accent/15 text-txt-bold shadow-sm";
   }
   if (message.role === "assistant") {
-    return "border-bdr bg-panel text-txt";
+    return "border-bdr-strong bg-panel text-txt shadow-sm";
   }
-  return "border-bdr bg-surface text-txt";
+  return "border-bdr bg-surface text-txt-muted";
 }
 
 function layoutTone(message: ConversationMessage) {
@@ -38,7 +38,7 @@ function layoutTone(message: ConversationMessage) {
     return "ml-auto max-w-[92%] md:max-w-[78%]";
   }
   if (message.role === "assistant") {
-    return "mr-auto max-w-[92%] md:max-w-[78%]";
+    return "mr-auto max-w-full";
   }
   return "mx-auto max-w-full";
 }
@@ -58,10 +58,10 @@ export function SummaryBanner(props: { summary: ConversationMessage | null }) {
 
   return (
     <section className="rounded-[24px] border border-amber-400/20 bg-amber-400/8 px-4 py-3">
-      <div className="text-[11px] uppercase tracking-[0.2em] text-amber-700 dark:text-amber-100">
-        Summary
+      <div className="text-[11px] uppercase tracking-[0.2em] text-amber-700">
+        总结
       </div>
-      <div className="mt-2 text-sm leading-6 text-amber-50">
+      <div className="mt-2 text-sm leading-6 text-txt">
         <MarkdownRenderer content={sanitizeConversationText(summary.text)} />
       </div>
     </section>
@@ -75,20 +75,48 @@ export function EmptyConversationState(props: {
   const { provider, onOpenBrowser } = props;
 
   return (
-    <section className="flex min-h-[72dvh] flex-col items-center justify-center rounded-[32px] border border-dashed border-bdr bg-surface px-6 text-center">
-      <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
-        Conversation
-      </p>
-      <h2 className="mt-4 text-3xl font-semibold text-slate-50">
-        {provider ? `从 ${provider.label} 里选一个会话` : "先选择 provider"}
-      </h2>
-      <button
-        type="button"
-        onClick={onOpenBrowser}
-        className="mt-6 inline-flex h-11 items-center rounded-2xl border border-bdr bg-surface px-5 text-sm text-txt transition hover:bg-surface-hover lg:hidden"
+    <section
+      data-slot="empty-conversation-state"
+      className="flex h-full min-h-0 flex-1 flex-col"
+    >
+      <div className="flex flex-1 flex-col px-6 pt-6">
+        <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-center rounded-[40px] border border-dashed border-bdr bg-surface/40 py-24 text-center backdrop-blur-sm">
+          <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
+            会话
+          </p>
+          <h2 className="mt-4 text-3xl font-semibold text-txt">
+            {provider ? `从 ${provider.label} 里选一个会话` : "先选择 provider"}
+          </h2>
+          <button
+            type="button"
+            onClick={onOpenBrowser}
+            className="mt-6 inline-flex h-11 items-center rounded-2xl border border-bdr bg-surface px-5 text-sm text-txt transition hover:bg-surface-hover lg:hidden"
+          >
+            打开会话列表
+          </button>
+        </div>
+      </div>
+
+      <div
+        data-slot="empty-conversation-composer-shell"
+        className="flex-none p-3 md:p-5"
       >
-        打开会话列表
-      </button>
+        <div className="pointer-events-none relative min-h-[128px] rounded-[32px] border border-bdr bg-panel/40 px-3 pb-3 pt-3 opacity-60 shadow-inner backdrop-blur-sm">
+          <div className="absolute right-3 top-3 hidden items-center gap-2 md:flex">
+            <div className="h-8 w-28 rounded-full bg-muted/10" />
+            <div className="h-8 w-24 rounded-full bg-muted/10" />
+          </div>
+          <div className="space-y-3 pr-0 md:pr-[27rem]">
+            <div className="h-4 w-36 rounded-full bg-muted/20" />
+            <div className="h-3 w-[72%] rounded-full bg-muted/10" />
+            <div className="h-3 w-[56%] rounded-full bg-muted/10" />
+          </div>
+          <div className="absolute bottom-3 right-3 flex items-center gap-2">
+            <div className="h-9 w-9 rounded-full border border-bdr bg-surface" />
+            <div className="h-9 w-20 rounded-full border border-bdr bg-surface" />
+          </div>
+        </div>
+      </div>
     </section>
   );
 }

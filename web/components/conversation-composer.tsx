@@ -22,6 +22,7 @@ interface ConversationComposerProps {
   effortOptions: ProviderReasoningEffort[];
   interrupting?: boolean;
   modelOptions: ProviderModelOption[];
+  refreshing?: boolean;
   selectedEffort: ProviderReasoningEffort | null;
   selectedModelId: string | null;
   sending: boolean;
@@ -36,22 +37,35 @@ interface ConversationComposerProps {
 
 function ComposerSelect(props: {
   label: string;
+  mobileLabel?: string;
   options: { label: string; value: string }[];
   value: string;
+  disabled?: boolean;
   onChange: (value: string) => void;
+  className?: string;
 }) {
-  const { label, options, value, onChange } = props;
+  const {
+    className = "",
+    disabled = false,
+    label,
+    mobileLabel = label,
+    options,
+    value,
+    onChange,
+  } = props;
   if (!options.length) {
     return null;
   }
 
   return (
-    <label className="flex min-w-0 items-center gap-2 rounded-full border border-bdr bg-surface px-2.5 py-1 text-[10px] text-muted md:px-3 md:text-[11px]">
-      <span>{label}</span>
+    <label className={`flex min-w-0 items-center gap-2 overflow-hidden rounded-full border border-bdr bg-surface px-2.5 py-1 text-[10px] text-muted md:px-3 md:text-[11px] ${className}`}>
+      <span className="shrink-0 md:hidden">{mobileLabel}</span>
+      <span className="hidden shrink-0 md:inline">{label}</span>
       <select
+        disabled={disabled}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="min-w-0 flex-1 truncate bg-transparent text-txt outline-none"
+        className="min-w-0 flex-1 truncate bg-transparent text-txt outline-none disabled:cursor-not-allowed disabled:opacity-60"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value} className="bg-panel text-txt">
@@ -73,6 +87,7 @@ export default function ConversationComposer(props: ConversationComposerProps) {
     effortOptions,
     interrupting = false,
     modelOptions,
+    refreshing = false,
     selectedEffort,
     selectedModelId,
     sending,
@@ -86,7 +101,10 @@ export default function ConversationComposer(props: ConversationComposerProps) {
   } = props;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const buttonLabel = getStatusButtonLabel(conversationStatus, sending);
-  const composerPlaceholder = getVoiceAwarePlaceholder(conversationStatus, voicePhase);
+  const composerDisabled = refreshing;
+  const composerPlaceholder = composerDisabled
+    ? "刷新中，暂时不可编辑"
+    : getVoiceAwarePlaceholder(conversationStatus, voicePhase);
 
   const autoResize = useCallback(() => {
     const el = textareaRef.current;
@@ -97,11 +115,12 @@ export default function ConversationComposer(props: ConversationComposerProps) {
 
   return (
     <div className="flex-none p-3 md:p-5">
-        <section className="relative rounded-3xl border border-bdr bg-panel px-3 pb-3 pt-3 shadow-sm transition-shadow focus-within:border-accent/30 focus-within:ring-4 focus-within:ring-accent/10 dark:bg-panel-2 dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
+        <section className="relative rounded-[32px] border border-bdr bg-panel/60 dark:bg-panel-2 px-3 pb-3 pt-3 shadow-lg shadow-black/5 backdrop-blur-sm transition-all focus-within:border-accent/40 focus-within:ring-4 focus-within:ring-accent/5 dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
           {contextLabel ? (
             <ConversationContextBadge details={contextDetails} label={contextLabel} />
           ) : null}
           <ComposerControls
+            disabled={composerDisabled}
             effortOptions={effortOptions}
             modelOptions={modelOptions}
             selectedEffort={selectedEffort}
@@ -111,6 +130,7 @@ export default function ConversationComposer(props: ConversationComposerProps) {
           />
         <textarea
           ref={textareaRef}
+          disabled={composerDisabled}
           value={draft}
           onChange={(event) => {
             onDraftChange(event.target.value);
@@ -131,7 +151,7 @@ export default function ConversationComposer(props: ConversationComposerProps) {
           rows={2}
           aria-label="发送消息"
           placeholder={composerPlaceholder}
-          className="w-full resize-none bg-transparent px-1 pb-14 pt-1 text-[13px] leading-5 text-txt outline-none placeholder:text-muted md:pr-[27rem] md:text-sm md:leading-6"
+          className="w-full resize-none bg-transparent px-1 pb-14 pt-1 text-[13px] leading-5 text-txt outline-none placeholder:text-muted disabled:cursor-not-allowed disabled:opacity-60 md:pr-[27rem] md:text-sm md:leading-6"
           style={{ maxHeight: "200px", overflow: "auto" }}
         />
         <ComposerActions
@@ -139,6 +159,7 @@ export default function ConversationComposer(props: ConversationComposerProps) {
           canInterrupt={canInterrupt}
           draft={draft}
           interrupting={interrupting}
+          refreshing={composerDisabled}
           onInterrupt={onInterrupt}
           sending={sending}
           onSend={onSend}
@@ -151,6 +172,7 @@ export default function ConversationComposer(props: ConversationComposerProps) {
 }
 
 function ComposerControls(props: {
+  disabled?: boolean;
   effortOptions: ProviderReasoningEffort[];
   modelOptions: ProviderModelOption[];
   selectedEffort: ProviderReasoningEffort | null;
@@ -159,6 +181,7 @@ function ComposerControls(props: {
   onSelectModel: (value: string | null) => void;
 }) {
   const {
+    disabled = false,
     effortOptions,
     modelOptions,
     selectedEffort,
@@ -170,7 +193,7 @@ function ComposerControls(props: {
   return (
     <div
       data-slot="composer-controls"
-      className="mb-2 grid grid-cols-[minmax(0,1.4fr)_minmax(0,0.9fr)] items-center gap-2 md:absolute md:right-3 md:top-3 md:z-10 md:mb-0 md:flex"
+      className="mb-2 grid grid-cols-[minmax(0,1fr)_minmax(6.25rem,0.8fr)] items-center gap-2 md:absolute md:right-3 md:top-3 md:z-10 md:mb-0 md:flex"
     >
       <ComposerSelect
         label="模型"
@@ -178,11 +201,15 @@ function ComposerControls(props: {
           label: model.displayName,
           value: model.id,
         }))}
+        disabled={disabled}
         value={selectedModelId ?? ""}
         onChange={(value) => onSelectModel(value || null)}
       />
       <ComposerSelect
         label="思考深度"
+        mobileLabel="思考"
+        className="min-w-[6.25rem]"
+        disabled={disabled}
         options={effortOptions.map((effort) => ({
           label: effort,
           value: effort,
@@ -199,6 +226,7 @@ function ComposerActions(props: {
   canInterrupt: boolean;
   draft: string;
   interrupting: boolean;
+  refreshing?: boolean;
   onInterrupt?: () => void;
   sending: boolean;
   voicePhase: VoiceInputPhase;
@@ -210,13 +238,15 @@ function ComposerActions(props: {
     canInterrupt,
     draft,
     interrupting,
+    refreshing = false,
     onInterrupt,
     sending,
     voicePhase,
     onSend,
     onVoiceClick,
   } = props;
-  const voiceBusy = voicePhase === "starting" || voicePhase === "stopping";
+  const voiceBusy =
+    refreshing || voicePhase === "starting" || voicePhase === "stopping";
   const voiceRecording = voicePhase === "recording";
   const voiceTitle = getVoiceButtonTitle(voicePhase);
 
@@ -241,9 +271,9 @@ function ComposerActions(props: {
       </button>
       {canInterrupt ? (
         <button
-          type="button"
-          onClick={() => onInterrupt?.()}
-          disabled={interrupting}
+        type="button"
+        onClick={() => onInterrupt?.()}
+        disabled={refreshing || interrupting}
           className="flex h-9 min-w-9 items-center justify-center rounded-full border border-rose-400/20 bg-rose-500/10 px-3 text-sm font-medium text-rose-700 dark:text-rose-100 transition hover:bg-rose-500/15 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Square className="mr-1 h-4 w-4" />
@@ -253,8 +283,8 @@ function ComposerActions(props: {
         <button
           type="button"
           onClick={onSend}
-          disabled={sending || voicePhase !== "idle" || !draft.trim()}
-          className="flex h-9 min-w-9 items-center justify-center rounded-full bg-slate-300 px-3 text-sm font-medium text-slate-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={refreshing || sending || voicePhase !== "idle" || !draft.trim()}
+          className="flex h-9 min-w-9 items-center justify-center rounded-full bg-accent px-3 text-sm font-medium text-bg transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {buttonLabel ?? <Send className="h-4 w-4" />}
         </button>

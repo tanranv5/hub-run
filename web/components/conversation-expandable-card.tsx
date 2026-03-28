@@ -28,7 +28,7 @@ export function ConversationExpandableCard(props: {
           onClick={() => setExpanded((current) => !current)}
           type="button"
         >
-          <span className="flex min-w-0 flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.18em] md:text-[11px]">
+        <span className="flex min-w-0 flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-accent/80 md:text-[11px]">
             <span>{badge}</span>
             <span className="opacity-30">/</span>
             <span>{subtitle}</span>
@@ -41,7 +41,7 @@ export function ConversationExpandableCard(props: {
           </div>
         ) : null}
         <ConversationTimestamp
-          className={tone === "amber" ? "text-amber-700/55 dark:text-amber-100/55" : "text-rose-700/55 dark:text-rose-100/55"}
+          className={tone === "amber" ? "text-amber-700/55" : "text-rose-700/55"}
           timestamp={timestamp}
         />
       </div>
@@ -55,18 +55,18 @@ function formatExpandableText(text: string): string {
 
 function getToneClass(tone: "amber" | "rose"): string {
   return tone === "amber"
-    ? "border-amber-400/20 bg-amber-400/7 text-amber-50"
-    : "border-rose-400/20 bg-rose-400/10 text-rose-50";
+    ? "border-amber-400/30 bg-amber-400/10 text-amber-900"
+    : "border-rose-400/30 bg-rose-400/15 text-rose-900";
 }
 
 function getToneButtonClass(tone: "amber" | "rose"): string {
   return tone === "amber"
-    ? "border-amber-200/10 bg-slate-950/20 text-amber-700/80 dark:text-amber-100/80"
-    : "border-rose-200/10 bg-slate-950/20 text-rose-700/80 dark:text-rose-100/80";
+    ? "border-amber-200/20 bg-surface text-amber-800"
+    : "border-rose-200/20 bg-surface text-rose-800";
 }
 
 function getToneBodyClass(tone: "amber" | "rose"): string {
   return tone === "amber"
-    ? "border-amber-200/10 bg-slate-950/25"
-    : "border-rose-200/10 bg-slate-950/25";
+    ? "border-amber-200/10 bg-surface"
+    : "border-rose-200/10 bg-surface";
 }

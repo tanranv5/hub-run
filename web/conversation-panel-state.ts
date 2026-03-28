@@ -7,12 +7,11 @@ import {
   type SessionIdentity,
 } from "./conversation-panel-bootstrap";
 import {
-  loadRuntimeState,
   respondToUserInputOption,
 } from "./conversation-panel-codex-runtime";
-import { applyPanelRuntimeState } from "./conversation-panel-send";
 import { applyBufferedConversationWindow } from "./conversation-stream-state";
 import { useConversationStream } from "./use-conversation-stream";
+import { useConversationRuntimeStream } from "./use-conversation-runtime-stream";
 import { isDraftSession } from "./draft-session";
 import {
   getErrorMessage,
@@ -75,6 +74,14 @@ export function useConversationPanelState(props: {
   useConversationStream({
     enabled: Boolean(streamAvailable && providerId && session && !isDraftSession(session)),
     providerId,
+    refreshVersion,
+    sessionId: session?.id ?? null,
+    setState,
+  });
+  useConversationRuntimeStream({
+    enabled: Boolean(providerId === "codex" && session && !isDraftSession(session)),
+    providerId,
+    refreshVersion,
     sessionId: session?.id ?? null,
     setState,
   });
@@ -138,94 +145,62 @@ export function useConversationPanelState(props: {
     };
   }, [providerId, session?.id, session?.isDraft, streamAvailable]);
 
-  // Codex runtime: continuous poll when there is active work
   useEffect(() => {
     if (
-      providerId !== "codex" ||
+      !providerId ||
       !session ||
       isDraftSession(session) ||
-      (
-        !state.sending &&
-        !state.threadState?.isGenerating &&
-        state.pendingUserInputRequests.length === 0 &&
-        state.pendingTerminalSyncTurnId === null
-      )
+      !streamAvailable ||
+      !shouldRefreshConversationDuringRuntime({
+        current: state,
+        now: Date.now(),
+        streamAvailable,
+      })
     ) {
       return;
     }
 
-    let cancelled = false;
     const generation = generationRef.current;
+    let cancelled = false;
     const shouldAbort = () => cancelled || generation !== generationRef.current;
-    const refreshRuntime = () => {
-      loadRuntimeState(providerId, session.id)
-        .then((runtime) => {
-          if (shouldAbort()) {
-            return;
-          }
-          const now = Date.now();
-          const nextState = applyPanelRuntimeState(
-            stateRef.current,
-            providerId,
-            runtime.threadState,
-            runtime.pendingUserInputRequests,
-            now,
-          );
-          setState((current) =>
-            applyPanelRuntimeState(
-              current,
-              providerId,
-              runtime.threadState,
-              runtime.pendingUserInputRequests,
-              now,
-            )
-          );
-          if (
-            !shouldRefreshConversationDuringRuntime({
-              current: nextState,
-              now,
-              streamAvailable,
-            })
-          ) {
-            return;
-          }
-          pollLatestConversation({
-            providerId,
-            sessionId: session.id,
-            setState,
-            shouldAbort,
-          }).catch((cause) => {
-            if (shouldAbort()) {
-              return;
-            }
-            setState((current) => ({
-              ...current,
-              error: getErrorMessage(cause, "Failed to refresh conversation"),
-            }));
-          });
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const pollRuntimeFallback = () => {
+      if (
+        shouldAbort() ||
+        !shouldRefreshConversationDuringRuntime({
+          current: stateRef.current,
+          now: Date.now(),
+          streamAvailable,
         })
+      ) {
+        return;
+      }
+
+      pollLatestConversation({
+        includeRuntime: false,
+        providerId,
+        sessionId: session.id,
+        setState,
+        shouldAbort,
+      })
         .catch((cause) => {
           if (shouldAbort()) {
             return;
           }
           setState((current) => ({
             ...current,
-            error: getErrorMessage(cause, "Failed to refresh Codex runtime"),
+            error: getErrorMessage(cause, "Failed to refresh conversation"),
           }));
+        })
+        .finally(() => {
+          if (!shouldAbort()) {
+            timer = setTimeout(pollRuntimeFallback, PANEL_REFRESH_INTERVAL_MS);
+          }
         });
     };
 
-    refreshRuntime();
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const scheduleNext = () => {
-      timer = setTimeout(() => {
-        refreshRuntime();
-        if (!cancelled && generation === generationRef.current) {
-          scheduleNext();
-        }
-      }, PANEL_REFRESH_INTERVAL_MS);
-    };
-    scheduleNext();
+    timer = setTimeout(pollRuntimeFallback, PANEL_REFRESH_INTERVAL_MS);
     return () => {
       cancelled = true;
       if (timer) {
@@ -236,11 +211,13 @@ export function useConversationPanelState(props: {
     providerId,
     session?.id,
     session?.isDraft,
+    state.loading,
+    state.loadingOlder,
     state.pendingUserInputRequests.length,
     state.pendingTerminalSyncTurnId,
     state.sending,
+    state.streamStatus.phase,
     state.streamStatus.lastEventAt,
-    state.threadState?.isGenerating,
     streamAvailable,
   ]);
 

@@ -1,12 +1,16 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { ConversationMessage, ProviderId } from "../api/types";
+import { sanitizeConversationText } from "../api/providers/display-text";
 import {
   sameThreadState,
   sameUserInputRequests,
 } from "./conversation-panel-codex-runtime";
 import { applyPanelRuntimeState } from "./conversation-panel-send";
 import { isSendLifecycleActive } from "./conversation-send-state";
-import { loadInitialPage } from "./conversation-panel-state-ops";
+import {
+  loadConversationWindow,
+  loadInitialPage,
+} from "./conversation-panel-state-ops";
 import {
   hasConversationChanged,
   isOptimisticUserMessage,
@@ -15,7 +19,11 @@ import type {
   BufferedConversationWindow,
   PanelState,
 } from "./conversation-panel-state-types";
-import { touchRealtimeStreamActivity } from "./realtime-stream-status";
+import { INITIAL_PANEL_STATE } from "./conversation-panel-state-types";
+
+function normalizeUserMessageText(text: string): string {
+  return sanitizeConversationText(text);
+}
 
 export const PANEL_REFRESH_INTERVAL_MS = 1_200;
 const STALE_STREAM_ACTIVITY_MS = PANEL_REFRESH_INTERVAL_MS;
@@ -63,9 +71,7 @@ export function mergePolledPanelState(props: {
     nextBefore: current.messageWindowFrozen ? current.nextBefore : nextState.nextBefore,
     summary: current.messageWindowFrozen ? current.summary : nextState.summary,
     streamOffset: nextState.streamOffset ?? current.streamOffset,
-    streamStatus: conversationChanged
-      ? touchRealtimeStreamActivity(current.streamStatus, now)
-      : current.streamStatus,
+    streamStatus: current.streamStatus,
     loading: false,
     loadingOlder: false,
     error: null,
@@ -79,13 +85,22 @@ export function mergePolledPanelState(props: {
 }
 
 export async function pollLatestConversation(props: {
+  includeRuntime?: boolean;
   providerId: ProviderId;
   sessionId: string;
   setState: Dispatch<SetStateAction<PanelState>>;
   shouldAbort: () => boolean;
 }) {
-  const { providerId, sessionId, setState, shouldAbort } = props;
-  const nextState = await loadInitialPage(providerId, sessionId);
+  const {
+    includeRuntime = true,
+    providerId,
+    sessionId,
+    setState,
+    shouldAbort,
+  } = props;
+  const nextState = includeRuntime
+    ? await loadInitialPage(providerId, sessionId)
+    : await loadConversationPageState(providerId, sessionId);
   if (shouldAbort()) {
     return;
   }
@@ -96,11 +111,20 @@ export async function pollLatestConversation(props: {
     }
     return mergePolledPanelState({
       current,
-      nextState,
+      nextState: includeRuntime
+        ? nextState
+        : buildConversationOnlyPollState(current, nextState),
       now: Date.now(),
       providerId,
     });
   });
+}
+
+async function loadConversationPageState(
+  providerId: ProviderId,
+  sessionId: string,
+) {
+  return loadConversationWindow(providerId, sessionId);
 }
 
 export function shouldRefreshConversationDuringRuntime(props: {
@@ -216,6 +240,20 @@ function buildBufferedConversationWindow(
   };
 }
 
+function buildConversationOnlyPollState(
+  current: PanelState,
+  nextState: Awaited<ReturnType<typeof loadConversationPageState>>,
+): PanelState {
+  return {
+    ...INITIAL_PANEL_STATE,
+    ...current,
+    messages: nextState.messages,
+    nextBefore: nextState.nextBefore,
+    summary: nextState.summary,
+    streamOffset: current.streamOffset,
+  };
+}
+
 function sameBufferedConversationWindow(
   current: BufferedConversationWindow | null,
   next: BufferedConversationWindow | null,
@@ -228,11 +266,12 @@ function hasAcknowledgedPolledUserMessage(
   optimisticMessage: ConversationMessage,
 ) {
   const optimisticTime = readMessageTime(optimisticMessage);
+  const optimisticKey = normalizeUserMessageText(optimisticMessage.text);
   return messages.some((message) =>
     message.role === "user" &&
     message.kind === "text" &&
     !isOptimisticUserMessage(message) &&
-    message.text === optimisticMessage.text &&
+    normalizeUserMessageText(message.text) === optimisticKey &&
     (optimisticTime === null ||
       readMessageTime(message) === null ||
       (readMessageTime(message) as number) >= optimisticTime)

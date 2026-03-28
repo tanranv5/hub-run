@@ -16,48 +16,54 @@
 
 :root, html.light, .light {
   color-scheme: light;
-  --theme-bg: #f1f5f9;
+  --theme-bg: #f5f5f7;          /* 苹果风格浅灰底，减少纯白刺眼感 */
   --theme-panel: #ffffff;
-  --theme-panel-2: #f8fafc;
-  --theme-border: #e2e8f0;
-  --theme-text: #334155;
-  --theme-muted: #64748b;
-  --theme-accent: #0ea5e9;
-  --theme-accent-2: #16a34a;
-  --theme-danger: #ef4444;
-  --theme-surface: rgba(15, 23, 42, 0.04);
-  --theme-surface-hover: rgba(15, 23, 42, 0.08);
+  --theme-panel-2: #ececec;     /* 稍深的次级面板 */
+  --theme-border: rgba(0, 0, 0, 0.08);
+  --theme-border-strong: rgba(0, 0, 0, 0.15);
+  --theme-text: #1d1d1f;        /* 苹果风格近黑 */
+  --theme-text-bold: #000000;
+  --theme-muted: #6e6e73;       /* 苹果风格 secondary label */
+  --theme-accent: #0066cc;      /* 苹果蓝 */
+  --theme-accent-2: #28a745;    /* 清新绿 */
+  --theme-danger: #d70015;      /* 苹果红 */
+  --theme-surface: rgba(0, 0, 0, 0.04);
+  --theme-surface-hover: rgba(0, 0, 0, 0.08);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --theme-bg: #0f172a;
-    --theme-panel: #1e293b;
-    --theme-panel-2: #334155;
-    --theme-border: #334155;
-    --theme-text: #f8fafc;
-    --theme-muted: #94a3b8;
-    --theme-accent: #38bdf8;
-    --theme-accent-2: #4ade80;
-    --theme-danger: #f87171;
-    --theme-surface: rgba(255, 255, 255, 0.05);
+    --theme-bg: #111111;          /* 近黑底，接近苹果深色 */
+    --theme-panel: #1c1c1e;       /* 苹果风格面板色 */
+    --theme-panel-2: #2c2c2e;     /* 次级面板 */
+    --theme-border: rgba(255, 255, 255, 0.12);
+    --theme-border-strong: rgba(255, 255, 255, 0.2);
+    --theme-text: #f5f5f7;        /* 苹果白 */
+    --theme-text-bold: #ffffff;
+    --theme-muted: #98989d;       /* 苹果 secondary label dark */
+    --theme-accent: #2997ff;      /* 苹果蓝 dark variant */
+    --theme-accent-2: #30d158;    /* 苹果绿 dark variant */
+    --theme-danger: #ff453a;      /* 苹果红 dark variant */
+    --theme-surface: rgba(255, 255, 255, 0.06);
     --theme-surface-hover: rgba(255, 255, 255, 0.1);
   }
 }
 
 html.dark, .dark {
   color-scheme: dark;
-  --theme-bg: #0f172a;
-  --theme-panel: #1e293b;
-  --theme-panel-2: #334155;
-  --theme-border: #334155;
-  --theme-text: #f8fafc;
-  --theme-muted: #94a3b8;
-  --theme-accent: #38bdf8;
-  --theme-accent-2: #4ade80;
-  --theme-danger: #f87171;
-  --theme-surface: rgba(255, 255, 255, 0.05);
+  --theme-bg: #111111;
+  --theme-panel: #1c1c1e;
+  --theme-panel-2: #2c2c2e;
+  --theme-border: rgba(255, 255, 255, 0.12);
+  --theme-border-strong: rgba(255, 255, 255, 0.2);
+  --theme-text: #f5f5f7;
+  --theme-text-bold: #ffffff;
+  --theme-muted: #98989d;
+  --theme-accent: #2997ff;
+  --theme-accent-2: #30d158;
+  --theme-danger: #ff453a;
+  --theme-surface: rgba(255, 255, 255, 0.06);
   --theme-surface-hover: rgba(255, 255, 255, 0.1);
 }
 

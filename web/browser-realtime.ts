@@ -48,6 +48,7 @@ export function applySessionsSnapshot(
     ...current,
     sessions,
     nextBefore: snapshot.nextBefore,
+    totalSessionCount: snapshot.totalCount ?? sessions.length,
     selectedSessionId: resolveSelectedSessionId(
       current.selectedSessionId,
       sessions,
@@ -78,6 +79,8 @@ export function applySessionsUpdate(
     ...current,
     sessions: nextSessions,
     nextBefore: update.nextBefore,
+    totalSessionCount:
+      update.totalCount ?? current.totalSessionCount ?? nextSessions.length,
     selectedSessionId: resolveSelectedSessionId(
       current.selectedSessionId,
       nextSessions,

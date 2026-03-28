@@ -21,6 +21,61 @@ export interface SessionIdentity {
   sessionId: string;
 }
 
+function isSameSession(
+  previousSession: SessionIdentity,
+  providerId: ProviderId | null,
+  sessionId: string | null,
+) {
+  return previousSession.providerId === providerId && previousSession.sessionId === sessionId;
+}
+
+function persistPreviousSessionSnapshot(props: {
+  draft: string;
+  nextProviderId: ProviderId | null;
+  nextSessionId: string | null;
+  previousSession: SessionIdentity | null;
+  sessionCache: Map<string, SessionPanelCacheEntry>;
+  state: PanelState;
+}) {
+  const {
+    draft,
+    nextProviderId,
+    nextSessionId,
+    previousSession,
+    sessionCache,
+    state,
+  } = props;
+  if (!previousSession) {
+    return;
+  }
+
+  const preservingPreloadedState =
+    isSameSession(previousSession, nextProviderId, nextSessionId) &&
+    readSessionPanelCache(
+      sessionCache,
+      previousSession.providerId,
+      previousSession.sessionId,
+    )?.skipReloadOnce;
+  const nextState = preservingPreloadedState
+    ? readSessionPanelCache(
+        sessionCache,
+        previousSession.providerId,
+        previousSession.sessionId,
+      )?.state ?? state
+    : state;
+
+  writeSessionPanelCache(
+    sessionCache,
+    previousSession.providerId,
+    previousSession.sessionId,
+    nextState,
+    draft,
+    {
+      skipReloadOnce: preservingPreloadedState,
+    },
+  );
+}
+
 export function bootstrapConversationPanel(props: {
   draftRef?: MutableRefObject<string>;
   generationRef: MutableRefObject<number>;
@@ -46,19 +101,18 @@ export function bootstrapConversationPanel(props: {
     stateRef,
   } = props;
   const previousSession = previousSessionRef.current;
-  if (previousSession) {
-    writeSessionPanelCache(
-      sessionCacheRef.current,
-      previousSession.providerId,
-      previousSession.sessionId,
-      stateRef.current,
-      draftRef?.current ?? "",
-    );
-  }
+  persistPreviousSessionSnapshot({
+    draft: draftRef?.current ?? "",
+    nextProviderId: providerId,
+    nextSessionId: session?.id ?? null,
+    previousSession,
+    sessionCache: sessionCacheRef.current,
+    state: stateRef.current,
+  });
 
   generationRef.current += 1;
   const generation = generationRef.current;
-  if (!providerId || !session || isDraftSession(session)) {
+  if (!providerId || !session) {
     previousSessionRef.current = null;
     setDraft?.("");
     setState(INITIAL_PANEL_STATE);
@@ -72,7 +126,13 @@ export function bootstrapConversationPanel(props: {
     session.id,
   );
   setDraft?.(cached?.draft ?? "");
-  setState(cached ? cached.state : (current) => ({ ...current, ...INITIAL_PANEL_STATE, loading: true }));
+  if (isDraftSession(session)) {
+    setState(cached?.state ?? INITIAL_PANEL_STATE);
+    return;
+  }
+  setState(
+    cached ? cached.state : (current) => ({ ...current, ...INITIAL_PANEL_STATE, loading: true }),
+  );
   if (cached?.skipReloadOnce) {
     writeSessionPanelCache(
       sessionCacheRef.current,

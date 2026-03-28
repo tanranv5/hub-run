@@ -17,7 +17,7 @@ export default function ConversationContextBadge(
         type="button"
         aria-label={details ? `当前上下文用量 ${label}，${details}` : `当前上下文用量 ${label}`}
         title={details ? `${label} (${details})` : label}
-        className="inline-flex items-center rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-200"
+        className="inline-flex items-center rounded-full border border-accent-2/30 bg-accent-2/10 px-2 py-1 text-[10px] font-medium text-accent-2"
       >
         {label}
       </button>

@@ -22,6 +22,7 @@ interface AppScreenProps {
   controls: ProviderControlsState;
   desktopSidebarOpen: boolean;
   effortOptions: ProviderReasoningEffort[];
+  refreshing: boolean;
   onCreateSession: () => void;
   onCloseSidebar: () => void;
   onLoadMore: () => void;
@@ -55,6 +56,7 @@ export default function AppScreen(props: AppScreenProps) {
     controls,
     desktopSidebarOpen,
     effortOptions,
+    refreshing,
     onCreateSession,
     onCloseSidebar,
     onLoadMore,
@@ -84,6 +86,7 @@ export default function AppScreen(props: AppScreenProps) {
         authEnabled={authEnabled}
         provider={provider}
         providers={providers}
+        refreshing={refreshing}
         onSelectProvider={onSelectProvider}
         onOpenBrowser={onOpenBrowser}
         onRefresh={onRefresh}
@@ -116,6 +119,7 @@ export default function AppScreen(props: AppScreenProps) {
               modelOptions={controls.models}
               provider={provider}
               refreshVersion={panelRefreshVersion}
+              refreshing={refreshing}
               sessionCacheRef={sessionCacheRef}
               selectedEffort={controls.selectedEffort}
               selectedModelId={controls.selectedModelId}

@@ -28,9 +28,10 @@ export function useProviderSessionsStream(props: {
   browser: BrowserState;
   project: string | null;
   provider: ProviderSummary | null;
+  refreshVersion?: number;
   setBrowser: Dispatch<SetStateAction<BrowserState>>;
 }) {
-  const { browser, project, provider, setBrowser } = props;
+  const { browser, project, provider, refreshVersion = 0, setBrowser } = props;
   const streamState = readSessionsStreamState(browser);
 
   useEffect(() => {
@@ -57,6 +58,7 @@ export function useProviderSessionsStream(props: {
     browser.loading,
     project,
     provider,
+    refreshVersion,
     setBrowser,
     streamState.hasDraftSession,
     streamState.loaded,

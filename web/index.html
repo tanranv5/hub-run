@@ -9,6 +9,12 @@
     <title>hub-run</title>
   </head>
   <body>
+    <script>
+      (function(){
+        var t=localStorage.getItem('theme-mode');
+        if(t==='dark'||t==='light'){document.documentElement.classList.add(t);}
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="./main.tsx"></script>
   </body>

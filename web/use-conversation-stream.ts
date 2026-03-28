@@ -29,17 +29,18 @@ const STREAM_PAGE_SIZE = 10;
 export function useConversationStream(props: {
   enabled: boolean;
   providerId: ProviderId | null;
+  refreshVersion?: number;
   sessionId: string | null;
   setState: Dispatch<SetStateAction<PanelState>>;
 }) {
-  const { enabled, providerId, sessionId, setState } = props;
+  const { enabled, providerId, refreshVersion = 0, sessionId, setState } = props;
   const offsetRef = useRef<number | null>(null);
   const lastActivityAtRef = useRef<number | null>(null);
 
   useEffect(() => {
     offsetRef.current = null;
     lastActivityAtRef.current = null;
-  }, [providerId, sessionId]);
+  }, [providerId, refreshVersion, sessionId]);
 
   useEffect(() => {
     if (!enabled || !providerId || !sessionId) {
@@ -63,7 +64,7 @@ export function useConversationStream(props: {
       },
       setState,
     });
-  }, [enabled, providerId, sessionId, setState]);
+  }, [enabled, providerId, refreshVersion, sessionId, setState]);
 }
 
 function connectConversationStream(props: {

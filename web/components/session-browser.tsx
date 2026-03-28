@@ -16,9 +16,11 @@ interface SessionBrowserProps {
   projects: string[];
   selectedProject: string | null;
   sessions: SessionSummary[];
+  totalSessionCount?: number | null;
   nextBefore: string | null;
   loading: boolean;
   loadingMore: boolean;
+  refreshing?: boolean;
   creatingSession: boolean;
   newSessionCwd: string;
   selectedSessionId: string | null;
@@ -30,10 +32,11 @@ interface SessionBrowserProps {
 }
 
 function SearchBar(props: {
+  disabled?: boolean;
   value: string;
   onChange: (value: string) => void;
 }) {
-  const { value, onChange } = props;
+  const { disabled = false, value, onChange } = props;
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
@@ -41,20 +44,22 @@ function SearchBar(props: {
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
       <input
         ref={inputRef}
+        disabled={disabled}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder="搜索会话..."
         aria-label="搜索会话"
-        className="w-full rounded-lg border border-bdr bg-surface py-2 pl-9 pr-8 text-sm text-txt outline-none transition placeholder:text-muted focus:border-bdr focus:bg-surface-hover"
+        className="w-full rounded-lg border border-bdr bg-surface py-2 pl-9 pr-8 text-sm text-txt outline-none transition placeholder:text-muted focus:border-bdr focus:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
       />
       {value && (
         <button
           type="button"
+          disabled={disabled}
           onClick={() => {
             onChange("");
             inputRef.current?.focus();
           }}
-          className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted hover:text-slate-300 transition"
+          className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted transition hover:text-txt disabled:cursor-not-allowed disabled:opacity-60"
           aria-label="清除搜索"
         >
           <X className="h-3 w-3" />
@@ -67,8 +72,10 @@ function SearchBar(props: {
 function BrowserHeader(props: {
   provider: ProviderSummary | null;
   sessionCount: number;
+  totalSessionCount?: number | null;
 }) {
-  const { provider, sessionCount } = props;
+  const { provider, sessionCount, totalSessionCount = null } = props;
+  const displayCount = totalSessionCount ?? sessionCount;
 
   return (
     <div className="mb-4 flex items-center justify-between gap-3">
@@ -79,7 +86,7 @@ function BrowserHeader(props: {
         </p>
       </div>
       <span className="rounded-full border border-bdr bg-surface px-3 py-1 text-[11px] text-muted">
-        {sessionCount} 条会话
+        {displayCount} 条会话
       </span>
     </div>
   );
@@ -87,6 +94,7 @@ function BrowserHeader(props: {
 
 function CreateSessionControls(props: {
   creatingSession: boolean;
+  disabled?: boolean;
   newSessionCwd: string;
   projects: string[];
   selectedProject: string | null;
@@ -97,6 +105,7 @@ function CreateSessionControls(props: {
 }) {
   const {
     creatingSession,
+    disabled = false,
     newSessionCwd,
     projects,
     selectedProject,
@@ -117,6 +126,7 @@ function CreateSessionControls(props: {
       </label>
       <div className="flex items-center gap-2">
         <ProjectPathField
+          disabled={disabled}
           projects={projects}
           selectedProject={selectedProject}
           value={newSessionCwd}
@@ -129,9 +139,9 @@ function CreateSessionControls(props: {
         <button
           type="button"
           onClick={onCreateSession}
-          disabled={creatingSession}
+          disabled={creatingSession || disabled}
           aria-label="新建会话"
-          title={creatingSession ? "创建中..." : "新建会话"}
+          title={disabled ? "刷新中..." : creatingSession ? "创建中..." : "新建会话"}
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-cyan-400/20 bg-cyan-500/15 text-cyan-700 dark:text-cyan-100 transition hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Plus className="h-4 w-4" />
@@ -159,9 +169,11 @@ export default function SessionBrowser(props: SessionBrowserProps) {
     projects,
     selectedProject,
     sessions,
+    totalSessionCount = null,
     nextBefore,
     loading,
     loadingMore,
+    refreshing = false,
     selectedSessionId,
     onCreateSession,
     onNewSessionCwdChange,
@@ -177,13 +189,15 @@ export default function SessionBrowser(props: SessionBrowserProps) {
   );
 
   return (
-    <section className="flex flex-1 min-h-0 flex-col bg-transparent">
+    <section className="flex flex-1 min-h-0 flex-col bg-transparent" aria-busy={refreshing}>
       <BrowserHeader
         provider={provider}
         sessionCount={sessions.length}
+        totalSessionCount={totalSessionCount}
       />
       <CreateSessionControls
         creatingSession={creatingSession}
+        disabled={refreshing}
         newSessionCwd={newSessionCwd}
         projects={projects}
         selectedProject={selectedProject}
@@ -192,9 +206,10 @@ export default function SessionBrowser(props: SessionBrowserProps) {
         onNewSessionCwdChange={onNewSessionCwdChange}
         onSelectProject={onSelectProject}
       />
-      <SearchBar value={search} onChange={setSearch} />
+      <SearchBar disabled={refreshing} value={search} onChange={setSearch} />
       {filteredSessions.length ? (
         <SessionBrowserList
+          disabled={refreshing}
           sessions={filteredSessions}
           selectedSessionId={selectedSessionId}
           onSelectSession={onSelectSession}
@@ -203,6 +218,7 @@ export default function SessionBrowser(props: SessionBrowserProps) {
         <EmptyState loading={loading} />
       )}
       <LoadMoreButton
+        disabled={refreshing}
         loadingMore={loadingMore}
         nextBefore={nextBefore}
         onLoadMore={onLoadMore}

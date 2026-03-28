@@ -6,6 +6,7 @@ interface AppHeaderProps {
   authEnabled: boolean;
   provider: ProviderSummary | null;
   providers?: ProviderSummary[];
+  refreshing?: boolean;
   onSelectProvider?: (id: string) => void;
   onOpenBrowser: () => void;
   onRefresh: () => void;
@@ -14,6 +15,7 @@ interface AppHeaderProps {
 
 interface HeaderActionsProps {
   authEnabled: boolean;
+  refreshing: boolean;
   onLogout: () => void;
   onRefresh: () => void;
   theme: ThemeMode;
@@ -23,9 +25,10 @@ interface HeaderActionsProps {
 function ProviderSelect(props: {
   provider: ProviderSummary | null;
   providers?: ProviderSummary[];
+  disabled?: boolean;
   onSelectProvider?: (id: string) => void;
 }) {
-  const { provider, providers, onSelectProvider } = props;
+  const { provider, providers, disabled = false, onSelectProvider } = props;
 
   if (!providers?.length || !onSelectProvider) {
     return provider ? (
@@ -37,9 +40,10 @@ function ProviderSelect(props: {
 
   return (
     <select
+      disabled={disabled}
       value={provider?.id ?? ""}
       onChange={(event) => onSelectProvider(event.target.value)}
-      className="rounded-full border border-bdr bg-surface py-1 pl-3 pr-8 text-[11px] uppercase tracking-[0.1em] text-txt outline-none transition hover:bg-surface-hover appearance-none cursor-pointer bg-[url('data:image/svg+xml;utf8,<svg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%2216%22%20height=%2216%22%20viewBox=%220%200%2024%2024%22%20fill=%22none%22%20stroke=%22%2394a3b8%22%20stroke-width=%222%22%20stroke-linecap=%22round%22%20stroke-linejoin=%22round%22><polyline%20points=%226%209%2012%2015%2018%209%22></polyline></svg>')] bg-[length:12px] bg-[right_8px_center] bg-no-repeat"
+      className="rounded-full border border-bdr bg-surface py-1 pl-3 pr-8 text-[11px] uppercase tracking-[0.1em] text-txt outline-none transition hover:bg-surface-hover appearance-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 bg-[url('data:image/svg+xml;utf8,<svg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%2216%22%20height=%2216%22%20viewBox=%220%200%2024%2024%22%20fill=%22none%22%20stroke=%22%2394a3b8%22%20stroke-width=%222%22%20stroke-linecap=%22round%22%20stroke-linejoin=%22round%22><polyline%20points=%226%209%2012%2015%2018%209%22></polyline></svg>')] bg-[length:12px] bg-[right_8px_center] bg-no-repeat"
     >
       {providers.map((item) => (
         <option key={item.id} value={item.id} className="bg-panel">
@@ -51,7 +55,7 @@ function ProviderSelect(props: {
 }
 
 function HeaderActions(props: HeaderActionsProps) {
-  const { authEnabled, onLogout, onRefresh, theme, onToggleTheme } = props;
+  const { authEnabled, refreshing, onLogout, onRefresh, theme, onToggleTheme } = props;
 
   return (
     <div className="flex shrink-0 items-center gap-2">
@@ -67,10 +71,13 @@ function HeaderActions(props: HeaderActionsProps) {
       <button
         type="button"
         onClick={onRefresh}
-        className="inline-flex h-11 items-center gap-2 rounded-2xl border border-bdr bg-surface px-3 text-sm text-txt transition hover:bg-surface-hover"
+        disabled={refreshing}
+        aria-busy={refreshing}
+        title={refreshing ? "刷新中..." : "刷新消息"}
+        className="inline-flex h-11 items-center gap-2 rounded-2xl border border-bdr bg-surface px-3 text-sm text-txt transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
       >
-        <RefreshCw className="h-4 w-4" />
-        <span className="hidden sm:inline">刷新消息</span>
+        <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+        <span className="hidden sm:inline">{refreshing ? "刷新中" : "刷新消息"}</span>
       </button>
       {authEnabled ? (
         <button
@@ -91,6 +98,7 @@ export default function AppHeader(props: AppHeaderProps) {
     authEnabled,
     provider,
     providers,
+    refreshing = false,
     onSelectProvider,
     onOpenBrowser,
     onRefresh,
@@ -116,6 +124,7 @@ export default function AppHeader(props: AppHeaderProps) {
                 Hub-Run
               </h1>
               <ProviderSelect
+                disabled={refreshing}
                 provider={provider}
                 providers={providers}
                 onSelectProvider={onSelectProvider}
@@ -125,6 +134,7 @@ export default function AppHeader(props: AppHeaderProps) {
         </div>
         <HeaderActions
           authEnabled={authEnabled}
+          refreshing={refreshing}
           onRefresh={onRefresh}
           onLogout={onLogout}
           theme={theme}

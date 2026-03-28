@@ -152,7 +152,7 @@ export default memo(function ConversationTimeline(props: ConversationTimelinePro
             >
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-[11px] uppercase tracking-[0.22em] text-amber-700/80 dark:text-amber-100/80">
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-amber-700 dark:text-amber-300 opacity-80">
                     User Input
                   </p>
                   <p className="mt-1 text-xs text-amber-50/80">
@@ -160,12 +160,12 @@ export default memo(function ConversationTimeline(props: ConversationTimelinePro
                   </p>
                 </div>
                 {respondingRequestId === request.requestId ? (
-                  <span className="text-xs text-amber-700 dark:text-amber-100">提交中...</span>
+                  <span className="text-xs text-amber-700 dark:text-amber-300">提交中...</span>
                 ) : null}
               </div>
               <div className="space-y-3">
                 {request.questions.map((question) => (
-                  <div key={question.id} className="rounded-2xl border border-amber-200/10 bg-slate-950/20 p-3">
+                  <div key={question.id} className="rounded-2xl border border-amber-400/20 bg-surface p-3">
                     <p className="text-xs uppercase tracking-[0.18em] text-amber-700/80 dark:text-amber-100/80">
                       {question.header}
                     </p>

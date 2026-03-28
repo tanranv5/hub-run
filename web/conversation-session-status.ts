@@ -15,6 +15,9 @@ export function getConversationSessionStatusLabel(
   if (!sendAvailable) {
     return "当前会话只读";
   }
+  if (threadState?.desynced) {
+    return "当前会话状态同步中";
+  }
   if (threadState?.isGenerating) {
     return "当前会话生成中";
   }
@@ -49,6 +52,9 @@ export function getConversationSessionStatusTone(
 ): ConversationSessionStatusTone {
   if (!sendAvailable) {
     return "danger";
+  }
+  if (threadState?.desynced) {
+    return "active";
   }
   if (threadState?.isGenerating) {
     return "active";

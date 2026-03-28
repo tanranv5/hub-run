@@ -48,6 +48,7 @@ interface ConversationPanelProps {
   modelOptions: ProviderModelOption[];
   provider: ProviderSummary | null;
   refreshVersion?: number;
+  refreshing?: boolean;
   sessionCacheRef: MutableRefObject<Map<string, SessionPanelCacheEntry>>;
   selectedEffort: ProviderReasoningEffort | null;
   selectedModelId: string | null;
@@ -77,6 +78,7 @@ interface ConversationBodyProps {
   modelOptions: ProviderModelOption[];
   pendingUserInputRequests: ProviderUserInputRequest[];
   providerSendAvailable: boolean;
+  refreshing?: boolean;
   respondingRequestId: string | null;
   interrupting: boolean;
   sessionId?: string | null;
@@ -99,6 +101,22 @@ interface ConversationBodyProps {
   onViewLatest: () => void;
   voicePhase: "idle" | "starting" | "recording" | "stopping";
   onVoiceClick: () => void;
+}
+
+function ConversationRefreshOverlay() {
+  return (
+    <div
+      aria-label="正在刷新当前会话..."
+      aria-live="polite"
+      role="status"
+      className="absolute inset-0 z-20 flex items-center justify-center bg-[var(--bg)] px-6 py-8"
+    >
+      <div className="flex items-center gap-3 rounded-full border border-bdr bg-surface px-4 py-3 text-sm text-txt shadow-lg shadow-black/5">
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-bdr border-t-accent" />
+        <span>刷新中，正在重新拉取当前会话...</span>
+      </div>
+    </div>
+  );
 }
 
 export const ConversationBody = memo(function ConversationBody(props: ConversationBodyProps) {
@@ -131,6 +149,7 @@ export const ConversationBody = memo(function ConversationBody(props: Conversati
     onVoiceClick,
     interrupting,
     providerSendAvailable,
+    refreshing = false,
     respondingRequestId,
     sessionId = null,
     selectedEffort,
@@ -148,7 +167,10 @@ export const ConversationBody = memo(function ConversationBody(props: Conversati
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div
+      aria-busy={refreshing}
+      className="relative flex min-h-0 flex-1 flex-col"
+    >
       <ConversationTimeline
         error={error}
         hasOlderMessages={hasOlderMessages}
@@ -176,6 +198,7 @@ export const ConversationBody = memo(function ConversationBody(props: Conversati
           effortOptions={effortOptions}
           interrupting={interrupting}
           modelOptions={modelOptions}
+          refreshing={refreshing}
           selectedEffort={selectedEffort}
           selectedModelId={selectedModelId}
           sending={sending}
@@ -188,6 +211,7 @@ export const ConversationBody = memo(function ConversationBody(props: Conversati
           onVoiceClick={onVoiceClick}
         />
       ) : null}
+      {refreshing ? <ConversationRefreshOverlay /> : null}
     </div>
   );
 });
@@ -205,6 +229,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     onToggleDesktopSidebar,
     provider,
     refreshVersion = 0,
+    refreshing = false,
     sessionCacheRef,
     selectedEffort,
     selectedModelId,
@@ -290,6 +315,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         modelOptions={modelOptions}
         pendingUserInputRequests={state.pendingUserInputRequests}
         providerSendAvailable={provider.status.sendAvailable}
+        refreshing={refreshing}
         respondingRequestId={state.respondingRequestId}
         interrupting={state.interrupting}
         selectedEffort={selectedEffort}

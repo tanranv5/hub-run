@@ -33,13 +33,22 @@ export function getProjectLabel(projectPath: string): string {
 
 export function getSessionTitle(display: string): string {
   const normalized = display.replace(/\s+/g, " ").trim();
-  if (!normalized) {
+  if (!normalized || isPlaceholderSessionTitle(normalized)) {
     return "未命名会话";
   }
   if (normalized.length <= MAX_SESSION_TITLE_LENGTH) {
     return normalized;
   }
   return `${normalized.slice(0, MAX_SESSION_TITLE_LENGTH)}...`;
+}
+
+function isPlaceholderSessionTitle(display: string): boolean {
+  return (
+    display === "(no prompt text)" ||
+    display === "(empty)" ||
+    /^<image name=\[[^\]]+\]>$/i.test(display) ||
+    /^<\/image>$/i.test(display)
+  );
 }
 
 export function buildResumeCommand(

@@ -4,6 +4,7 @@ import type {
   ProviderConversationStreamSnapshot,
   ProviderId,
 } from "../api/types";
+import { sanitizeConversationText } from "../api/providers/display-text";
 import type {
   BufferedConversationWindow,
   PanelState,
@@ -11,6 +12,10 @@ import type {
 import { isOptimisticUserMessage } from "./conversation-panel-state-helpers";
 import { createLiveRealtimeStreamStatus } from "./realtime-stream-status";
 import { isSendLifecycleActive } from "./conversation-send-state";
+
+function normalizeUserMessageText(text: string): string {
+  return sanitizeConversationText(text);
+}
 
 export function buildConversationStreamUrl(
   providerId: ProviderId,
@@ -143,15 +148,16 @@ function dropAcknowledgedOptimisticMessages(messages: ConversationMessage[]) {
 
   messages.forEach((message, index) => {
     if (isOptimisticUserMessage(message)) {
-      const pending = pendingByText.get(message.text) ?? [];
+      const key = normalizeUserMessageText(message.text);
+      const pending = pendingByText.get(key) ?? [];
       pending.push(index);
-      pendingByText.set(message.text, pending);
+      pendingByText.set(key, pending);
       return;
     }
     if (!isAcknowledgingUserMessage(message)) {
       return;
     }
-    const pending = pendingByText.get(message.text);
+    const pending = pendingByText.get(normalizeUserMessageText(message.text));
     if (!pending || pending.length === 0) {
       return;
     }
@@ -237,9 +243,10 @@ function hasAcknowledgedUserMessage(
   optimisticMessage: ConversationMessage,
 ) {
   const optimisticTime = readMessageTime(optimisticMessage);
+  const optimisticKey = normalizeUserMessageText(optimisticMessage.text);
   return messages.some((message) =>
     isAcknowledgingUserMessage(message) &&
-    message.text === optimisticMessage.text &&
+    normalizeUserMessageText(message.text) === optimisticKey &&
     (optimisticTime === null ||
       readMessageTime(message) === null ||
       (readMessageTime(message) as number) >= optimisticTime)

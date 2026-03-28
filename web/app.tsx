@@ -8,7 +8,13 @@ import {
   loadMoreBrowserSessions,
   refreshBrowserState,
 } from "./app-browser-actions";
-import { bootstrapApp, getErrorMessage, handleLogin, handleLogout, INITIAL_BOOTSTRAP } from "./bootstrap-state";
+import {
+  bootstrapApp,
+  getErrorMessage,
+  handleLogin,
+  handleLogout,
+  INITIAL_BOOTSTRAP,
+} from "./bootstrap-state";
 import AppScreen from "./components/app-screen";
 import { LoadingScreen } from "./components/app-shell";
 import type { SendConversationResult } from "./conversation-panel-state-types";
@@ -20,12 +26,14 @@ import { preloadSessionPanelCache } from "./conversation-panel-preload";
 import type { SessionPanelCacheEntry } from "./conversation-panel-session-cache";
 import { subscribeAuthLost } from "./realtime-auth";
 import { useProviderSessionsStream } from "./use-provider-sessions-stream";
+import { refreshAppData } from "./app-refresh";
 
 export default function App() {
   const [bootstrap, setBootstrap] = useState(INITIAL_BOOTSTRAP);
   const [browser, setBrowser] = useState(INITIAL_BROWSER);
   const [controls, setControls] = useState(INITIAL_PROVIDER_CONTROLS);
   const [panelRefreshVersion, setPanelRefreshVersion] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   const browserRequestVersionRef = useRef(0);
@@ -283,6 +291,35 @@ export default function App() {
     });
   }
 
+  async function handleRefresh() {
+    if (refreshing) {
+      return;
+    }
+
+    setRefreshing(true);
+    try {
+      await refreshAppData({
+        bumpRefreshVersion: () => {
+          setPanelRefreshVersion((value) => value + 1);
+        },
+        reloadConversation: async () => {
+          if (!selectedProvider || !selectedSession || isDraftSession(selectedSession)) {
+            return;
+          }
+          await preloadSessionPanelCache({
+            cache: sessionCacheRef.current,
+            providerId: selectedProvider.id,
+            session: selectedSession,
+          });
+        },
+      });
+    } catch (cause) {
+      console.error(cause);
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   if (bootstrap.loading) {
     return <LoadingScreen />;
   }
@@ -307,6 +344,7 @@ export default function App() {
       controls={controls}
       desktopSidebarOpen={desktopSidebarOpen}
       effortOptions={effortOptions}
+      refreshing={refreshing}
       onCreateSession={() => {
         handleCreateSession().catch(console.error);
       }}
@@ -351,7 +389,9 @@ export default function App() {
       }}
       onNewSessionCwdChange={(value) => setControls((current) => ({ ...current, newSessionCwd: value }))}
       onOpenBrowser={() => setSidebarOpen(true)}
-      onRefresh={() => setPanelRefreshVersion((value) => value + 1)}
+      onRefresh={() => {
+        void handleRefresh();
+      }}
       onSelectEffort={handleSelectEffort}
       onSelectModel={handleSelectModel}
       onSelectProject={(value) => setControls((current) => ({ ...current, selectedProject: value }))}

@@ -14,14 +14,14 @@ export function getProviderStatusCopy(provider: ProviderSummary | null): string 
 
 export function getProviderStatusTone(provider: ProviderSummary | null): string {
   if (!provider) {
-    return "border-white/10 bg-white/5 text-slate-300";
+    return "border-bdr bg-surface text-muted";
   }
 
   if (!provider.status.configResolved) {
-    return "border-rose-400/30 bg-rose-500/10 text-rose-100";
+    return "border-danger/30 bg-danger/10 text-danger";
   }
 
   return provider.status.sendAvailable
-    ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
-    : "border-amber-400/30 bg-amber-500/10 text-amber-100";
+    ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+    : "border-amber-400/30 bg-amber-500/10 text-amber-700 dark:text-amber-300";
 }

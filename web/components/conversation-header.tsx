@@ -6,6 +6,9 @@ import { getSessionTitle } from "../session-browser-state";
 import { formatTime } from "../utils";
 import ConversationSessionStatus from "./conversation-session-status";
 
+const COPY_TOOLTIP_LABEL = "复制会话 ID";
+const COPIED_TOOLTIP_LABEL = "已复制会话 ID";
+
 interface ConversationHeaderProps {
   conversationStatus: ConversationStatus;
   session: SessionSummary;
@@ -54,20 +57,35 @@ export default function ConversationHeader(props: ConversationHeaderProps) {
                 <span className="shrink-0">{relativeTime}</span>
               </span>
               <span className="ml-auto inline-flex shrink-0 items-center gap-2">
-                <button
-                  type="button"
-                  aria-label="复制会话 ID"
-                  title={`复制会话 ID: ${session.id}`}
-                  onClick={() => {
-                    handleCopySessionId().catch(console.error);
-                  }}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-bdr bg-surface text-muted transition hover:bg-surface-hover"
-                >
-                  {copied ? <Check className="h-4 w-4 text-emerald-700 dark:text-emerald-400" /> : <Copy className="h-4 w-4" />}
-                </button>
-                <ConversationSessionStatus
-                  conversationStatus={conversationStatus}
-                />
+                <span className="group relative inline-flex">
+                  <button
+                    type="button"
+                    aria-label={COPY_TOOLTIP_LABEL}
+                    onClick={() => {
+                      handleCopySessionId().catch(console.error);
+                    }}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-bdr bg-surface text-muted transition hover:bg-surface-hover"
+                  >
+                    {copied ? <Check className="h-4 w-4 text-accent-2" /> : <Copy className="h-4 w-4" />}
+                  </button>
+                  <span
+                    data-slot="session-copy-tooltip"
+                    role="tooltip"
+                    className="pointer-events-none absolute right-0 top-full z-20 mt-2 hidden w-max max-w-[min(20rem,calc(100vw-2rem))] rounded-xl border border-bdr bg-panel px-3 py-2 text-left text-[11px] leading-5 text-txt shadow-lg shadow-black/10 dark:shadow-black/30 group-hover:block group-focus-within:block"
+                  >
+                    <span className="block font-medium text-txt">
+                      {copied ? COPIED_TOOLTIP_LABEL : COPY_TOOLTIP_LABEL}
+                    </span>
+                    <span className="mt-1 block break-all font-mono text-muted">
+                      {session.id}
+                    </span>
+                  </span>
+                </span>
+                <div className="flex-none max-w-[120px] md:max-w-none">
+                  <ConversationSessionStatus
+                    conversationStatus={conversationStatus}
+                  />
+                </div>
               </span>
             </p>
           </div>

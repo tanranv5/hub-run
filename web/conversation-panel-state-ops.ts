@@ -38,6 +38,18 @@ export async function loadInitialPage(
   };
 }
 
+export async function loadConversationWindow(
+  providerId: ProviderId,
+  sessionId: string,
+) {
+  const page = await getConversationPage(providerId, sessionId, null, PAGE_SIZE);
+  return {
+    messages: page.messages,
+    nextBefore: page.nextBefore,
+    summary: page.summary,
+  };
+}
+
 export async function loadOlderMessages(props: {
   nextBefore: string;
   providerId: ProviderId;

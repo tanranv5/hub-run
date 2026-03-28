@@ -10,8 +10,8 @@ function CapabilityPill(props: { label: string; enabled: boolean }) {
     <span
       className={`rounded-full border px-3 py-1 text-xs ${
         enabled
-          ? "border-emerald-400/30 bg-emerald-400/12 text-emerald-700 dark:text-emerald-100"
-          : "border-white/10 bg-white/6 text-muted"
+          ? "border-accent-2/30 bg-accent-2/12 text-accent-2"
+          : "border-bdr bg-surface text-muted"
       }`}
     >
       {label}
@@ -21,7 +21,7 @@ function CapabilityPill(props: { label: string; enabled: boolean }) {
 
 function EmptyProviderState() {
   return (
-    <section className="flex h-full min-h-[26rem] items-center justify-center rounded-[28px] border border-dashed border-white/10 bg-white/3 p-8">
+    <section className="flex h-full min-h-[26rem] items-center justify-center rounded-[28px] border border-dashed border-bdr bg-surface/40 p-8">
       <div className="max-w-md text-center">
         <h2 className="text-2xl font-semibold text-txt">选择一个 provider</h2>
         <p className="mt-3 text-sm leading-6 text-muted">
@@ -37,20 +37,20 @@ function OverviewCard(props: { provider: ProviderSummary }) {
   const { provider } = props;
 
   return (
-    <article className="rounded-[30px] border border-white/10 bg-slate-950/60 p-6 shadow-xl shadow-slate-950/25">
+    <article className="rounded-[30px] border border-bdr bg-panel p-6 shadow-xl shadow-black/10">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.22em] text-muted">
             Provider
           </p>
-          <h2 className="mt-2 text-3xl font-semibold text-slate-50">
+          <h2 className="mt-2 text-3xl font-semibold text-txt">
             {provider.label}
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
             {provider.description}
           </p>
         </div>
-        <div className="rounded-2xl border border-white/10 bg-white/4 px-4 py-3 text-right">
+        <div className="rounded-2xl border border-bdr bg-surface px-4 py-3 text-right">
           <div className="text-xs uppercase tracking-[0.18em] text-muted">
             Root Path
           </div>
@@ -73,7 +73,7 @@ function OverviewCard(props: { provider: ProviderSummary }) {
 function FocusCard(props: { title: string; description: string }) {
   const { title, description } = props;
   return (
-    <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
+    <div className="rounded-2xl border border-bdr bg-surface p-4">
       <div className="text-xs uppercase tracking-[0.16em] text-muted">
         {title}
       </div>
@@ -84,7 +84,7 @@ function FocusCard(props: { title: string; description: string }) {
 
 function BootstrapFocusPanel() {
   return (
-    <div className="mt-8 rounded-[26px] border border-white/10 bg-panel/55 p-5">
+    <div className="mt-8 rounded-[26px] border border-bdr bg-panel/55 p-5">
       <div className="text-sm font-medium text-txt">Bootstrap Focus</div>
       <div className="mt-3 grid gap-3 md:grid-cols-3">
         <FocusCard title="Mobile" description="共享壳先适配窄屏抽屉和内容区。" />
@@ -101,7 +101,7 @@ function BootstrapFocusPanel() {
 function StatusMetric(props: { label: string; value: string }) {
   const { label, value } = props;
   return (
-    <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
+    <div className="rounded-2xl border border-bdr bg-surface p-4">
       <div className="text-sm text-muted">{label}</div>
       <div className="mt-2 text-lg font-medium text-txt">{value}</div>
     </div>
@@ -113,7 +113,7 @@ function StatusCard(props: { provider: ProviderSummary }) {
   const lastError = provider.status.lastError;
 
   return (
-    <aside className="rounded-[30px] border border-white/10 bg-slate-950/60 p-6 shadow-xl shadow-slate-950/25">
+    <aside className="rounded-[30px] border border-bdr bg-panel p-6 shadow-xl shadow-black/10">
       <p className="text-xs uppercase tracking-[0.22em] text-muted">
         Provider Status
       </p>
@@ -133,8 +133,8 @@ function StatusCard(props: { provider: ProviderSummary }) {
       </div>
 
       <div className="mt-5 rounded-2xl border border-amber-400/20 bg-amber-400/8 p-4">
-        <div className="text-sm font-medium text-amber-700 dark:text-amber-100">Last Error</div>
-        <div className="mt-2 text-sm leading-6 text-amber-50/90">
+        <div className="text-sm font-medium text-amber-700">Last Error</div>
+        <div className="mt-2 text-sm leading-6 text-txt/80">
           {lastError ? `${lastError.code}: ${lastError.message}` : "None"}
         </div>
       </div>

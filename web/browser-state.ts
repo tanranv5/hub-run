@@ -9,6 +9,7 @@ import { mergePreferredSession } from "./ui-preferences";
 export interface BrowserState {
   sessions: SessionSummary[];
   nextBefore: string | null;
+  totalSessionCount?: number | null;
   selectedSessionId: string | null;
   streamStatus: RealtimeStreamStatus;
   loading: boolean;
@@ -19,6 +20,7 @@ export interface BrowserState {
 export const INITIAL_BROWSER: BrowserState = {
   sessions: [],
   nextBefore: null,
+  totalSessionCount: 0,
   selectedSessionId: null,
   streamStatus: createIdleRealtimeStreamStatus(),
   loading: false,
@@ -58,6 +60,7 @@ export async function loadProviderBrowser(
   return {
     sessions,
     nextBefore: page.nextBefore,
+    totalSessionCount: page.totalCount ?? sessions.length,
     selectedSessionId,
     streamStatus: createIdleRealtimeStreamStatus(),
     loading: false,

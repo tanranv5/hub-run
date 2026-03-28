@@ -2,6 +2,7 @@ import { ChevronDown } from "lucide-react";
 import { useState, type FocusEvent } from "react";
 
 interface ProjectPathFieldProps {
+  disabled?: boolean;
   projects: string[];
   selectedProject: string | null;
   value: string;
@@ -15,7 +16,14 @@ function getProjectName(projectPath: string): string {
 }
 
 export default function ProjectPathField(props: ProjectPathFieldProps) {
-  const { projects, selectedProject, value, onChange, onSelectProject } = props;
+  const {
+    disabled = false,
+    projects,
+    selectedProject,
+    value,
+    onChange,
+    onSelectProject,
+  } = props;
   const [open, setOpen] = useState(false);
 
   function handleBlur(event: FocusEvent<HTMLDivElement>) {
@@ -30,6 +38,7 @@ export default function ProjectPathField(props: ProjectPathFieldProps) {
     <div className="relative flex-1" onBlur={handleBlur}>
       <div className="flex h-9 items-center rounded-lg border border-bdr bg-surface">
         <input
+          disabled={disabled}
           value={value}
           onFocus={() => setOpen(true)}
           onChange={(event) => {
@@ -38,13 +47,14 @@ export default function ProjectPathField(props: ProjectPathFieldProps) {
             setOpen(true);
           }}
           placeholder="输入项目路径"
-          className="h-full w-full bg-transparent px-3 text-sm text-txt outline-none placeholder:text-muted"
+          className="h-full w-full bg-transparent px-3 text-sm text-txt outline-none placeholder:text-muted disabled:cursor-not-allowed disabled:opacity-60"
         />
         <button
           type="button"
+          disabled={disabled}
           aria-label="展开项目列表"
           onClick={() => setOpen((current) => !current)}
-          className="flex h-full w-9 shrink-0 items-center justify-center text-muted transition hover:text-txt"
+          className="flex h-full w-9 shrink-0 items-center justify-center text-muted transition hover:text-txt disabled:cursor-not-allowed disabled:opacity-60"
         >
           <ChevronDown className={`h-4 w-4 transition ${open ? "rotate-180" : ""}`} />
         </button>
@@ -58,7 +68,7 @@ export default function ProjectPathField(props: ProjectPathFieldProps) {
               onSelectProject(null);
               setOpen(false);
             }}
-            className="flex w-full items-center border-b border-white/6 dark:border-white/6 px-3 py-2 text-left text-sm text-txt hover:bg-surface"
+            className="flex w-full items-center border-b border-bdr px-3 py-2 text-left text-sm text-txt hover:bg-surface"
           >
             全部项目
           </button>
@@ -71,7 +81,7 @@ export default function ProjectPathField(props: ProjectPathFieldProps) {
                 onSelectProject(project);
                 setOpen(false);
               }}
-              className={`flex w-full flex-col items-start gap-0.5 border-b border-white/6 px-3 py-2 text-left last:border-b-0 hover:bg-surface ${
+              className={`flex w-full flex-col items-start gap-0.5 border-b border-bdr px-3 py-2 text-left last:border-b-0 hover:bg-surface ${
                 selectedProject === project ? "bg-surface-hover" : ""
               }`}
             >
