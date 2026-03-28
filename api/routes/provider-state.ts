@@ -7,6 +7,7 @@ import type {
   ProviderUserInputResponsePayload,
 } from "../types";
 import { getProviderSummary } from "../providers/registry";
+import { resolveProviderThreadStateSnapshot } from "./provider-runtime-state";
 import { resolveProviderRouteError } from "./provider-route-errors";
 import { findAdapter } from "./providers";
 
@@ -69,7 +70,8 @@ export function registerProviderStateRoutes(
   });
 
   router.get("/:providerId/sessions/:sessionId/state", async (c) => {
-    const adapter = findAdapter(registry, c.req.param("providerId"));
+    const providerId = c.req.param("providerId") as ProviderId;
+    const adapter = findAdapter(registry, providerId);
     if (!adapter) {
       return c.json(providerNotFound(), 404);
     }
@@ -82,10 +84,14 @@ export function registerProviderStateRoutes(
 
     try {
       return c.json(
-        await adapter.getThreadState(
-          c.req.param("sessionId"),
-          parseTurnId(c.req.query("turnId")),
-        ),
+        await resolveProviderThreadStateSnapshot({
+          adapter: adapter as ProviderAdapter & {
+            getThreadState: NonNullable<ProviderAdapter["getThreadState"]>;
+          },
+          providerId,
+          requestedTurnId: parseTurnId(c.req.query("turnId")),
+          sessionId: c.req.param("sessionId"),
+        }),
       );
     } catch (error) {
       const resolved = resolveProviderRouteError(error, "Failed to read thread state");

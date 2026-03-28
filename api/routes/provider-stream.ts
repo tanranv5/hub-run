@@ -2,25 +2,32 @@ import type { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import type { SSEStreamingApi } from "hono/streaming";
 import { paginateSessions } from "../providers/shared";
+import { getProviderSummary } from "../providers/registry";
 import type {
   ProviderAdapter,
   ProviderId,
+  ProviderRuntimeStateSnapshot,
   SessionSummary,
 } from "../types";
+import { resolveProviderThreadStateSnapshot } from "./provider-runtime-state";
+import { resolveProviderRouteError } from "./provider-route-errors";
 import { findAdapter } from "./providers";
 
 const HEARTBEAT_INTERVAL_MS = 30_000;
 const HEARTBEAT_SLICE_MS = 1_000;
 const DEFAULT_PAGE_SIZE = 10;
+const RUNTIME_STATE_POLL_INTERVAL_MS = 1_200;
 
 interface SessionsWindow {
   sessions: SessionSummary[];
   nextBefore: string | null;
+  totalCount: number;
 }
 
 type EventStreamWriter = Pick<SSEStreamingApi, "writeSSE">;
 type HeartbeatStream = Pick<SSEStreamingApi, "sleep" | "writeSSE">;
 type ConversationStreamReader = NonNullable<ProviderAdapter["getConversationStream"]>;
+type ThreadStateReader = NonNullable<ProviderAdapter["getThreadState"]>;
 
 function providerNotFound() {
   return {
@@ -40,6 +47,10 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
     return fallback;
   }
   return parsed;
+}
+
+function parseTurnId(value: string | undefined): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 function filterSessionsByProject(
@@ -76,11 +87,15 @@ async function readSessionsWindow(
   loaded: number,
   project: string | undefined,
 ): Promise<SessionsWindow> {
-  return paginateSessions(
+  const page = paginateSessions(
     filterSessionsByProject(await adapter.listSessions(), project),
     null,
     loaded,
   );
+  return {
+    ...page,
+    totalCount: page.totalCount ?? page.sessions.length,
+  };
 }
 
 async function runHeartbeat(
@@ -92,15 +107,16 @@ async function runHeartbeat(
       event: "heartbeat",
       data: JSON.stringify({ timestamp: Date.now() }),
     });
-    await waitForHeartbeatWindow(stream, isClosed);
+    await waitForDuration(stream, isClosed, HEARTBEAT_INTERVAL_MS);
   }
 }
 
-async function waitForHeartbeatWindow(
+async function waitForDuration(
   stream: Pick<SSEStreamingApi, "sleep">,
   isClosed: () => boolean,
+  durationMs: number,
 ) {
-  let remaining = HEARTBEAT_INTERVAL_MS;
+  let remaining = durationMs;
   while (remaining > 0 && !isClosed()) {
     const slice = Math.min(HEARTBEAT_SLICE_MS, remaining);
     await stream.sleep(slice);
@@ -222,6 +238,44 @@ export function registerProviderStreamRoutes(
   router: Hono,
   registry: Record<ProviderId, ProviderAdapter>,
 ) {
+  router.get("/:providerId/sessions/:sessionId/state/stream", async (c) => {
+    const adapter = findAdapter(registry, c.req.param("providerId"));
+    if (!adapter) {
+      return c.json(providerNotFound(), 404);
+    }
+    if (!getProviderSummary(adapter).capabilities.threadState || !adapter.getThreadState) {
+      return c.json(
+        unsupportedCapability("Provider does not support realtime thread state"),
+        400,
+      );
+    }
+
+    const sessionId = c.req.param("sessionId");
+    const requestedTurnId = parseTurnId(c.req.query("turnId"));
+    const runtimeAdapter = adapter as ProviderAdapter & {
+      getThreadState: ThreadStateReader;
+    };
+
+    return streamSSE(c, async (stream) => {
+      const cleanup = createCleanup(() => {});
+      c.req.raw.signal.addEventListener("abort", cleanup.close);
+      try {
+        await streamRuntimeState({
+          adapter: runtimeAdapter,
+          isClosed: cleanup.isClosed,
+          requestedTurnId,
+          sessionId,
+          stream,
+        });
+      } catch (error) {
+        const resolved = resolveProviderRouteError(error, "Failed to stream thread state");
+        console.error("provider runtime state stream failed", resolved.error);
+      } finally {
+        cleanup.close();
+      }
+    });
+  });
+
   router.get("/:providerId/sessions/stream", async (c) => {
     const adapter = findAdapter(registry, c.req.param("providerId"));
     if (!adapter) {
@@ -242,6 +296,7 @@ export function registerProviderStreamRoutes(
       let currentWindow: SessionsWindow = {
         sessions: [],
         nextBefore: null,
+        totalCount: 0,
       };
       let snapshotReady = false;
       let backlogPending = false;
@@ -391,7 +446,8 @@ async function emitSessionsUpdate(
   if (
     diff.upserts.length === 0 &&
     diff.removedIds.length === 0 &&
-    currentWindow.nextBefore === nextWindow.nextBefore
+    currentWindow.nextBefore === nextWindow.nextBefore &&
+    currentWindow.totalCount === nextWindow.totalCount
   ) {
     return;
   }
@@ -402,6 +458,7 @@ async function emitSessionsUpdate(
     data: JSON.stringify({
       ...diff,
       nextBefore: nextWindow.nextBefore,
+      totalCount: nextWindow.totalCount,
     }),
   });
 }
@@ -428,4 +485,66 @@ async function emitConversationDelta(
     event: "messages",
     data: JSON.stringify(payload),
   });
+}
+
+async function streamRuntimeState(props: {
+  adapter: ProviderAdapter & { getThreadState: ThreadStateReader };
+  isClosed: () => boolean;
+  requestedTurnId: string | null;
+  sessionId: string;
+  stream: HeartbeatStream;
+}) {
+  const { adapter, isClosed, requestedTurnId, sessionId, stream } = props;
+  let previousSignature: string | null = null;
+  let lastHeartbeatAt = 0;
+
+  while (!isClosed()) {
+    const snapshot = await readRuntimeStateSnapshot(
+      adapter,
+      adapter.summary.id,
+      sessionId,
+      requestedTurnId,
+    );
+    const signature = JSON.stringify(snapshot);
+    if (signature !== previousSignature) {
+      previousSignature = signature;
+      await stream.writeSSE({
+        event: "runtimeState",
+        data: signature,
+      });
+    }
+
+    const now = Date.now();
+    if (now - lastHeartbeatAt >= HEARTBEAT_INTERVAL_MS) {
+      lastHeartbeatAt = now;
+      await stream.writeSSE({
+        event: "heartbeat",
+        data: JSON.stringify({ timestamp: now }),
+      });
+    }
+    await waitForDuration(stream, isClosed, RUNTIME_STATE_POLL_INTERVAL_MS);
+  }
+}
+
+async function readRuntimeStateSnapshot(
+  adapter: ProviderAdapter & { getThreadState: ThreadStateReader },
+  providerId: ProviderId,
+  sessionId: string,
+  requestedTurnId: string | null,
+): Promise<ProviderRuntimeStateSnapshot> {
+  const [threadState, pendingUserInputRequests] = await Promise.all([
+    resolveProviderThreadStateSnapshot({
+      adapter,
+      providerId,
+      requestedTurnId,
+      sessionId,
+    }),
+    adapter.listUserInputRequests
+      ? adapter.listUserInputRequests(sessionId)
+      : Promise.resolve([]),
+  ]);
+  return {
+    threadState,
+    pendingUserInputRequests,
+  };
 }

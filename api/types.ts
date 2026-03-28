@@ -122,12 +122,14 @@ export interface ConversationPage {
 export interface SessionsPage {
   sessions: SessionSummary[];
   nextBefore: string | null;
+  totalCount?: number;
 }
 
 export interface ProviderSessionsStreamUpdate {
   upserts: SessionSummary[];
   removedIds: string[];
   nextBefore: string | null;
+  totalCount?: number;
 }
 
 export interface SendMessageResult {
@@ -150,12 +152,20 @@ export type ProviderTurnStatus =
   | "failed"
   | "interrupted";
 
+export type ProviderThreadDesyncReason =
+  | "messageTailAheadOfThreadSnapshot";
+
 export interface ProviderThreadState {
   threadId: string;
   activeTurnId: string | null;
   isGenerating: boolean;
   requestedTurnId: string | null;
   requestedTurnStatus: ProviderTurnStatus | null;
+  rawRequestedTurnStatus?: ProviderTurnStatus | null;
+  desynced?: boolean;
+  desyncReason?: ProviderThreadDesyncReason | null;
+  snapshotAt?: string | null;
+  latestMessageAt?: string | null;
 }
 
 export interface ProviderSessionContext {
@@ -187,6 +197,11 @@ export interface ProviderUserInputRequest {
   turnId: string;
   itemId: string;
   questions: ProviderUserInputQuestion[];
+}
+
+export interface ProviderRuntimeStateSnapshot {
+  threadState: ProviderThreadState | null;
+  pendingUserInputRequests: ProviderUserInputRequest[];
 }
 
 export interface ProviderUserInputResponsePayload {
