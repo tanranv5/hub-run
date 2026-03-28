@@ -155,6 +155,14 @@ function resolveRequestedTurnSnapshot(props: {
     };
   }
   if (requestedTurnId) {
+    // 若请求的 turn 已中断，且存在更新的 turn，切换至最新 turn
+    if (
+      requestedTurnStatus === "interrupted" &&
+      latestTurnId &&
+      latestTurnId !== requestedTurnId
+    ) {
+      return { turnId: latestTurnId, turnStatus: latestTurnStatus };
+    }
     return {
       turnId: requestedTurnId,
       turnStatus: requestedTurnStatus,

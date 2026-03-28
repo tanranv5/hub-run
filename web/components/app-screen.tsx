@@ -111,7 +111,7 @@ export default function AppScreen(props: AppScreenProps) {
             onSelectProject={onSelectProject}
             onSelectSession={onSelectSession}
           />
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[var(--bg)]">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--bg)]">
             <ConversationPanel
               contextDetails={contextDetails}
               contextLabel={contextLabel}
