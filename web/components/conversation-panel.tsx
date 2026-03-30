@@ -158,7 +158,7 @@ export const ConversationBody = memo(function ConversationBody(props: Conversati
     summary,
   } = props;
 
-  if (loading && messages.length === 0) {
+  if (loading) {
     return (
       <div className="flex min-h-0 flex-1 flex-col">
         <PanelLoadingState label="正在加载记录..." />
