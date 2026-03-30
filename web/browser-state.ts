@@ -61,6 +61,7 @@ export async function loadProviderBrowser(
 
   return {
     sessions,
+    deletedSessionIds: new Set<string>(),
     nextBefore: page.nextBefore,
     totalSessionCount: page.totalCount ?? sessions.length,
     selectedSessionId,
