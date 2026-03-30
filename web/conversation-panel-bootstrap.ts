@@ -131,7 +131,7 @@ export function bootstrapConversationPanel(props: {
     return;
   }
   setState(
-    cached ? cached.state : { ...INITIAL_PANEL_STATE, loading: true },
+    cached ? cached.state : (current) => ({ ...current, ...INITIAL_PANEL_STATE, loading: true }),
   );
   if (cached?.skipReloadOnce) {
     writeSessionPanelCache(
