@@ -4,6 +4,7 @@ const MAX_SESSION_TITLE_LENGTH = 30;
 export const SESSION_LIST_ITEM_HEIGHT = 76;
 export const SESSION_LIST_OVERSCAN = 3;
 export const SESSION_LIST_DEFAULT_VIEWPORT_HEIGHT = 480;
+export const SESSION_GROUP_HEADER_HEIGHT = 28;
 
 interface VirtualWindowInput {
   itemCount: number;

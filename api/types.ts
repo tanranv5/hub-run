@@ -32,6 +32,7 @@ export interface ProviderCapabilities {
   threadState: boolean;
   interrupt: boolean;
   userInput: boolean;
+  deleteSession: boolean;
 }
 
 export interface ProviderStatus {
@@ -153,7 +154,9 @@ export type ProviderTurnStatus =
   | "interrupted";
 
 export type ProviderThreadDesyncReason =
-  | "messageTailAheadOfThreadSnapshot";
+  | "messageTailAheadOfThreadSnapshot"
+  | "recentMessagesWithNoSnapshot"
+  | "activeFileWriteWithInterruptedTurn";
 
 export interface ProviderThreadState {
   threadId: string;
@@ -245,6 +248,8 @@ export interface ProviderAdapter {
     requestedTurnId?: string | null,
   ): Promise<ProviderThreadState>;
   getSessionContext?(sessionId: string): Promise<ProviderSessionContext>;
+  getSessionFileMtime?(sessionId: string): Promise<number | null>;
+  deleteSession?(sessionId: string): Promise<void>;
   interruptSession?(sessionId: string): Promise<void>;
   listUserInputRequests?(sessionId: string): Promise<ProviderUserInputRequest[]>;
   submitUserInput?(

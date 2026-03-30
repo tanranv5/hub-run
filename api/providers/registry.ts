@@ -57,6 +57,8 @@ interface AdapterSource {
   supportsInterrupt?: boolean;
   supportsUserInput?: boolean;
   supportsStream?: boolean;
+  deleteSession?: (sessionId: string) => Promise<void>;
+  getSessionFileMtime?: (sessionId: string) => Promise<number | null>;
   getThreadState?: (
     sessionId: string,
     requestedTurnId?: string | null,
@@ -116,6 +118,7 @@ function getCapabilities(
   supportsThreadState: boolean,
   supportsInterrupt: boolean,
   supportsUserInput: boolean,
+  supportsDeleteSession: boolean,
 ): ProviderCapabilities {
   const createSessionAvailable = pathExists && canCreateSession && sendAvailable;
   return {
@@ -129,6 +132,7 @@ function getCapabilities(
     threadState: pathExists && sendAvailable && supportsThreadState,
     interrupt: pathExists && sendAvailable && supportsInterrupt,
     userInput: pathExists && sendAvailable && supportsUserInput,
+    deleteSession: pathExists && supportsDeleteSession,
   };
 }
 
@@ -181,6 +185,7 @@ function createProviderSummary(
       source.supportsThreadState === true,
       source.supportsInterrupt === true,
       source.supportsUserInput === true,
+      source.deleteSession != null,
     ),
     status: getStatus(pathExists, source.rootPath, sendAvailable),
   };
@@ -258,6 +263,16 @@ function createAdapter(
     ...(source.getConversationStreamCursor
       ? {
           getConversationStreamCursor: source.getConversationStreamCursor,
+        }
+      : {}),
+    ...(source.getSessionFileMtime
+      ? {
+          getSessionFileMtime: source.getSessionFileMtime,
+        }
+      : {}),
+    ...(source.deleteSession
+      ? {
+          deleteSession: source.deleteSession,
         }
       : {}),
   };

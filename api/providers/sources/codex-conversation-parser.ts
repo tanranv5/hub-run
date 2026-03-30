@@ -60,6 +60,7 @@ export function parseCodexConversationEntries(
     parseCodexRecord(state, sessionId, entry.offset, record);
   }
 
+  // Flush any trailing task_started messages that were never followed by an assistant response
   flushPendingStatusMessages(state);
   return state.messages;
 }

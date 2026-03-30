@@ -8,6 +8,7 @@ import { mergePreferredSession } from "./ui-preferences";
 
 export interface BrowserState {
   sessions: SessionSummary[];
+  deletedSessionIds: Set<string>;
   nextBefore: string | null;
   totalSessionCount?: number | null;
   selectedSessionId: string | null;
@@ -19,6 +20,7 @@ export interface BrowserState {
 
 export const INITIAL_BROWSER: BrowserState = {
   sessions: [],
+  deletedSessionIds: new Set(),
   nextBefore: null,
   totalSessionCount: 0,
   selectedSessionId: null,

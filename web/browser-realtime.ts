@@ -43,7 +43,10 @@ export function applySessionsSnapshot(
     current.sessions.find((session) => session.id === current.selectedSessionId) ?? null,
     project,
   );
-  const sessions = mergePreferredSession(snapshot.sessions, preferredSession);
+  const snapshotSessions = snapshot.sessions.filter(
+    (session) => !current.deletedSessionIds.has(session.id),
+  );
+  const sessions = mergePreferredSession(snapshotSessions, preferredSession);
   return {
     ...current,
     sessions,
@@ -69,7 +72,9 @@ export function applySessionsUpdate(
     sessions.delete(removedId);
   }
   for (const session of update.upserts) {
-    sessions.set(session.id, session);
+    if (!current.deletedSessionIds.has(session.id)) {
+      sessions.set(session.id, session);
+    }
   }
 
   const nextSessions = [...sessions.values()].sort(

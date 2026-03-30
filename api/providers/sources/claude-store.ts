@@ -1,3 +1,4 @@
+import { mkdir, readFile, rename, writeFile } from "fs/promises";
 import { join } from "path";
 import type { ConversationPage, SessionSummary } from "../../types";
 import {
@@ -192,6 +193,38 @@ export function createClaudeSessionStore(rootPath: string) {
       }
       const snapshot = await readSnapshot(state, sessionId, sessionFile);
       return snapshot.project;
+    },
+    deleteSession: async (sessionId: string) => {
+      const sessionFiles = await loadSessionFiles(state, projectsDir, historyPath);
+      const sessionFile = sessionFiles.get(sessionId);
+      if (sessionFile) {
+        const archivedDir = join(rootPath, "archived_sessions");
+        await mkdir(archivedDir, { recursive: true });
+        const fileName = sessionFile.filePath.split("/").pop() ?? `${sessionId}.jsonl`;
+        await rename(sessionFile.filePath, join(archivedDir, fileName));
+      }
+      try {
+        const raw = await readFile(historyPath, "utf-8");
+        const filtered = raw
+          .split("\n")
+          .filter((line) => {
+            if (!line.trim()) return false;
+            try {
+              const parsed = JSON.parse(line) as { sessionId?: string };
+              return parsed.sessionId !== sessionId;
+            } catch {
+              return true;
+            }
+          })
+          .join("\n");
+        await writeFile(historyPath, filtered + "\n", "utf-8");
+      } catch {
+        // history removal is best-effort
+      }
+      state.sessionFiles = null;
+      state.historyEntries = null;
+      state.knownProjects = null;
+      state.snapshotCache.delete(sessionId);
     },
   };
 }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ProviderSummary } from "../api/types";
-import { createProviderSession, sendConversationMessage } from "./api";
+import { createProviderSession, deleteProviderSession, sendConversationMessage } from "./api";
 import { getStoredControlPreference, getStoredSelectedSession, persistProviderControls, persistSelectedSession, resolveContextDrivenControls, resolveUserSelectedControls } from "./app-preferences";
 import { INITIAL_BROWSER, loadProviderBrowser } from "./browser-state";
 import {
@@ -269,6 +269,22 @@ export default function App() {
     }
   }
 
+  async function handleDeleteSession(sessionId: string) {
+    if (!selectedProvider) return;
+    try {
+      await deleteProviderSession(selectedProvider.id, sessionId);
+      setBrowser((current) => ({
+        ...current,
+        sessions: current.sessions.filter((s) => s.id !== sessionId),
+        deletedSessionIds: new Set([...current.deletedSessionIds, sessionId]),
+        selectedSessionId:
+          current.selectedSessionId === sessionId ? null : current.selectedSessionId,
+      }));
+    } catch (cause) {
+      console.error("Failed to delete session:", cause);
+    }
+  }
+
   function handleSelectEffort(value: typeof controls.selectedEffort) {
     if (!selectedProvider) {
       return;
@@ -365,6 +381,9 @@ export default function App() {
       onLogout={() => handleLogout(setBootstrap)}
       onMessageSent={async (sessionId) => {
         const requestVersion = browserRequestVersionRef.current;
+        const resolvedFromDraft = browser.sessions.some(
+          (s) => s.id === browser.selectedSessionId && s.isDraft,
+        );
         setBrowser((current) => {
           // Only switch if still on the originating session or a draft being resolved
           const currentIsDraft = current.sessions.some(
@@ -376,7 +395,10 @@ export default function App() {
           }
           return applySentSessionSelection(current, sessionId);
         });
-        if (!selectedProvider || selectedProvider.capabilities.stream) {
+        if (!selectedProvider) {
+          return;
+        }
+        if (selectedProvider.capabilities.stream && !resolvedFromDraft) {
           return;
         }
         await refreshBrowserState({
@@ -398,6 +420,9 @@ export default function App() {
       onSelectProvider={(providerId) => setBootstrap((current) => ({ ...current, selectedProviderId: providerId }))}
       onSelectSession={(sessionId) => {
         handleSelectSession(sessionId).catch(console.error);
+      }}
+      onDeleteSession={(sessionId) => {
+        handleDeleteSession(sessionId).catch(console.error);
       }}
       onToggleDesktopSidebar={() => setDesktopSidebarOpen((value) => !value)}
       panelRefreshVersion={panelRefreshVersion}

@@ -21,6 +21,7 @@ export function createClaudeProvider(rootPath: string) {
     readProjects: store.listProjects,
     listModels: async (): Promise<ProviderModelOption[]> => [],
     readConversationPage: store.getConversationPage,
+    deleteSession: store.deleteSession,
     createSession: async () => {
       throw new Error("provider does not support creating sessions");
     },
