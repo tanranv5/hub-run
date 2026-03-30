@@ -8,6 +8,7 @@ import type {
 
 const STATE_DESYNC_TOLERANCE_MS = 5_000;
 const ACTIVE_MESSAGE_TOLERANCE_MS = 30_000;
+const ACTIVE_FILE_WRITE_TOLERANCE_MS = 60_000;
 
 function isTerminalTurnStatus(
   status: ProviderTurnStatus | null,
@@ -57,6 +58,26 @@ export async function resolveProviderThreadStateSnapshot(props: {
   }
 
   const snapshotAt = parseTimestamp(threadState.snapshotAt ?? null);
+
+  // Check file mtime: if the .jsonl file was written to recently but the turn
+  // is marked terminal, the process is still running (e.g. via codex resume)
+  // and the app-server turn status is stale.
+  if (adapter.getSessionFileMtime) {
+    const fileMtime = await adapter.getSessionFileMtime(sessionId);
+    if (
+      fileMtime !== null &&
+      fileMtime >= Date.now() - ACTIVE_FILE_WRITE_TOLERANCE_MS
+    ) {
+      return {
+        ...threadState,
+        requestedTurnStatus: null,
+        rawRequestedTurnStatus: threadState.requestedTurnStatus,
+        desynced: true,
+        desyncReason: "activeFileWriteWithInterruptedTurn",
+        latestMessageAt: new Date(fileMtime).toISOString(),
+      } satisfies ProviderThreadState;
+    }
+  }
 
   const page = await adapter.getConversationPage(sessionId, null, 1);
   const latestMessageTimestamp = getLatestMessageTimestamp(page.messages);

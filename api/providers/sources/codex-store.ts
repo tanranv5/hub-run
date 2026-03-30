@@ -1,4 +1,4 @@
-import { stat } from "fs/promises";
+import { mkdir, readFile, rename, stat, writeFile } from "fs/promises";
 import { join } from "path";
 import type { ConversationPage, SessionSummary } from "../../types";
 import {
@@ -41,6 +41,7 @@ interface CodexStoreState {
   historyCache: Map<string, CodexHistoryEntry> | null;
   sessionFiles: Map<string, CodexSessionFile> | null;
   displayCache: Map<string, string>;
+  deletedSessionIds: Set<string>;
 }
 
 const HIDDEN_DISPLAY_VALUES = new Set(["(no prompt text)", "(empty)"]);
@@ -53,6 +54,7 @@ export function createCodexSessionStore(rootPath: string) {
     historyCache: null,
     sessionFiles: null,
     displayCache: new Map(),
+    deletedSessionIds: new Set(),
   };
 
   const unwatchRoot = watchProviderRoot({
@@ -82,7 +84,7 @@ export function createCodexSessionStore(rootPath: string) {
     const sessionIds = new Set<string>([...history.keys(), ...sessionFiles.keys()]);
     const sessions = await Promise.all(
       [...sessionIds]
-        .filter((sessionId) => !hiddenSessionIds.has(sessionId))
+        .filter((sessionId) => !hiddenSessionIds.has(sessionId) && !state.deletedSessionIds.has(sessionId))
         .map(async (sessionId) => {
         const sessionFile = sessionFiles.get(sessionId);
         const historyEntry = history.get(sessionId);
@@ -160,6 +162,44 @@ export function createCodexSessionStore(rootPath: string) {
     getSessionContext: async (sessionId: string) => {
       const filePath = await getSessionFilePath(state, sessionsDir, sessionId);
       return readCodexSessionContext(filePath, sessionId);
+    },
+    getSessionFileMtime: async (sessionId: string) => {
+      const filePath = await getSessionFilePath(state, sessionsDir, sessionId);
+      if (!filePath) return null;
+      return stat(filePath).then((s) => s.mtimeMs).catch(() => null);
+    },
+    deleteSession: async (sessionId: string) => {
+      // Move .jsonl file to archived_sessions
+      const filePath = await getSessionFilePath(state, sessionsDir, sessionId);
+      if (filePath) {
+        const archivedDir = join(rootPath, "archived_sessions");
+        await mkdir(archivedDir, { recursive: true });
+        const fileName = filePath.split("/").pop() ?? `${sessionId}.jsonl`;
+        await rename(filePath, join(archivedDir, fileName));
+      }
+      // Remove from history.jsonl regardless of file existence
+      try {
+        const raw = await readFile(historyPath, "utf-8");
+        const filtered = raw
+          .split("\n")
+          .filter((line) => {
+            if (!line.trim()) return false;
+            try {
+              const parsed = JSON.parse(line) as { session_id?: string };
+              return parsed.session_id !== sessionId;
+            } catch {
+              return true;
+            }
+          })
+          .join("\n");
+        await writeFile(historyPath, filtered + "\n", "utf-8");
+      } catch {
+        // history removal is best-effort
+      }
+      state.sessionFiles = null;
+      state.historyCache = null;
+      state.displayCache.delete(sessionId);
+      state.deletedSessionIds.add(sessionId);
     },
     subscribeSessions: (onChange: () => void) =>
       watchProviderRoot({

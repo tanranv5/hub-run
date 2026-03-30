@@ -37,6 +37,7 @@ interface BrowserSidebarProps {
   onNewSessionCwdChange: (value: string) => void;
   onSelectProject: (value: string | null) => void;
   onSelectSession: (sessionId: string) => void;
+  onDeleteSession?: (sessionId: string) => void;
 }
 
 function SidebarContent(props: Omit<BrowserSidebarProps, "desktopOpen" | "open" | "onClose">) {
@@ -53,6 +54,7 @@ function SidebarContent(props: Omit<BrowserSidebarProps, "desktopOpen" | "open" 
     onNewSessionCwdChange,
     onSelectProject,
     onSelectSession,
+    onDeleteSession,
   } = props;
 
   if (browser.loading && browser.sessions.length === 0) {
@@ -79,6 +81,7 @@ function SidebarContent(props: Omit<BrowserSidebarProps, "desktopOpen" | "open" 
         onNewSessionCwdChange={onNewSessionCwdChange}
         onSelectProject={onSelectProject}
         onSelectSession={onSelectSession}
+        onDeleteSession={onDeleteSession}
       />
       {browser.loading ? (
         <div
@@ -117,6 +120,7 @@ export default function BrowserSidebar(props: BrowserSidebarProps) {
     onNewSessionCwdChange,
     onSelectProject,
     onSelectSession,
+    onDeleteSession,
   } = props;
   const [desktopWidth, setDesktopWidth] = useState(
     DESKTOP_SIDEBAR_DEFAULT_WIDTH,
@@ -188,6 +192,7 @@ export default function BrowserSidebar(props: BrowserSidebarProps) {
             onNewSessionCwdChange={onNewSessionCwdChange}
             onSelectProject={onSelectProject}
             onSelectSession={onSelectSession}
+            onDeleteSession={onDeleteSession}
           />
         </aside>
         <button
@@ -221,6 +226,7 @@ export default function BrowserSidebar(props: BrowserSidebarProps) {
               onNewSessionCwdChange={onNewSessionCwdChange}
               onSelectProject={onSelectProject}
               onSelectSession={onSelectSession}
+              onDeleteSession={onDeleteSession}
             />
           </div>
         </div>

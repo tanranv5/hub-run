@@ -2,10 +2,12 @@ import type {
   ProviderReasoningEffort,
   ProviderSessionContext,
 } from "../../types";
-import { readJsonTailWindow } from "../jsonl-window";
+import { readJsonTailWindow, readJsonLinesWithOffsets } from "../jsonl-window";
 import { safeJsonParse } from "../shared";
+import { readFile } from "fs/promises";
 
 const MINIMUM_CONTEXT_LINES = 128;
+const PREFIX_BYTES = 128 * 1024; // first 128 KB covers session_meta + first few turn_context entries
 
 export async function readCodexSessionContext(
   filePath: string | null,
@@ -16,8 +18,19 @@ export async function readCodexSessionContext(
   }
 
   try {
-    const { lines } = await readJsonTailWindow(filePath, MINIMUM_CONTEXT_LINES);
-    return parseCodexSessionContext(lines.map((entry) => entry.line), sessionId);
+    const [{ lines: tailLines }, prefixText] = await Promise.all([
+      readJsonTailWindow(filePath, MINIMUM_CONTEXT_LINES),
+      readFile(filePath, "utf-8").then((t) => t.slice(0, PREFIX_BYTES)).catch(() => ""),
+    ]);
+    const prefixLines = prefixText
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+    const tailLineStrings = tailLines.map((entry) => entry.line);
+    // Combine prefix + tail; parseCodexSessionContext scans in reverse so
+    // tail token-counts are found first, then prefix model/effort.
+    const allLines = [...prefixLines, ...tailLineStrings];
+    return parseCodexSessionContext(allLines, sessionId);
   } catch {
     return createEmptyContext(sessionId);
   }
@@ -34,8 +47,29 @@ function parseCodexSessionContext(
 
   for (let index = lines.length - 1; index >= 0; index -= 1) {
     const parsed = safeJsonParse<{ type?: unknown; payload?: unknown }>(lines[index] ?? "");
-    const payload = parsed?.payload;
-    if (parsed?.type !== "event_msg" || !payload || typeof payload !== "object") {
+    if (!parsed) {
+      continue;
+    }
+
+    const outerType = typeof parsed.type === "string" ? parsed.type : "";
+
+    // turn_context is a top-level record (not wrapped in event_msg)
+    if (outerType === "turn_context") {
+      const tc = parsed.payload as Record<string, unknown> | undefined;
+      if (tc && typeof tc === "object") {
+        modelId ??= readString(tc.model);
+        reasoningEffort ??= readReasoningEffort(
+          readNestedValue(tc, ["collaboration_mode", "settings", "reasoning_effort"]),
+        );
+      }
+    }
+
+    if (outerType !== "event_msg") {
+      continue;
+    }
+
+    const payload = parsed.payload;
+    if (!payload || typeof payload !== "object") {
       continue;
     }
 

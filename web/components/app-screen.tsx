@@ -36,6 +36,7 @@ interface AppScreenProps {
   onSelectProject: (value: string | null) => void;
   onSelectProvider: (providerId: string) => void;
   onSelectSession: (sessionId: string) => void;
+  onDeleteSession?: (sessionId: string) => void;
   onToggleDesktopSidebar: () => void;
   panelRefreshVersion: number;
   provider: ProviderSummary | null;
@@ -70,6 +71,7 @@ export default function AppScreen(props: AppScreenProps) {
     onSelectProject,
     onSelectProvider,
     onSelectSession,
+    onDeleteSession,
     onToggleDesktopSidebar,
     panelRefreshVersion,
     provider,
@@ -110,6 +112,7 @@ export default function AppScreen(props: AppScreenProps) {
             onNewSessionCwdChange={onNewSessionCwdChange}
             onSelectProject={onSelectProject}
             onSelectSession={onSelectSession}
+            onDeleteSession={onDeleteSession}
           />
           <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--bg)]">
             <ConversationPanel

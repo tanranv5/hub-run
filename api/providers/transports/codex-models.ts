@@ -5,8 +5,8 @@ const MINI_REASONING = ["medium", "high"] as const;
 
 const STATIC_CODEX_MODELS: ProviderModelOption[] = [
   {
-    id: "gpt-5.3-codex",
-    displayName: "gpt-5.3-codex",
+    id: "gpt-5.4",
+    displayName: "gpt-5.4",
     description: "Latest frontier agentic coding model.",
     isDefault: true,
     hidden: false,
@@ -14,8 +14,8 @@ const STATIC_CODEX_MODELS: ProviderModelOption[] = [
     supportedReasoningEfforts: [...FULL_REASONING],
   },
   {
-    id: "gpt-5.4",
-    displayName: "gpt-5.4",
+    id: "gpt-5.3-codex",
+    displayName: "gpt-5.3-codex",
     description: "Latest frontier agentic coding model.",
     isDefault: false,
     hidden: false,

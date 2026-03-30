@@ -232,6 +232,20 @@ export async function getProviderSessionContext(
   return readJson<ProviderSessionContext>(response);
 }
 
+export async function deleteProviderSession(
+  providerId: ProviderId,
+  sessionId: string,
+): Promise<{ ok: boolean }> {
+  const response = await fetch(
+    `/api/providers/${providerId}/sessions/${sessionId}`,
+    {
+      method: "DELETE",
+      credentials: "include",
+    },
+  );
+  return readJson<{ ok: boolean }>(response);
+}
+
 export async function interruptProviderSession(
   providerId: ProviderId,
   sessionId: string,

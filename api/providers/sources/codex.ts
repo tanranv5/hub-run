@@ -44,6 +44,8 @@ export function createCodexProvider(rootPath: string) {
     getConversationStream: store.getConversationStream,
     getConversationStreamCursor: store.getConversationStreamCursor,
     getSessionContext: store.getSessionContext,
+    getSessionFileMtime: store.getSessionFileMtime,
+    deleteSession: store.deleteSession,
     createSession: async (input: CreateSessionInput) => {
       const text = requireCreateText(input);
       const threadId = await createCodexThread({

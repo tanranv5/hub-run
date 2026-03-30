@@ -84,6 +84,9 @@ export function resolveConversationStatus(props: {
 
   // 7. 状态同步中
   if (threadState?.desynced) {
+    if (threadState.desyncReason === "activeFileWriteWithInterruptedTurn") {
+      return { phase: "generating", label: "生成中", tone: "active" };
+    }
     return { phase: "syncing", label: "状态同步中", tone: "active" };
   }
 

@@ -16,6 +16,9 @@ export function getConversationSessionStatusLabel(
     return "当前会话只读";
   }
   if (threadState?.desynced) {
+    if (threadState.desyncReason === "activeFileWriteWithInterruptedTurn") {
+      return "当前会话生成中";
+    }
     return "当前会话状态同步中";
   }
   if (threadState?.isGenerating) {

@@ -194,4 +194,27 @@ export function registerProviderStateRoutes(
       }
     },
   );
+
+  router.delete("/:providerId/sessions/:sessionId", async (c) => {
+    const rejected = rejectInvalidWriteOrigin(c, config);
+    if (rejected) {
+      return rejected;
+    }
+
+    const adapter = findAdapter(registry, c.req.param("providerId"));
+    if (!adapter) {
+      return c.json(providerNotFound(), 404);
+    }
+    if (!getProviderSummary(adapter).capabilities.deleteSession || !adapter.deleteSession) {
+      return c.json(unsupportedCapability("Provider does not support session deletion"), 400);
+    }
+
+    try {
+      await adapter.deleteSession(c.req.param("sessionId"));
+      return c.json({ ok: true });
+    } catch (error) {
+      const resolved = resolveProviderRouteError(error, "Failed to delete session");
+      return c.json({ error: resolved.error }, resolved.status);
+    }
+  });
 }

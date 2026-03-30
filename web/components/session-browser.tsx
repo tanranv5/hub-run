@@ -29,6 +29,7 @@ interface SessionBrowserProps {
   onLoadMore: () => void;
   onSelectProject: (value: string | null) => void;
   onSelectSession: (sessionId: string) => void;
+  onDeleteSession?: (sessionId: string) => void;
 }
 
 function SearchBar(props: {
@@ -180,6 +181,7 @@ export default function SessionBrowser(props: SessionBrowserProps) {
     onLoadMore,
     onSelectProject,
     onSelectSession,
+    onDeleteSession,
   } = props;
   const [search, setSearch] = useState("");
 
@@ -213,6 +215,7 @@ export default function SessionBrowser(props: SessionBrowserProps) {
           sessions={filteredSessions}
           selectedSessionId={selectedSessionId}
           onSelectSession={onSelectSession}
+          onDeleteSession={onDeleteSession}
         />
       ) : (
         <EmptyState loading={loading} />
