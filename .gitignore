@@ -3,3 +3,6 @@
 node_modules/
 dist/
 .DS_Store
+/.claude/
+/AGENTS.md
+/agent.md
