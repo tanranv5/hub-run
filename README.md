@@ -13,7 +13,8 @@
 </p>
 
 <p align="center">
-  <img src="./img/phone.png" alt="hub-run phone screenshot" width="32%" />
+  <img src="./img/phone.png" alt="hub-run phone screenshot 1" width="26%" />
+  <img src="./img/phone2.png" alt="hub-run phone screenshot 2" width="26%" />
 </p>
 
 ---
@@ -81,6 +82,16 @@ ASR provider interface is abstract — alternative providers (Whisper, etc.) can
 ## Quick start
 
 ```bash
+# Install from npm
+npm install -g hub-run
+
+# Run with defaults (127.0.0.1:12001)
+hub-run
+
+# Or run with explicit password / port
+hub-run --password your-password --port 12125
+
+# Build from source
 pnpm install
 pnpm build
 
@@ -96,7 +107,7 @@ pnpm dev
 ### Service management
 
 ```bash
-pnpm runtime:install    # register as system service
+pnpm runtime:install    # register + bootstrap the launchd user agent
 pnpm runtime:start      # start
 pnpm runtime:stop       # stop
 pnpm runtime:restart    # restart
@@ -108,6 +119,8 @@ pnpm runtime:uninstall  # uninstall
 ### macOS daemon mode
 
 On macOS, `pnpm runtime:install` registers hub-run as a `launchd` user agent so it can keep running in the background without leaving a terminal open. The generated runtime config is stored under `~/.config/hub-run/`, and the LaunchAgent plist is written to `~/Library/LaunchAgents/`.
+
+If you want login-time auto start, `pnpm runtime:install` is the switch: it writes the LaunchAgent, bootstraps it immediately, and the generated plist enables both `RunAtLoad` and `KeepAlive`. That means hub-run will be started automatically after you sign in, and `launchd` will bring it back if the process exits unexpectedly. If you do not want auto start, run `pnpm runtime:uninstall` and launch `hub-run` manually when needed.
 
 Typical verification flow:
 

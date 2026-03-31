@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from "react";
 import { getProviderSessions } from "./api";
 import type { BrowserState } from "./browser-state";
 import {
+  INITIAL_BROWSER,
   loadProviderBrowser,
   SESSION_PAGE_SIZE,
 } from "./browser-state";
@@ -109,6 +110,13 @@ export async function loadMoreBrowserSessions(props: {
 
 export function shouldRefreshBrowserAfterSend(provider: ProviderSummary): boolean {
   return !provider.capabilities.stream;
+}
+
+export function createLoadingBrowserState(_current: BrowserState): BrowserState {
+  return {
+    ...INITIAL_BROWSER,
+    loading: true,
+  };
 }
 
 export function applySentSessionSelection(

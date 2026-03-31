@@ -81,3 +81,13 @@ test("sanitize conversation text removes trailing oai memory citation block", ()
 
   assert.equal(text, "已按 codex-run 的逻辑修好了。");
 });
+
+test("sanitize conversation text removes plain image wrapper lines and placeholder labels", () => {
+  const text = sanitizeConversationText(
+    "<image>\n" +
+      "</image>\n" +
+      "[Image #1]请分析这个截图里的报错",
+  );
+
+  assert.equal(text, "请分析这个截图里的报错");
+});

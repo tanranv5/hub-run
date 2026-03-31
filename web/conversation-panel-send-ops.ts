@@ -16,6 +16,7 @@ import {
 } from "./conversation-panel-send";
 import { isDraftSession } from "./draft-session";
 import {
+  INITIAL_PANEL_STATE,
   type PanelState,
   type SendConversationResult,
 } from "./conversation-panel-state-types";
@@ -90,7 +91,7 @@ export async function sendConversation(props: {
 
   applyAcceptedSendResult(props, result);
   try {
-    if (await redirectDraftSessionIfNeeded(props, result)) {
+    if (await redirectDraftSessionIfNeeded(props, result, baselineMessages, text)) {
       return;
     }
     await finishSendResult(props, result, baselineMessages);
@@ -123,15 +124,83 @@ function applyAcceptedSendResult(
 async function redirectDraftSessionIfNeeded(
   props: Pick<
     Parameters<typeof sendConversation>[0],
-    "onMessageSent" | "session"
+    "onMessageSent" | "providerId" | "session" | "updateDetachedSession"
   >,
   result: SendConversationResult,
+  baselineMessages: ConversationMessage[],
+  text: string,
 ) {
   if (!isDraftSession(props.session) || result.sessionId === props.session.id) {
     return false;
   }
+  persistDraftAcceptedSession(props, result, baselineMessages, text);
   await props.onMessageSent(result.sessionId);
   return true;
+}
+
+function persistDraftAcceptedSession(
+  props: Pick<
+    Parameters<typeof sendConversation>[0],
+    "providerId" | "updateDetachedSession"
+  >,
+  result: SendConversationResult,
+  baselineMessages: ConversationMessage[],
+  text: string,
+) {
+  if (!props.updateDetachedSession) {
+    return;
+  }
+
+  const acceptedAt = Date.now();
+  const pendingMessages = appendOptimisticUserMessage(
+    baselineMessages,
+    text,
+    acceptedAt,
+  );
+  const submittedState = beginPanelSendLifecycle(
+    {
+      ...INITIAL_PANEL_STATE,
+      messages: pendingMessages,
+      error: null,
+    },
+    props.providerId,
+    result.sessionId,
+    acceptedAt,
+  );
+  const acceptedState = acceptPanelSendLifecycle(
+    submittedState,
+    props.providerId,
+    result.sessionId,
+    result.turnId,
+    acceptedAt,
+  );
+  const immediateOutput = result.outputText?.trim();
+  props.updateDetachedSession({
+    sessionId: result.sessionId,
+    updateState: () => {
+      if (!immediateOutput) {
+        return acceptedState;
+      }
+      const nextMessages = appendImmediateAssistantMessage(
+        acceptedState.messages,
+        immediateOutput,
+        acceptedAt,
+      );
+      const synced = syncPanelSendLifecycle(
+        acceptedState,
+        props.providerId,
+        nextMessages,
+        acceptedAt,
+      );
+      return {
+        ...synced,
+        messages: nextMessages,
+        sendLifecycle: synced.sendLifecycle,
+        sending: synced.sending,
+        sendStatus: synced.sendStatus,
+      };
+    },
+  });
 }
 
 async function finishSendResult(

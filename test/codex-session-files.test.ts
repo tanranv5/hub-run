@@ -165,6 +165,58 @@ test("codex first user snippet skips image placeholder blocks and keeps later te
   }
 });
 
+test("codex first user snippet skips turn_aborted wrapper messages and keeps the first real prompt", async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), "hub-run-codex-session-"));
+  const filePath = join(tempDir, "session.jsonl");
+  const lines = [
+    JSON.stringify({
+      type: "session_meta",
+      payload: {
+        id: "session-turn-aborted",
+        cwd: "/Users/tanran/aiCode/cw/hub-run",
+      },
+    }),
+    JSON.stringify({
+      type: "response_item",
+      payload: {
+        type: "message",
+        role: "user",
+        content: [
+          {
+            type: "input_text",
+            text:
+              "<turn_aborted>\n" +
+              "The user interrupted the previous turn on purpose. Any running unified exec processes may still be running in the background.\n" +
+              "</turn_aborted>",
+          },
+        ],
+      },
+    }),
+    JSON.stringify({
+      type: "response_item",
+      payload: {
+        type: "message",
+        role: "user",
+        content: [
+          {
+            type: "input_text",
+            text: "app-server 可以发生图片没？看看现在codex的发送",
+          },
+        ],
+      },
+    }),
+  ];
+
+  await writeFile(filePath, `${lines.join("\n")}\n`, "utf-8");
+
+  try {
+    const display = await readCodexFirstUserSnippet(filePath);
+    assert.equal(display, "app-server 可以发生图片没？看看现在codex的发送");
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
 test("codex conversation parser keeps tool events, reasoning, and context statuses but drops token telemetry noise", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "hub-run-codex-conversation-"));
   const filePath = join(tempDir, "session.jsonl");
@@ -281,6 +333,49 @@ test("codex conversation parser keeps tool events, reasoning, and context status
   }
 });
 
+test("codex conversation parser keeps input_image blocks and skips wrapper markers", async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), "hub-run-codex-conversation-"));
+  const filePath = join(tempDir, "session-image.jsonl");
+  const lines = [
+    JSON.stringify({
+      type: "session_meta",
+      payload: { id: "session-image-2", cwd: "/workspace/demo" },
+    }),
+    JSON.stringify({
+      type: "response_item",
+      timestamp: "2026-03-31T00:00:01.000Z",
+      payload: {
+        type: "message",
+        role: "user",
+        content: [
+          { type: "input_text", text: "帮我看看这个截图" },
+          { type: "input_text", text: "<image>" },
+          { type: "input_image", image_url: "data:image/png;base64,AAAA" },
+          { type: "input_text", text: "</image>" },
+          { type: "input_text", text: "重点看右上角报错" },
+        ],
+      },
+    }),
+  ];
+
+  await writeFile(filePath, `${lines.join("\n")}\n`, "utf-8");
+
+  try {
+    const messages = await readCodexConversation(filePath, "session-image-2");
+    assert.deepEqual(messages.map((message) => message.kind), [
+      "text",
+      "image",
+      "text",
+    ]);
+    assert.equal(messages[0]?.text, "帮我看看这个截图");
+    assert.equal(messages[1]?.block?.type, "image");
+    assert.equal(messages[1]?.block?.imageUrl, "data:image/png;base64,AAAA");
+    assert.equal(messages[2]?.text, "重点看右上角报错");
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
 test("codex conversation parser keeps task_started after the triggering user message", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "hub-run-codex-task-started-"));
   const filePath = join(tempDir, "session.jsonl");
@@ -327,6 +422,46 @@ test("codex conversation parser keeps task_started after the triggering user mes
     assert.equal(messages[1]?.role, "system");
     assert.match(messages[1]?.text ?? "", /任务已开始/);
     assert.equal(messages[2]?.role, "assistant");
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("codex conversation parser renders task_complete as a terminal status message", async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), "hub-run-codex-task-complete-"));
+  const filePath = join(tempDir, "session.jsonl");
+  const lines = [
+    JSON.stringify({
+      type: "session_meta",
+      payload: { id: "session-4", cwd: "/workspace/demo" },
+    }),
+    JSON.stringify({
+      type: "response_item",
+      timestamp: "2026-03-19T00:20:00.000Z",
+      payload: {
+        type: "message",
+        role: "assistant",
+        content: [{ type: "output_text", text: "已经处理完成。" }],
+      },
+    }),
+    JSON.stringify({
+      type: "event_msg",
+      timestamp: "2026-03-19T00:20:01.000Z",
+      payload: {
+        type: "task_complete",
+        turn_id: "turn-1",
+      },
+    }),
+  ];
+
+  await writeFile(filePath, `${lines.join("\n")}\n`, "utf-8");
+
+  try {
+    const messages = await readCodexConversation(filePath, "session-4");
+    assert.equal(messages.length, 2);
+    assert.equal(messages[1]?.role, "system");
+    assert.equal(messages[1]?.title, "status");
+    assert.equal(messages[1]?.text, "任务已完成（turn=turn-1）");
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }

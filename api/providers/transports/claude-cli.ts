@@ -151,6 +151,7 @@ function runClaudeSendProcess(
   input: ClaudeRunProcessInput,
   runtime: ClaudeSendRuntimeOptions,
 ): Promise<ClaudeSendResult> {
+  const action = describeClaudeAction(input.mode);
   return new Promise((resolve, reject) => {
     const child = spawnClaudeCli(input);
     const stdout: string[] = [];
@@ -181,21 +182,13 @@ function runClaudeSendProcess(
 
     timeoutTimer = setTimeout(() => {
       settle(() => {
-        reject(new Error("claude send timed out"));
+        reject(new Error(`claude ${action} timed out`));
       });
       terminateClaudeChild(child, runtime.forceKillGraceMs, (timer) => {
         forceKillTimer = timer;
       });
     }, runtime.timeoutMs);
-
-    child.stdout.setEncoding("utf-8");
-    child.stdout.on("data", (chunk: string) => {
-      stdout.push(chunk);
-    });
-    child.stderr.setEncoding("utf-8");
-    child.stderr.on("data", (chunk: string) => {
-      stderr.push(chunk);
-    });
+    collectClaudeProcessOutput(child, stdout, stderr);
     child.on("error", (error) => {
       settle(() => {
         reject(error);
@@ -210,7 +203,7 @@ function runClaudeSendProcess(
         if (code !== 0) {
           reject(
             new Error(
-              `claude send failed: ${readClaudeFailureReason(stdout, stderr, signal)}`,
+              `claude ${action} failed: ${readClaudeFailureReason(stdout, stderr, signal)}`,
             ),
           );
           return;
@@ -221,6 +214,25 @@ function runClaudeSendProcess(
       });
     });
   });
+}
+
+function collectClaudeProcessOutput(
+  child: ReturnType<typeof spawn>,
+  stdout: string[],
+  stderr: string[],
+) {
+  child.stdout.setEncoding("utf-8");
+  child.stdout.on("data", (chunk: string) => {
+    stdout.push(chunk);
+  });
+  child.stderr.setEncoding("utf-8");
+  child.stderr.on("data", (chunk: string) => {
+    stderr.push(chunk);
+  });
+}
+
+function describeClaudeAction(mode: ClaudeSessionMode): "create" | "send" {
+  return mode === "create" ? "create" : "send";
 }
 
 function spawnClaudeCli(

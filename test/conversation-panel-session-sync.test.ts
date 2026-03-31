@@ -95,3 +95,42 @@ test("applySessionPanelUpdate falls back to cached session snapshot when target 
     "恢复后的草稿",
   );
 });
+
+test("applySessionPanelUpdate can write the accepted state into a different target session", () => {
+  const cache = new Map<string, SessionPanelCacheEntry>();
+
+  const result = applySessionPanelUpdate({
+    activeProviderId: "claude",
+    activeSessionId: "draft:session-1",
+    cache,
+    currentDraft: "",
+    currentState: INITIAL_PANEL_STATE,
+    providerId: "claude",
+    sessionId: "draft:session-1",
+    update: {
+      sessionId: "claude-session-real-1",
+      updateState: (state) => ({
+        ...state,
+        messages: [
+          ...state.messages,
+          {
+            id: "msg-accepted",
+            role: "assistant",
+            kind: "text",
+            text: "CLI 已经返回首条回复",
+          },
+        ],
+      }),
+    },
+  });
+
+  assert.equal(result.isActive, false);
+  assert.equal(
+    cache.get(createSessionPanelCacheKey("claude", "claude-session-real-1"))?.state.messages[0]?.text,
+    "CLI 已经返回首条回复",
+  );
+  assert.equal(
+    cache.has(createSessionPanelCacheKey("claude", "draft:session-1")),
+    false,
+  );
+});

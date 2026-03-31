@@ -3,6 +3,7 @@ import { rejectInvalidWriteOrigin } from "../auth";
 import type { RuntimeConfig } from "../config";
 import { paginateSessions } from "../providers/shared";
 import type {
+  CreateSessionResult,
   ProviderAdapter,
   ProviderId,
   ProviderReasoningEffort,
@@ -62,6 +63,17 @@ function parseOptionalEffort(
   }
 
   return undefined;
+}
+
+function buildCreateSessionPayload(result: CreateSessionResult) {
+  return {
+    ok: true,
+    sessionId: result.sessionId,
+    turnId: result.turnId,
+    ...("outputText" in result
+      ? { outputText: result.outputText ?? null }
+      : {}),
+  };
 }
 
 export function createProvidersRouter(
@@ -175,15 +187,10 @@ export function createProvidersRouter(
         ...(model !== undefined ? { model } : {}),
         ...(effort !== undefined ? { effort } : {}),
       });
-      return c.json({
-        ok: true,
-        sessionId: result.sessionId,
-        turnId: result.turnId,
-      });
+      return c.json(buildCreateSessionPayload(result));
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to create session";
-      return c.json({ error: { code: "INTERNAL_ERROR", message } }, 500);
+      const resolved = resolveProviderRouteError(error, "Failed to create session");
+      return c.json({ error: resolved.error }, resolved.status);
     }
   });
 

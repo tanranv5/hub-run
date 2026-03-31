@@ -8,6 +8,7 @@ import {
 } from "../web/browser-state";
 import {
   applySentSessionSelection,
+  createLoadingBrowserState,
   loadMoreBrowserSessions,
   refreshBrowserState,
   shouldRefreshBrowserAfterSend,
@@ -221,4 +222,33 @@ test("stream-backed providers do not need a browser reload after send", () => {
     }),
     true,
   );
+});
+
+test("provider switch clears stale browser sessions before the next provider loads", () => {
+  const nextState = createLoadingBrowserState({
+    ...INITIAL_BROWSER,
+    loading: false,
+    nextBefore: "cursor-old",
+    totalSessionCount: 9,
+    selectedSessionId: "session-old",
+    deletedSessionIds: new Set(["session-old"]),
+    sessions: [
+      {
+        id: "session-old",
+        display: "旧 provider 会话",
+        timestamp: 10,
+        project: "/tmp/old-provider",
+        projectName: "old-provider",
+      },
+    ],
+  });
+
+  assert.deepEqual(nextState.sessions, []);
+  assert.equal(nextState.selectedSessionId, null);
+  assert.equal(nextState.nextBefore, null);
+  assert.equal(nextState.totalSessionCount, 0);
+  assert.equal(nextState.deletedSessionIds.size, 0);
+  assert.equal(nextState.loading, true);
+  assert.equal(nextState.loadingMore, false);
+  assert.equal(nextState.error, null);
 });

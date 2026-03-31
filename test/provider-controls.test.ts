@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { ProviderModelOption } from "../api/types";
 import {
+  createLoadingProviderControls,
   getEffortOptions,
+  INITIAL_PROVIDER_CONTROLS,
   resolveSelectedEffort,
   resolveSelectedModelId,
   syncEffortSelection,
@@ -85,4 +87,39 @@ test("selected effort prefers current session effort before cached preference an
   );
   assert.equal(resolveSelectedEffort(MODELS, "gpt-5.4", null, "high"), "high");
   assert.equal(resolveSelectedEffort(MODELS, "gpt-5.4", null, null), "high");
+});
+
+test("provider switch clears stale controls before the new provider metadata loads", () => {
+  const nextState = createLoadingProviderControls({
+    ...INITIAL_PROVIDER_CONTROLS,
+    models: [
+      {
+        id: "old-model",
+        displayName: "Old Model",
+        description: "stale",
+        isDefault: true,
+        hidden: false,
+        defaultReasoningEffort: "high",
+        supportedReasoningEfforts: ["medium", "high"],
+      },
+    ],
+    projects: ["/tmp/old-project"],
+    selectedProject: "/tmp/old-project",
+    selectedModelId: "old-model",
+    selectedEffort: "high",
+    newSessionCwd: "/tmp/old-project",
+    loading: false,
+    creatingSession: true,
+    error: "旧错误",
+  });
+
+  assert.deepEqual(nextState.models, []);
+  assert.deepEqual(nextState.projects, []);
+  assert.equal(nextState.selectedProject, null);
+  assert.equal(nextState.selectedModelId, null);
+  assert.equal(nextState.selectedEffort, null);
+  assert.equal(nextState.newSessionCwd, "");
+  assert.equal(nextState.loading, true);
+  assert.equal(nextState.creatingSession, false);
+  assert.equal(nextState.error, null);
 });

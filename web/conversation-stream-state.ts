@@ -9,7 +9,10 @@ import type {
   BufferedConversationWindow,
   PanelState,
 } from "./conversation-panel-state-types";
-import { isOptimisticUserMessage } from "./conversation-panel-state-helpers";
+import {
+  isOptimisticUserMessage,
+  stripRedundantLocalTerminalStatusMessages,
+} from "./conversation-panel-state-helpers";
 import { createLiveRealtimeStreamStatus } from "./realtime-stream-status";
 import { isSendLifecycleActive } from "./conversation-send-state";
 
@@ -35,9 +38,11 @@ export function applyConversationSnapshot(
   current: PanelState,
   snapshot: ProviderConversationStreamSnapshot,
 ): PanelState {
-  const messages = mergeSnapshotMessages(
-    getLatestConversationMessages(current),
-    snapshot.messages,
+  const messages = stripRedundantLocalTerminalStatusMessages(
+    mergeSnapshotMessages(
+      getLatestConversationMessages(current),
+      snapshot.messages,
+    ),
   );
   return applyLatestConversationWindow(current, {
     messages,
@@ -88,7 +93,9 @@ export function applyConversationDelta(
     normalizeConversationMessages(update.messages),
   );
   const sendActive = current.sendLifecycle && isSendLifecycleActive(current.sendLifecycle);
-  const messages = sendActive ? appended : dropAcknowledgedOptimisticMessages(appended);
+  const messages = stripRedundantLocalTerminalStatusMessages(
+    sendActive ? appended : dropAcknowledgedOptimisticMessages(appended),
+  );
   return applyLatestConversationWindow(current, {
     ...getLatestConversationWindow(current),
     messages,

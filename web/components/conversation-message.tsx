@@ -143,6 +143,17 @@ export function ConversationMessageCard(props: {
     return renderTaggedControlMessage(message, showMeta, taggedControlMessage);
   }
 
+  if (block.type === "image") {
+    return (
+      <ConversationImageBubble
+        imagePath={block.imagePath}
+        imageUrl={block.imageUrl}
+        message={message}
+        showMeta={showMeta}
+      />
+    );
+  }
+
   if (block.type === "thinking") {
     if (!sanitizedText) {
       return null;
@@ -321,6 +332,46 @@ function ConversationTextBubble(props: {
             {text}
           </pre>
         )}
+        <ConversationTimestamp timestamp={message.timestamp} />
+      </div>
+    </article>
+  );
+}
+
+function ConversationImageBubble(props: {
+  imagePath?: string;
+  imageUrl?: string;
+  message: ConversationMessage;
+  showMeta: boolean;
+}) {
+  const { imagePath, imageUrl, message, showMeta } = props;
+  const imageAlt = message.role === "user" ? "用户图片" : "助手图片";
+  return (
+    <article className={layoutTone(message)}>
+      <div
+        className={`rounded-[22px] border px-3 py-3 shadow-lg shadow-slate-950/15 md:rounded-[26px] md:px-4 md:py-4 ${bubbleTone(message)}`}
+      >
+        <div
+          className={`${showMeta ? "flex" : "hidden md:flex"} flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-muted md:text-[11px]`}
+        >
+          <span>{roleLabel(message.role)}</span>
+          <span className="text-muted/50">/</span>
+          <span>{message.kind}</span>
+        </div>
+        {imageUrl ? (
+          <img
+            alt={imageAlt}
+            className="mt-3 max-h-[28rem] w-auto max-w-full rounded-2xl border border-bdr bg-surface object-contain"
+            src={imageUrl}
+          />
+        ) : (
+          <div className="mt-3 rounded-2xl border border-dashed border-bdr bg-surface px-4 py-3 text-sm text-muted">
+            本地图片：{imagePath ?? "(unknown image)"}
+          </div>
+        )}
+        {imagePath && !imageUrl ? null : imagePath ? (
+          <div className="mt-2 text-xs text-muted break-all">{imagePath}</div>
+        ) : null}
         <ConversationTimestamp timestamp={message.timestamp} />
       </div>
     </article>

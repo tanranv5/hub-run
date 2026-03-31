@@ -3,6 +3,7 @@ const NOISE_BLOCK_PATTERNS = [
   /<INSTRUCTIONS>[\s\S]*?<\/INSTRUCTIONS>/gi,
   /<environment_context>[\s\S]*?<\/environment_context>/gi,
   /<system-reminder>[\s\S]*?<\/system-reminder>/gi,
+  /<turn_aborted>[\s\S]*?<\/turn_aborted>/gi,
   /<oai-mem-citation>[\s\S]*?<\/oai-mem-citation>/gi,
   /^\s*##\s*Open tabs:[ \t]*(?:\n(?:[ \t]*$|[ \t]*-.*))*/gim,
 ];
@@ -30,6 +31,7 @@ const NOISE_LINE_PATTERNS = [
   /^\s*Their purpose is to pass along human guidance\b.*$/gim,
   /^\s*Each AGENTS\.md governs the entire directory\b.*$/gim,
   /^\s*When two AGENTS\.md files disagree\b.*$/gim,
+  /^\s*<image>\s*$/gim,
   /^\s*<image name=\[[^\]]+\]>\s*$/gim,
   /^\s*<\/image>\s*$/gim,
 ];

@@ -101,7 +101,7 @@ test("poll merge clears interrupting once runtime leaves generating and exposes 
   assert.equal(merged.sending, false);
 });
 
-test("poll merge keeps timeline unchanged when the requested turn finishes", () => {
+test("poll merge appends terminal status message when the requested turn finishes", () => {
   const current = createAcceptedPanelState();
   const merged = mergePolledPanelState({
     current,
@@ -120,10 +120,118 @@ test("poll merge keeps timeline unchanged when the requested turn finishes", () 
     now: 1_600,
   });
 
-  assert.equal(merged.messages.length, 1);
+  assert.equal(merged.messages.length, 2);
   assert.equal(merged.messages[0]?.id, BASE_MESSAGE.id);
+  assert.equal(merged.messages[1]?.text, "任务已完成（turn=turn-1）");
   assert.equal(merged.sendLifecycle?.phase, "completed");
   assert.equal(merged.sending, false);
+  assert.equal(merged.pendingTerminalSyncTurnId, null);
+});
+
+test("poll merge preserves local terminal status after the final sync", () => {
+  const completedState = mergePolledPanelState({
+    current: createAcceptedPanelState(),
+    nextState: {
+      ...INITIAL_PANEL_STATE,
+      messages: [BASE_MESSAGE],
+      threadState: {
+        threadId: "thread-1",
+        activeTurnId: null,
+        isGenerating: false,
+        requestedTurnId: "turn-1",
+        requestedTurnStatus: "completed",
+      },
+    },
+    providerId: "codex",
+    now: 1_600,
+  });
+
+  const merged = mergePolledPanelState({
+    current: {
+      ...completedState,
+      pendingTerminalSyncTurnId: "turn-1",
+      streamStatus: {
+        phase: "live",
+        lastEventAt: 1_650,
+        retryCount: 0,
+      },
+    },
+    nextState: {
+      ...INITIAL_PANEL_STATE,
+      messages: [BASE_MESSAGE],
+      threadState: {
+        threadId: "thread-1",
+        activeTurnId: null,
+        isGenerating: false,
+        requestedTurnId: "turn-1",
+        requestedTurnStatus: "completed",
+      },
+      streamOffset: 128,
+    },
+    providerId: "codex",
+    now: 1_700,
+  });
+
+  assert.deepEqual(
+    merged.messages.map((message) => message.text),
+    [BASE_MESSAGE.text, "任务已完成（turn=turn-1）"],
+  );
+  assert.equal(merged.pendingTerminalSyncTurnId, null);
+  assert.equal(merged.streamOffset, 128);
+});
+
+test("poll merge does not keep the local terminal status when the persisted task_complete message is already present", () => {
+  const completedState = mergePolledPanelState({
+    current: createAcceptedPanelState(),
+    nextState: {
+      ...INITIAL_PANEL_STATE,
+      messages: [BASE_MESSAGE],
+      threadState: {
+        threadId: "thread-1",
+        activeTurnId: null,
+        isGenerating: false,
+        requestedTurnId: "turn-1",
+        requestedTurnStatus: "completed",
+      },
+    },
+    providerId: "codex",
+    now: 1_600,
+  });
+
+  const merged = mergePolledPanelState({
+    current: {
+      ...completedState,
+      pendingTerminalSyncTurnId: "turn-1",
+    },
+    nextState: {
+      ...INITIAL_PANEL_STATE,
+      messages: [
+        BASE_MESSAGE,
+        {
+          id: "status-complete-1",
+          role: "system" as const,
+          kind: "text" as const,
+          title: "status",
+          text: "任务已完成（turn=turn-1）",
+          timestamp: "2026-03-20T12:00:05.000Z",
+        },
+      ],
+      threadState: {
+        threadId: "thread-1",
+        activeTurnId: null,
+        isGenerating: false,
+        requestedTurnId: "turn-1",
+        requestedTurnStatus: "completed",
+      },
+    },
+    providerId: "codex",
+    now: 1_700,
+  });
+
+  assert.deepEqual(
+    merged.messages.map((message) => message.id),
+    [BASE_MESSAGE.id, "status-complete-1"],
+  );
   assert.equal(merged.pendingTerminalSyncTurnId, null);
 });
 

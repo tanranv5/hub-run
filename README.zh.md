@@ -13,7 +13,8 @@
 </p>
 
 <p align="center">
-  <img src="./img/phone.png" alt="hub-run 手机端截图" width="32%" />
+  <img src="./img/phone.png" alt="hub-run 手机端截图 1" width="26%" />
+  <img src="./img/phone2.png" alt="hub-run 手机端截图 2" width="26%" />
 </p>
 
 ---
@@ -103,6 +104,16 @@ ASR 接口为抽象层，可接入其他提供方（Whisper 等）。
 ## 快速开始
 
 ```bash
+# 通过 npm 全局安装
+npm install -g hub-run
+
+# 直接运行（默认 127.0.0.1:12001）
+hub-run
+
+# 或显式指定密码 / 端口
+hub-run --password your-password --port 12125
+
+# 从源码构建
 pnpm install
 pnpm build
 
@@ -118,7 +129,7 @@ pnpm dev
 ### 后台服务管理
 
 ```bash
-pnpm runtime:install    # 注册为系统服务
+pnpm runtime:install    # 注册并立即拉起 launchd 用户服务
 pnpm runtime:start      # 启动
 pnpm runtime:stop       # 停止
 pnpm runtime:restart    # 重启
@@ -130,6 +141,8 @@ pnpm runtime:uninstall  # 卸载
 ### macOS 守护启动
 
 在 macOS 上，`pnpm runtime:install` 会把 hub-run 注册成 `launchd` 的用户级守护服务，这样关闭当前终端后服务也能继续在后台运行。运行时配置会写到 `~/.config/hub-run/`，LaunchAgent plist 会写到 `~/Library/LaunchAgents/`。
+
+如果想配合守护实现登录后自启，直接执行 `pnpm runtime:install` 即可：它不只是写配置，还会立刻 bootstrap 这个 LaunchAgent；而生成的 plist 默认启用了 `RunAtLoad` 和 `KeepAlive`。这意味着用户登录后 hub-run 会自动拉起，如果进程异常退出，`launchd` 也会自动拉回。若你不想自启，执行 `pnpm runtime:uninstall` 卸载守护后，再按需手工运行 `hub-run` 即可。
 
 常用验活命令：
 

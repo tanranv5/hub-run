@@ -255,6 +255,48 @@ test("draft send keeps current panel state visible until the real session finish
   await pending;
 });
 
+test("draft send seeds the real session cache with immediate Claude output before switching", async () => {
+  const draftStore = createStringStore("从 draft 首次发送");
+  const stateStore = createPanelStateStore(INITIAL_PANEL_STATE);
+  const detachedStateStore = createPanelStateStore(INITIAL_PANEL_STATE);
+  const sidebarDeferred = createDeferred<void>();
+  let capturedSessionId: string | null = null;
+
+  const pending = sendConversation({
+    draft: draftStore.read(),
+    onMessageSent: async () => sidebarDeferred.promise,
+    onSendMessage: async () => ({
+      sessionId: "claude-session-real-1",
+      turnId: null,
+      outputText: "Claude 首条回复",
+    }),
+    providerId: "claude",
+    session: createDraftSession("/tmp/project", 1_700_000_000_001),
+    streamAvailable: false,
+    setDraft: draftStore.setValue,
+    setState: stateStore.setValue,
+    shouldAbort: () => false,
+    updateDetachedSession: (update) => {
+      capturedSessionId = update.sessionId ?? null;
+      if (update.updateState) {
+        detachedStateStore.setValue(update.updateState);
+      }
+    },
+  });
+
+  await Promise.resolve();
+
+  assert.equal(capturedSessionId, "claude-session-real-1");
+  assert.deepEqual(
+    detachedStateStore.read().messages.map((message) => message.text),
+    ["从 draft 首次发送", "Claude 首条回复"],
+  );
+  assert.equal(detachedStateStore.read().sendLifecycle?.phase, "completed");
+
+  sidebarDeferred.resolve();
+  await pending;
+});
+
 test("late accepted send updates the original session snapshot after a session switch", async () => {
   const draftStore = createStringStore("这条旧会话消息还在处理中");
   const stateStore = createPanelStateStore(INITIAL_PANEL_STATE);

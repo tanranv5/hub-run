@@ -82,6 +82,7 @@ interface ConversationBodyProps {
   messages: ConversationMessage[];
   messageWindowFrozen: boolean;
   modelOptions: ProviderModelOption[];
+  olderLoadCount: number;
   pendingUserInputRequests: ProviderUserInputRequest[];
   providerSendAvailable: boolean;
   refreshing?: boolean;
@@ -95,6 +96,7 @@ interface ConversationBodyProps {
   onDraftChange: (value: string) => void;
   onInterrupt: () => void;
   onLoadOlder: () => void;
+  onLoadOlderToStart: () => void;
   onMessageWindowFrozenChange: (frozen: boolean) => void;
   onRespondUserInput: (
     request: ProviderUserInputRequest,
@@ -141,10 +143,12 @@ export const ConversationBody = memo(function ConversationBody(props: Conversati
     messageWindowFrozen,
     messages,
     modelOptions,
+    olderLoadCount,
     pendingUserInputRequests,
     onDraftChange,
     onInterrupt,
     onLoadOlder,
+    onLoadOlderToStart,
     onMessageWindowFrozenChange,
     onRespondUserInput,
     onSelectEffort,
@@ -185,11 +189,13 @@ export const ConversationBody = memo(function ConversationBody(props: Conversati
         loadingOlder={loadingOlder}
         messageWindowFrozen={messageWindowFrozen}
         messages={messages}
+        olderLoadCount={olderLoadCount}
         pendingUserInputRequests={pendingUserInputRequests}
         respondingRequestId={respondingRequestId}
         sessionId={sessionId}
         summary={summary}
         onLoadOlder={onLoadOlder}
+        onLoadOlderToStart={onLoadOlderToStart}
         onSetMessageWindowFrozen={onMessageWindowFrozenChange}
         onRespondUserInput={onRespondUserInput}
         onViewLatest={onViewLatest}
@@ -248,6 +254,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     handleMessageWindowFrozenChange,
     handleInterrupt,
     handleLoadOlder,
+    handleLoadOlderToStart,
     handleRespondUserInput,
     handleSend,
     handleViewLatest,
@@ -320,6 +327,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         messageWindowFrozen={state.messageWindowFrozen}
         messages={state.messages}
         modelOptions={modelOptions}
+        olderLoadCount={state.olderLoadCount}
         pendingUserInputRequests={state.pendingUserInputRequests}
         providerSendAvailable={provider.status.sendAvailable}
         refreshing={refreshing}
@@ -337,6 +345,9 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         }}
         onLoadOlder={() => {
           handleLoadOlder().catch(console.error);
+        }}
+        onLoadOlderToStart={() => {
+          handleLoadOlderToStart().catch(console.error);
         }}
         onMessageWindowFrozenChange={handleMessageWindowFrozenChange}
         onRespondUserInput={(request, questionId, optionLabel) => {

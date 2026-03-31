@@ -151,10 +151,16 @@ export async function createProviderSession(
     body: JSON.stringify(input),
   });
 
-  const payload = await readJson<{ ok: boolean; sessionId: string; turnId: string | null }>(response);
+  const payload = await readJson<{
+    ok: boolean;
+    sessionId: string;
+    turnId: string | null;
+    outputText?: string | null;
+  }>(response);
   return {
     sessionId: payload.sessionId,
     turnId: payload.turnId,
+    outputText: payload.outputText ?? null,
   };
 }
 

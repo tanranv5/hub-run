@@ -55,6 +55,24 @@ const TASK_STARTED_MESSAGE: ConversationMessage = {
   timestamp: "2026-03-22T00:00:02.500Z",
 };
 
+const LOCAL_TASK_COMPLETED_MESSAGE: ConversationMessage = {
+  id: "terminal-status:2000",
+  role: "system",
+  kind: "text",
+  title: "status",
+  text: "任务已完成（turn=turn-1）",
+  timestamp: "2026-03-22T00:00:05.000Z",
+};
+
+const SERVER_TASK_COMPLETED_MESSAGE: ConversationMessage = {
+  id: "status-complete-1",
+  role: "system",
+  kind: "text",
+  title: "status",
+  text: "任务已完成（turn=turn-1）",
+  timestamp: "2026-03-22T00:00:05.500Z",
+};
+
 test("conversation snapshot replaces latest window and clears loading state", () => {
   const nextState = applyConversationSnapshot(
     {
@@ -303,6 +321,25 @@ test("conversation delta keeps the confirmed user message ahead of task_started 
   assert.deepEqual(
     nextState.messages.map((message) => message.id),
     ["user-1", "user-2", "status-1"],
+  );
+});
+
+test("conversation delta replaces the local terminal status with the persisted task_complete status", () => {
+  const nextState = applyConversationDelta(
+    {
+      ...INITIAL_PANEL_STATE,
+      messages: [USER_MESSAGE, LOCAL_TASK_COMPLETED_MESSAGE],
+      streamOffset: 512,
+    },
+    {
+      messages: [SERVER_TASK_COMPLETED_MESSAGE],
+      nextOffset: 768,
+    },
+  );
+
+  assert.deepEqual(
+    nextState.messages.map((message) => message.id),
+    ["user-1", "status-complete-1"],
   );
 });
 

@@ -1,6 +1,9 @@
 import type { ConversationKind, ConversationMessage } from "../../types";
 import { stringifyContent } from "../shared";
 
+const IMAGE_PLACEHOLDER_PATTERN = /^<image name=\[[^\]]+\]>$/i;
+const IMAGE_WRAPPER_TAGS = new Set(["<image>", "</image>"]);
+
 export function createMessageId(
   sessionId: string,
   lineIndex: number,
@@ -66,6 +69,9 @@ export function normalizeCodexBlock(
   const base = { id, role, timestamp } as const;
 
   if (kind === "input_text" || kind === "output_text" || kind === "text") {
+    if (isIgnorableImageWrapperText(text)) {
+      return null;
+    }
     return {
       ...base,
       kind: "text",
@@ -74,6 +80,15 @@ export function normalizeCodexBlock(
         type: "text",
         text,
       },
+    };
+  }
+  const imageBlock = readImageBlock(block, kind);
+  if (imageBlock) {
+    return {
+      ...base,
+      kind: "image",
+      text: imageBlock.imagePath ?? "",
+      block: imageBlock,
     };
   }
   if (kind === "reasoning" || kind === "thinking") {
@@ -120,10 +135,46 @@ export function normalizeCodexBlock(
   return null;
 }
 
+function isIgnorableImageWrapperText(text: string): boolean {
+  const normalized = text.trim();
+  return (
+    IMAGE_WRAPPER_TAGS.has(normalized) ||
+    IMAGE_PLACEHOLDER_PATTERN.test(normalized)
+  );
+}
+
+function readImageBlock(
+  block: Record<string, unknown>,
+  kind: string,
+): ConversationMessage["block"] | null {
+  if (kind === "input_image") {
+    const imageUrl = readString(block.image_url);
+    return imageUrl ? { type: "image", imageUrl } : null;
+  }
+  if (kind === "image") {
+    const imageUrl = readString(block.url) ?? readString(block.image_url);
+    return imageUrl ? { type: "image", imageUrl } : null;
+  }
+  if (kind !== "localImage") {
+    return null;
+  }
+  const imagePath = readString(block.path);
+  return imagePath ? { type: "image", imagePath } : null;
+}
+
 export function readEventStatusText(
   payloadType: string,
   payload: Record<string, unknown>,
 ): { kind: ConversationKind; title: string; text: string } | null {
+  if (payloadType === "task_complete") {
+    const turnId = typeof payload.turn_id === "string" ? payload.turn_id : "";
+    return {
+      kind: "text",
+      title: "status",
+      text: turnId ? `任务已完成（turn=${turnId}）` : "任务已完成",
+    };
+  }
+
   if (payloadType === "task_started") {
     const turnId = typeof payload.turn_id === "string" ? payload.turn_id : "";
     return {
@@ -200,4 +251,8 @@ function readNestedValue(value: unknown, path: string[]): unknown {
     current = (current as Record<string, unknown>)[key];
   }
   return current;
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }

@@ -4,7 +4,10 @@ import type {
   ProviderUserInputRequest,
 } from "../api/types";
 import { hasConversationChanged } from "./conversation-panel-state-helpers";
-import { stripOptimisticUserMessages } from "./conversation-panel-state-helpers";
+import {
+  hasEquivalentStatusMessage,
+  stripOptimisticUserMessages,
+} from "./conversation-panel-state-helpers";
 import type { PanelState } from "./conversation-panel-state-types";
 import {
   acceptSendLifecycle,
@@ -98,7 +101,7 @@ export function applyPanelRuntimeState(
     threadState,
     now,
   );
-  if (terminalMessage) {
+  if (terminalMessage && !hasEquivalentStatusMessage(result.messages, terminalMessage)) {
     return { ...result, messages: [...result.messages, terminalMessage] };
   }
   return result;

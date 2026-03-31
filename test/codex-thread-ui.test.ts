@@ -79,7 +79,7 @@ test("conversation header shows codex runtime status without a duplicate interru
   assert.match(markup, /thread-1/);
   assert.doesNotMatch(markup, /title="复制会话 ID: thread-1"/);
   assert.doesNotMatch(markup, /title="正在生成\.\.\."/);
-  assert.match(markup, /bg-sky-400/);
+  assert.match(markup, /bg-accent/);
   const metaIndex = markup.indexOf('data-region="conversation-header-meta"');
   const copyIndex = markup.indexOf('aria-label="复制会话 ID"');
   const statusIndex = markup.indexOf('data-slot="conversation-session-status"');
@@ -134,6 +134,35 @@ test("conversation timeline renders pending codex user input requests", () => {
   assert.match(markup, />继续</);
 });
 
+test("conversation timeline offers load-to-first button after loading older history more than ten times", () => {
+  const markup = renderToStaticMarkup(
+    React.createElement(ConversationTimeline as unknown as React.ComponentType<any>, {
+      error: null,
+      hasOlderMessages: true,
+      loading: false,
+      loadingOlder: false,
+      messages: [
+        {
+          id: "msg-1",
+          role: "assistant",
+          kind: "text",
+          text: "最新一条",
+        },
+      ],
+      olderLoadCount: 11,
+      pendingUserInputRequests: [],
+      respondingRequestId: null,
+      summary: null,
+      onLoadOlder: () => {},
+      onLoadOlderToStart: () => {},
+      onRespondUserInput: () => {},
+    }),
+  );
+
+  assert.match(markup, /加载更多历史数据/);
+  assert.match(markup, /加载到首条/);
+});
+
 test("conversation header status reflects completed turn when generation has ended", () => {
   const conversationStatus = resolveConversationStatus({
     interrupting: false,
@@ -162,7 +191,7 @@ test("conversation header status reflects completed turn when generation has end
 
   assert.match(markup, /data-slot="conversation-session-status-tooltip"/);
   assert.match(markup, />当前回合已完成</);
-  assert.match(markup, /bg-emerald-400/);
+  assert.match(markup, /bg-accent-2/);
 });
 
 test("conversation header status keeps runtime completed state over a live message stream heartbeat", () => {
@@ -196,7 +225,6 @@ test("conversation header status keeps runtime completed state over a live messa
 });
 
 test("conversation header status does not infer generating from a live stream heartbeat when runtime already reports interrupted", () => {
-  const now = Date.now();
   const conversationStatus = resolveConversationStatus({
     interrupting: false,
     lifecycle: null,
@@ -224,7 +252,7 @@ test("conversation header status does not infer generating from a live stream he
 
   assert.match(markup, /data-slot="conversation-session-status-tooltip"/);
   assert.match(markup, />当前回合已中断</);
-  assert.match(markup, /bg-rose-400/);
+  assert.match(markup, /bg-danger/);
   assert.doesNotMatch(markup, /title="正在生成..."/);
 });
 
@@ -258,7 +286,7 @@ test("conversation header status shows syncing when the runtime snapshot is mark
   );
 
   assert.match(markup, /状态同步中/);
-  assert.match(markup, /bg-sky-400/);
+  assert.match(markup, /bg-accent/);
 });
 
 test("conversation header status uses a neutral ready color before any task starts", () => {
@@ -283,7 +311,7 @@ test("conversation header status uses a neutral ready color before any task star
 
   assert.match(markup, /data-slot="conversation-session-status-tooltip"/);
   assert.match(markup, />就绪</);
-  assert.match(markup, /bg-slate-400/);
+  assert.match(markup, /bg-muted/);
 });
 
 test("interrupt action ignores heartbeat-only live stream when the runtime state is already completed", () => {
@@ -291,6 +319,7 @@ test("interrupt action ignores heartbeat-only live stream when the runtime state
     canInterruptConversation({
       interruptAvailable: true,
       loading: false,
+      sendLifecycle: null,
       streamStatus: {
         phase: "live",
         lastEventAt: Date.now(),

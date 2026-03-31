@@ -83,6 +83,7 @@ export type ConversationRole = "user" | "assistant" | "system";
 
 export type ConversationKind =
   | "text"
+  | "image"
   | "thinking"
   | "tool_use"
   | "tool_result"
@@ -94,6 +95,8 @@ export type ConversationBlockType = ConversationKind;
 export interface ConversationBlock {
   type: ConversationBlockType;
   text?: string;
+  imageUrl?: string;
+  imagePath?: string;
   thinking?: string;
   title?: string;
   id?: string;
@@ -221,6 +224,7 @@ export interface CreateSessionInput {
 export interface CreateSessionResult {
   sessionId: string;
   turnId: string | null;
+  outputText?: string | null;
 }
 
 export interface SendMessageInput {

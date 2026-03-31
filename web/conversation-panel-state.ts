@@ -16,6 +16,7 @@ import { isDraftSession } from "./draft-session";
 import {
   getErrorMessage,
   loadOlderMessages,
+  loadOlderMessagesUntilStart,
 } from "./conversation-panel-state-ops";
 import { interruptConversationTurn } from "./conversation-panel-interrupt";
 import {
@@ -231,8 +232,26 @@ export function useConversationPanelState(props: {
     setState((current) => ({
       ...current,
       messageWindowFrozen: true,
+      olderLoadCount: current.olderLoadCount + 1,
     }));
     await loadOlderMessages({
+      nextBefore: state.nextBefore,
+      providerId,
+      sessionId: session.id,
+      setState,
+    });
+  }
+
+  async function handleLoadOlderToStart() {
+    if (!providerId || !session || !state.nextBefore || state.loadingOlder) {
+      return;
+    }
+
+    setState((current) => ({
+      ...current,
+      messageWindowFrozen: true,
+    }));
+    await loadOlderMessagesUntilStart({
       nextBefore: state.nextBefore,
       providerId,
       sessionId: session.id,
@@ -321,6 +340,7 @@ export function useConversationPanelState(props: {
     hasOlderMessages,
     handleInterrupt,
     handleLoadOlder,
+    handleLoadOlderToStart,
     handleRespondUserInput,
     handleSend,
     handleViewLatest: () => {

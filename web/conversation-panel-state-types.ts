@@ -19,6 +19,7 @@ export interface BufferedConversationWindow {
 export interface PanelState {
   messages: ConversationMessage[];
   nextBefore: string | null;
+  olderLoadCount: number;
   streamOffset: number | null;
   streamStatus: RealtimeStreamStatus;
   summary: ConversationMessage | null;
@@ -46,6 +47,7 @@ export interface SendConversationResult {
 export const INITIAL_PANEL_STATE: PanelState = {
   messages: [],
   nextBefore: null,
+  olderLoadCount: 0,
   streamOffset: null,
   streamStatus: createIdleRealtimeStreamStatus(),
   summary: null,

@@ -13,7 +13,9 @@ import {
 } from "./conversation-panel-state-ops";
 import {
   hasConversationChanged,
+  isLocalTerminalStatusMessage,
   isOptimisticUserMessage,
+  stripRedundantLocalTerminalStatusMessages,
 } from "./conversation-panel-state-helpers";
 import type {
   BufferedConversationWindow,
@@ -44,8 +46,6 @@ export function mergePolledPanelState(props: {
     return current;
   }
 
-  const nextMessages = resolvePolledMessages(current, nextState);
-  const nextBufferedWindow = buildBufferedConversationWindow(nextMessages, nextState);
   const nextInterrupting =
     current.interrupting && nextState.threadState?.isGenerating === true;
   const runtimeMerged = applyPanelRuntimeState(
@@ -60,6 +60,11 @@ export function mergePolledPanelState(props: {
     nextState.pendingUserInputRequests,
     now,
   );
+  const nextMessages = mergeTerminalStatusMessages(
+    resolvePolledMessages(current, nextState),
+    runtimeMerged.messages,
+  );
+  const nextBufferedWindow = buildBufferedConversationWindow(nextMessages, nextState);
   const conversationChanged = hasConversationChanged(current.messages, nextMessages);
   if (isPollStateUnchanged(current, nextState, runtimeMerged, conversationChanged)) {
     return current;
@@ -238,6 +243,20 @@ function buildBufferedConversationWindow(
     summary: nextState.summary,
     streamOffset: nextState.streamOffset,
   };
+}
+
+function mergeTerminalStatusMessages(
+  messages: ConversationMessage[],
+  runtimeMessages: ConversationMessage[],
+) {
+  const existingIds = new Set(messages.map((message) => message.id));
+  const appended = runtimeMessages.filter(
+    (message) => isLocalTerminalStatusMessage(message) && !existingIds.has(message.id),
+  );
+  if (appended.length === 0) {
+    return stripRedundantLocalTerminalStatusMessages(messages);
+  }
+  return stripRedundantLocalTerminalStatusMessages([...messages, ...appended]);
 }
 
 function buildConversationOnlyPollState(

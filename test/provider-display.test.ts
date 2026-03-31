@@ -52,3 +52,14 @@ test("session title drops standalone image placeholder lines", () => {
 
   assert.equal(display, "请分析这个报错截图");
 });
+
+test("session title drops turn_aborted wrapper noise", () => {
+  const display = extractMeaningfulDisplay(
+    "<turn_aborted>\n" +
+      "The user interrupted the previous turn on purpose. Any running unified exec processes may still be running in the background.\n" +
+      "</turn_aborted>\n" +
+      "app-server 可以发生图片没？看看现在codex的发送",
+  );
+
+  assert.equal(display, "app-server 可以发生图片没？看看现在codex的发送");
+});

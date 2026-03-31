@@ -101,6 +101,15 @@ export async function loadProviderControls(
   } satisfies ProviderControlsState;
 }
 
+export function createLoadingProviderControls(
+  _current?: ProviderControlsState,
+): ProviderControlsState {
+  return {
+    ...INITIAL_PROVIDER_CONTROLS,
+    loading: true,
+  };
+}
+
 export function syncEffortSelection(
   models: ProviderModelOption[],
   selectedModelId: string | null,

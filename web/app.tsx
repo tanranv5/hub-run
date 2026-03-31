@@ -5,6 +5,7 @@ import { clearStoredSelectedSession, getStoredControlPreference, getStoredSelect
 import { INITIAL_BROWSER, loadProviderBrowser } from "./browser-state";
 import {
   applySentSessionSelection,
+  createLoadingBrowserState,
   loadMoreBrowserSessions,
   refreshBrowserState,
   shouldRefreshBrowserAfterSend,
@@ -21,7 +22,12 @@ import { LoadingScreen } from "./components/app-shell";
 import type { SendConversationResult } from "./conversation-panel-state-types";
 import LoginScreen from "./components/login-screen";
 import { formatContextDetails, formatContextLabel, useProviderSessionContext } from "./session-context";
-import { getEffortOptions, INITIAL_PROVIDER_CONTROLS, loadProviderControls } from "./provider-controls";
+import {
+  createLoadingProviderControls,
+  getEffortOptions,
+  INITIAL_PROVIDER_CONTROLS,
+  loadProviderControls,
+} from "./provider-controls";
 import { createDraftSession, insertDraftSession, isDraftSession } from "./draft-session";
 import { preloadSessionPanelCache } from "./conversation-panel-preload";
 import type { SessionPanelCacheEntry } from "./conversation-panel-session-cache";
@@ -256,7 +262,11 @@ export default function App() {
         text,
         ...providerModelPayload,
       });
-      return { sessionId: created.sessionId, turnId: created.turnId, outputText: null };
+      return {
+        sessionId: created.sessionId,
+        turnId: created.turnId,
+        outputText: created.outputText ?? null,
+      };
     }
 
     const sent = await sendConversationMessage(selectedProvider.id, selectedSession.id, { ...input });
@@ -338,13 +348,8 @@ export default function App() {
     }
 
     setProviderSwitchTargetId(nextProvider.id);
-    setControls((current) => ({ ...current, loading: true, error: null }));
-    setBrowser((current) => ({
-      ...current,
-      loading: true,
-      loadingMore: false,
-      error: null,
-    }));
+    setControls(() => createLoadingProviderControls());
+    setBrowser((current) => createLoadingBrowserState(current));
     setBootstrap((current) => ({ ...current, selectedProviderId: providerId }));
   }
 

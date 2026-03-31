@@ -399,6 +399,57 @@ test("create session route delegates to provider adapter", async () => {
   });
 });
 
+test("create session route returns outputText when the provider returns an immediate reply", async () => {
+  const app = createApp(
+    buildRuntimeConfig({
+      host: "127.0.0.1",
+      port: 12001,
+      password: "secret-123",
+    }),
+    {
+      registry: {
+        ...createSendRegistry(async () => ({
+          turnId: null,
+          outputText: null,
+        })),
+        claude: {
+          ...createSendRegistry(async () => ({
+            turnId: null,
+            outputText: null,
+          })).claude,
+          createSession: async () => ({
+            sessionId: "claude-session-created",
+            turnId: null,
+            outputText: "Claude 首条回复",
+          }),
+        } as ProviderAdapter,
+      },
+    },
+  );
+
+  const cookie = await login(app);
+  const response = await app.request("/api/providers/claude/sessions", {
+    method: "POST",
+    headers: {
+      cookie,
+      origin: "http://127.0.0.1:12001",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      cwd: "/Users/tanran/aiCode/cw/hub-run",
+      text: "首条消息",
+    }),
+  });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    ok: true,
+    sessionId: "claude-session-created",
+    turnId: null,
+    outputText: "Claude 首条回复",
+  });
+});
+
 test("create session route requires text when provider does not allow empty create", async () => {
   let called = false;
   const app = createApp(
@@ -446,4 +497,102 @@ test("create session route requires text when provider does not allow empty crea
   assert.equal(response.status, 400);
   assert.equal(called, false);
   assert.match(await response.text(), /text is required/i);
+});
+
+test("create session route maps provider validation errors to 400 instead of a generic 500", async () => {
+  const app = createApp(
+    buildRuntimeConfig({
+      host: "127.0.0.1",
+      port: 12001,
+      password: "secret-123",
+    }),
+    {
+      registry: {
+        ...createSendRegistry(async () => ({
+          turnId: null,
+          outputText: null,
+        })),
+        claude: {
+          ...createSendRegistry(async () => ({
+            turnId: null,
+            outputText: null,
+          })).claude,
+          createSession: async () => {
+            throw new Error("text is required");
+          },
+        } as ProviderAdapter,
+      },
+    },
+  );
+
+  const cookie = await login(app);
+  const response = await app.request("/api/providers/claude/sessions", {
+    method: "POST",
+    headers: {
+      cookie,
+      origin: "http://127.0.0.1:12001",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      cwd: "/Users/tanran/aiCode/cw/hub-run",
+      text: "首条消息",
+    }),
+  });
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), {
+    error: {
+      code: "PARSE_FAILED",
+      message: "text is required",
+    },
+  });
+});
+
+test("create session route maps provider timeout errors to 503", async () => {
+  const app = createApp(
+    buildRuntimeConfig({
+      host: "127.0.0.1",
+      port: 12001,
+      password: "secret-123",
+    }),
+    {
+      registry: {
+        ...createSendRegistry(async () => ({
+          turnId: null,
+          outputText: null,
+        })),
+        claude: {
+          ...createSendRegistry(async () => ({
+            turnId: null,
+            outputText: null,
+          })).claude,
+          createSession: async () => {
+            throw new Error("claude create timed out");
+          },
+        } as ProviderAdapter,
+      },
+    },
+  );
+
+  const cookie = await login(app);
+  const response = await app.request("/api/providers/claude/sessions", {
+    method: "POST",
+    headers: {
+      cookie,
+      origin: "http://127.0.0.1:12001",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      cwd: "/Users/tanran/aiCode/cw/hub-run",
+      text: "首条消息",
+    }),
+  });
+
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), {
+    error: {
+      code: "TRANSPORT_UNAVAILABLE",
+      message: "claude create timed out",
+    },
+  });
 });

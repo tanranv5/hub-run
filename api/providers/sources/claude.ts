@@ -31,6 +31,7 @@ export function createClaudeProvider(rootPath: string) {
       return {
         sessionId: result.sessionId,
         turnId: null,
+        outputText: result.outputText,
       };
     },
     sendMessage: async (

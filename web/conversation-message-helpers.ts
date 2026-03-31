@@ -188,6 +188,9 @@ export function getMessageBlock(message: ConversationMessage): ConversationBlock
     return message.block;
   }
 
+  if (message.kind === "image") {
+    return { type: "image", imagePath: message.text || undefined };
+  }
   if (message.kind === "thinking") {
     return { type: "thinking", thinking: message.text };
   }

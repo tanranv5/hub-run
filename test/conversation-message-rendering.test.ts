@@ -78,6 +78,27 @@ test("thinking message stays collapsed by default like claude-run", () => {
   assert.doesNotMatch(markup, /<pre/);
 });
 
+test("image message renders an image bubble instead of plain placeholder text", () => {
+  const markup = renderToStaticMarkup(
+    React.createElement(ConversationMessageCard, {
+      message: {
+        id: "image-1",
+        role: "user",
+        kind: "image",
+        text: "",
+        block: {
+          type: "image",
+          imageUrl: "data:image/png;base64,AAAA",
+        },
+      },
+    }),
+  );
+
+  assert.match(markup, /<img/);
+  assert.match(markup, /data:image\/png;base64,AAAA/);
+  assert.doesNotMatch(markup, /<pre/);
+});
+
 test("skill invocation message stays collapsed by default", () => {
   const markup = renderToStaticMarkup(
     React.createElement(ConversationMessageCard, {

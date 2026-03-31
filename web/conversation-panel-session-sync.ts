@@ -11,6 +11,7 @@ import {
 
 export interface DetachedSessionUpdate {
   draft?: string;
+  sessionId?: string;
   updateState?: (current: PanelState) => PanelState;
 }
 
@@ -34,8 +35,12 @@ export function applySessionPanelUpdate(props: {
     sessionId,
     update,
   } = props;
-  const isActive = activeProviderId === providerId && activeSessionId === sessionId;
-  const cached = isActive ? null : readSessionPanelCache(cache, providerId, sessionId);
+  const targetSessionId = update.sessionId ?? sessionId;
+  const isActive =
+    activeProviderId === providerId && activeSessionId === targetSessionId;
+  const cached = isActive
+    ? null
+    : readSessionPanelCache(cache, providerId, targetSessionId);
   const baseDraft = isActive ? currentDraft : cached?.draft ?? "";
   const baseState = isActive ? currentState : cached?.state ?? INITIAL_PANEL_STATE;
   const nextState = update.updateState ? update.updateState(baseState) : baseState;
@@ -44,7 +49,7 @@ export function applySessionPanelUpdate(props: {
   writeSessionPanelCache(
     cache,
     providerId,
-    sessionId,
+    targetSessionId,
     nextState,
     nextDraft,
   );

@@ -21,11 +21,13 @@ interface ConversationTimelineProps {
   loadingOlder: boolean;
   messageWindowFrozen: boolean;
   messages: ConversationMessage[];
+  olderLoadCount?: number;
   pendingUserInputRequests: ProviderUserInputRequest[];
   respondingRequestId: string | null;
   sessionId?: string | null;
   summary: ConversationMessage | null;
   onLoadOlder: () => void;
+  onLoadOlderToStart?: () => void;
   onSetMessageWindowFrozen: (frozen: boolean) => void;
   onRespondUserInput: (
     request: ProviderUserInputRequest,
@@ -34,6 +36,8 @@ interface ConversationTimelineProps {
   ) => void;
   onViewLatest: () => void;
 }
+
+const LOAD_TO_START_THRESHOLD = 10;
 
 export default memo(function ConversationTimeline(props: ConversationTimelineProps) {
   const {
@@ -44,11 +48,13 @@ export default memo(function ConversationTimeline(props: ConversationTimelinePro
     loadingOlder,
     messageWindowFrozen,
     messages,
+    olderLoadCount = 0,
     pendingUserInputRequests,
     respondingRequestId,
     sessionId = null,
     summary,
     onLoadOlder,
+    onLoadOlderToStart,
     onSetMessageWindowFrozen,
     onRespondUserInput,
     onViewLatest,
@@ -61,6 +67,10 @@ export default memo(function ConversationTimeline(props: ConversationTimelinePro
     sessionId,
     summary?.id ?? null,
   );
+  const shouldShowLoadToStart =
+    hasOlderMessages &&
+    typeof onLoadOlderToStart === "function" &&
+    olderLoadCount > LOAD_TO_START_THRESHOLD;
 
   useEffect(() => {
     setPinnedToLatest(true);
@@ -134,14 +144,26 @@ export default memo(function ConversationTimeline(props: ConversationTimelinePro
         <div className="space-y-4">
           {hasOlderMessages ? (
             <div className="flex justify-center pb-2">
-              <button
-                type="button"
-                onClick={onLoadOlder}
-                disabled={loadingOlder}
-                className="rounded-full bg-surface px-4 py-2 text-xs font-medium text-muted transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {loadingOlder ? "加载中..." : "加载更多历史数据"}
-              </button>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={onLoadOlder}
+                  disabled={loadingOlder}
+                  className="rounded-full bg-surface px-4 py-2 text-xs font-medium text-muted transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {loadingOlder ? "加载中..." : "加载更多历史数据"}
+                </button>
+                {shouldShowLoadToStart ? (
+                  <button
+                    type="button"
+                    onClick={onLoadOlderToStart}
+                    disabled={loadingOlder}
+                    className="rounded-full border border-bdr bg-panel px-4 py-2 text-xs font-medium text-txt transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    加载到首条
+                  </button>
+                ) : null}
+              </div>
             </div>
           ) : null}
           <SummaryBanner summary={summary} />
