@@ -181,3 +181,5 @@ Tests use sanitized fixtures under `test/fixtures/home/` and cover:
 ## Credits
 
 Inspired by [codex-run](https://github.com/asfsdsf/codex-run) and [claude-run](https://github.com/kamranahmedse/claude-run).
+
+Special thanks to the [linux.do](https://linux.do) forum for the support and feedback.

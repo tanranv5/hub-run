@@ -203,3 +203,5 @@ pnpm test
 ## Credits
 
 灵感来源于 [codex-run](https://github.com/asfsdsf/codex-run) 与 [claude-run](https://github.com/kamranahmedse/claude-run)。
+
+感谢 [linux.do](https://linux.do) 论坛的支持与反馈。
