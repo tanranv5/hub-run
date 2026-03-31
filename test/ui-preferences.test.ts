@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { SessionSummary } from "../api/types";
 import {
+  clearSelectedSessionPreference,
   mergePreferredSession,
   readProviderControlPreference,
   readSelectedSessionPreference,
@@ -107,5 +108,27 @@ test("preferred session is merged back into the latest window when it is missing
   assert.deepEqual(
     merged.map((session) => session.id),
     ["session-10", "session-9"],
+  );
+});
+
+test("clearing a deleted selected session removes provider-wide and project-specific cache", () => {
+  const storage = createStorage();
+  const otherProjectSession = {
+    ...SESSION,
+    id: "session-10",
+    project: "/workspace/other",
+    projectName: "other",
+    timestamp: SESSION.timestamp - 10,
+  };
+
+  writeSelectedSessionPreference(storage, "claude", SESSION.project, SESSION);
+  writeSelectedSessionPreference(storage, "claude", otherProjectSession.project, otherProjectSession);
+
+  clearSelectedSessionPreference(storage, "claude", SESSION.id);
+
+  assert.equal(readSelectedSessionPreference(storage, "claude", SESSION.project), null);
+  assert.deepEqual(
+    readSelectedSessionPreference(storage, "claude", otherProjectSession.project),
+    otherProjectSession,
   );
 });

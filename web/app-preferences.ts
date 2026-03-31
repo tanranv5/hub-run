@@ -11,6 +11,7 @@ import {
   syncEffortSelection,
 } from "./provider-controls";
 import {
+  clearSelectedSessionPreference,
   getBrowserStorage,
   readProviderControlPreference,
   readSelectedSessionPreference,
@@ -46,6 +47,13 @@ export function persistSelectedSession(
   session: SessionSummary,
 ) {
   writeSelectedSessionPreference(getBrowserStorage(), providerId, project, session);
+}
+
+export function clearStoredSelectedSession(
+  providerId: ProviderId,
+  sessionId: string,
+) {
+  clearSelectedSessionPreference(getBrowserStorage(), providerId, sessionId);
 }
 
 export function resolveContextDrivenControls(

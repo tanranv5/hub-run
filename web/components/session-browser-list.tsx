@@ -4,48 +4,18 @@ import {
   computeVirtualWindow,
   getScrollTopToRevealIndex,
   getSessionTitle,
-  SESSION_GROUP_HEADER_HEIGHT,
   SESSION_LIST_DEFAULT_VIEWPORT_HEIGHT,
   SESSION_LIST_ITEM_HEIGHT,
   SESSION_LIST_OVERSCAN,
 } from "../session-browser-state";
 import { formatTime } from "../utils";
 
-type FlatItem =
-  | { kind: "header"; projectName: string; key: string }
-  | { kind: "session"; session: SessionSummary };
-
-function buildFlatItems(sessions: SessionSummary[]): FlatItem[] {
-  const projects = new Map<string, SessionSummary[]>();
-  for (const session of sessions) {
-    const key = session.projectName || session.project || "";
-    const group = projects.get(key) ?? [];
-    group.push(session);
-    projects.set(key, group);
-  }
-  if (projects.size <= 1) {
-    return sessions.map((session) => ({ kind: "session" as const, session }));
-  }
-  const items: FlatItem[] = [];
-  for (const [projectName, group] of projects) {
-    items.push({ kind: "header", projectName, key: `header:${projectName}` });
-    for (const session of group) {
-      items.push({ kind: "session", session });
-    }
-  }
-  return items;
-}
-
-function getItemHeight(item: FlatItem): number {
-  return item.kind === "header" ? SESSION_GROUP_HEADER_HEIGHT : SESSION_LIST_ITEM_HEIGHT;
-}
-
 interface SessionBrowserListProps {
   disabled?: boolean;
   sessions: SessionSummary[];
   selectedSessionId: string | null;
   onSelectSession: (sessionId: string) => void;
-  onDeleteSession?: (sessionId: string) => void;
+  onDeleteSession?: (sessionId: string) => Promise<void> | void;
 }
 
 interface LoadMoreButtonProps {
@@ -67,25 +37,40 @@ function SessionRow(props: {
   disabled?: boolean;
   session: SessionSummary;
   onSelectSession: (sessionId: string) => void;
-  onDeleteSession?: (sessionId: string) => void;
+  onDeleteSession?: (sessionId: string) => Promise<void> | void;
 }) {
   const { active, disabled = false, session, onSelectSession, onDeleteSession } = props;
   const title = getSessionTitle(session.display);
   const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   function handleDeleteClick(e: React.MouseEvent) {
     e.stopPropagation();
+    if (deleting) {
+      return;
+    }
     setConfirming(true);
   }
 
-  function handleConfirmDelete(e: React.MouseEvent) {
+  async function handleConfirmDelete(e: React.MouseEvent) {
     e.stopPropagation();
+    if (!onDeleteSession || deleting) {
+      return;
+    }
     setConfirming(false);
-    onDeleteSession?.(session.id);
+    setDeleting(true);
+    try {
+      await onDeleteSession(session.id);
+    } catch {
+      setDeleting(false);
+    }
   }
 
   function handleCancelDelete(e: React.MouseEvent) {
     e.stopPropagation();
+    if (deleting) {
+      return;
+    }
     setConfirming(false);
   }
 
@@ -93,7 +78,7 @@ function SessionRow(props: {
     <div className="relative mb-1 last:mb-0 [&:hover_.delete-btn]:opacity-100">
       <button
         type="button"
-        disabled={disabled}
+        disabled={disabled || deleting}
         onClick={() => onSelectSession(session.id)}
         className={`group block h-[72px] w-full rounded-lg px-3 py-3 text-left transition ${
           active ? "bg-surface-hover" : "bg-transparent hover:bg-surface"
@@ -122,7 +107,7 @@ function SessionRow(props: {
         </span>
       </div>
     </button>
-    {onDeleteSession && !confirming && (
+    {onDeleteSession && !confirming && !deleting && (
       <button
         type="button"
         onClick={handleDeleteClick}
@@ -142,7 +127,9 @@ function SessionRow(props: {
         <span className="flex-1 truncate text-xs text-txt">删除「{getSessionTitle(session.display)}」？</span>
         <button
           type="button"
-          onClick={handleConfirmDelete}
+          onClick={(event) => {
+            void handleConfirmDelete(event);
+          }}
           className="shrink-0 rounded px-2 py-1 text-xs font-medium text-red-500 hover:bg-red-500/10"
         >
           删除
@@ -154,6 +141,12 @@ function SessionRow(props: {
         >
           取消
         </button>
+      </div>
+    )}
+    {deleting && (
+      <div className="absolute inset-0 z-10 flex items-center gap-2 rounded-lg bg-surface-hover/95 px-3 backdrop-blur-sm">
+        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-bdr border-t-accent" />
+        <span className="flex-1 truncate text-xs text-txt">删除中...</span>
       </div>
     )}
   </div>
@@ -169,9 +162,6 @@ export function SessionBrowserList(props: SessionBrowserListProps) {
     SESSION_LIST_DEFAULT_VIEWPORT_HEIGHT,
   );
   const viewportHeight = containerHeight || SESSION_LIST_DEFAULT_VIEWPORT_HEIGHT;
-
-  const flatItems = useMemo(() => buildFlatItems(sessions), [sessions]);
-  const isGrouped = flatItems.some((item) => item.kind === "header");
 
   const range = useMemo(
     () => computeVirtualWindow({
@@ -203,7 +193,7 @@ export function SessionBrowserList(props: SessionBrowserListProps) {
 
   useEffect(() => {
     const element = containerRef.current;
-    if (!element || !selectedSessionId || isGrouped) {
+    if (!element || !selectedSessionId) {
       return;
     }
     const index = sessions.findIndex((session) => session.id === selectedSessionId);
@@ -221,7 +211,7 @@ export function SessionBrowserList(props: SessionBrowserListProps) {
     }
     element.scrollTop = nextScrollTop;
     setScrollTop(nextScrollTop);
-  }, [selectedSessionId, sessions, viewportHeight, isGrouped]);
+  }, [selectedSessionId, sessions, viewportHeight]);
 
   function handleScroll() {
     if (rafRef.current) {
@@ -240,47 +230,22 @@ export function SessionBrowserList(props: SessionBrowserListProps) {
   return (
     <div
       ref={containerRef}
-      data-virtualized={isGrouped ? undefined : "true"}
+      data-virtualized="true"
       className="flex-1 overflow-y-auto pr-1"
       onScroll={handleScroll}
     >
-      {isGrouped ? (
-        flatItems.map((item) =>
-          item.kind === "header" ? (
-            <div
-              key={item.key}
-              style={{ height: `${SESSION_GROUP_HEADER_HEIGHT}px` }}
-              className="flex items-center px-2 text-xs uppercase tracking-wide text-muted"
-            >
-              {item.projectName || "(无项目)"}
-            </div>
-          ) : (
-            <SessionRow
-              key={item.session.id}
-              active={item.session.id === selectedSessionId}
-              disabled={disabled}
-              session={item.session}
-              onSelectSession={onSelectSession}
-              onDeleteSession={onDeleteSession}
-            />
-          )
-        )
-      ) : (
-        <>
-          {range.paddingTop > 0 ? <div style={{ height: `${range.paddingTop}px` }} /> : null}
-          {visibleSessions.map((session) => (
-            <SessionRow
-              key={session.id}
-              active={session.id === selectedSessionId}
-              disabled={disabled}
-              session={session}
-              onSelectSession={onSelectSession}
-              onDeleteSession={onDeleteSession}
-            />
-          ))}
-          {range.paddingBottom > 0 ? <div style={{ height: `${range.paddingBottom}px` }} /> : null}
-        </>
-      )}
+      {range.paddingTop > 0 ? <div style={{ height: `${range.paddingTop}px` }} /> : null}
+      {visibleSessions.map((session) => (
+        <SessionRow
+          key={session.id}
+          active={session.id === selectedSessionId}
+          disabled={disabled}
+          session={session}
+          onSelectSession={onSelectSession}
+          onDeleteSession={onDeleteSession}
+        />
+      ))}
+      {range.paddingBottom > 0 ? <div style={{ height: `${range.paddingBottom}px` }} /> : null}
     </div>
   );
 }

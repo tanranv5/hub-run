@@ -10,6 +10,7 @@ import {
   applySentSessionSelection,
   loadMoreBrowserSessions,
   refreshBrowserState,
+  shouldRefreshBrowserAfterSend,
 } from "../web/app-browser-actions";
 
 const PROVIDER: ProviderSummary = {
@@ -204,4 +205,20 @@ test("applySentSessionSelection promotes the selected draft session into the rea
   );
   assert.equal(nextState.sessions[0]?.isDraft, undefined);
   assert.equal(nextState.selectedSessionId, "session-real");
+});
+
+test("stream-backed providers do not need a browser reload after send", () => {
+  assert.equal(shouldRefreshBrowserAfterSend(PROVIDER), false);
+  assert.equal(
+    shouldRefreshBrowserAfterSend({
+      ...PROVIDER,
+      id: "claude",
+      label: "Claude",
+      capabilities: {
+        ...PROVIDER.capabilities,
+        stream: false,
+      },
+    }),
+    true,
+  );
 });

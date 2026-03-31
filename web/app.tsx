@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ProviderSummary } from "../api/types";
 import { createProviderSession, deleteProviderSession, sendConversationMessage } from "./api";
-import { getStoredControlPreference, getStoredSelectedSession, persistProviderControls, persistSelectedSession, resolveContextDrivenControls, resolveUserSelectedControls } from "./app-preferences";
+import { clearStoredSelectedSession, getStoredControlPreference, getStoredSelectedSession, persistProviderControls, persistSelectedSession, resolveContextDrivenControls, resolveUserSelectedControls } from "./app-preferences";
 import { INITIAL_BROWSER, loadProviderBrowser } from "./browser-state";
 import {
   applySentSessionSelection,
   loadMoreBrowserSessions,
   refreshBrowserState,
+  shouldRefreshBrowserAfterSend,
 } from "./app-browser-actions";
 import {
   bootstrapApp,
@@ -32,6 +33,7 @@ export default function App() {
   const [bootstrap, setBootstrap] = useState(INITIAL_BOOTSTRAP);
   const [browser, setBrowser] = useState(INITIAL_BROWSER);
   const [controls, setControls] = useState(INITIAL_PROVIDER_CONTROLS);
+  const [providerSwitchTargetId, setProviderSwitchTargetId] = useState<string | null>(null);
   const [panelRefreshVersion, setPanelRefreshVersion] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -50,6 +52,10 @@ export default function App() {
   }, []);
 
   const selectedProvider = useMemo(() => bootstrap.providers.find((provider) => provider.id === bootstrap.selectedProviderId) ?? null, [bootstrap.providers, bootstrap.selectedProviderId]);
+  const providerSwitchLabel = useMemo(
+    () => bootstrap.providers.find((provider) => provider.id === providerSwitchTargetId)?.label ?? null,
+    [bootstrap.providers, providerSwitchTargetId],
+  );
 
   async function loadBrowserWithPreloadedSelection(
     provider: ProviderSummary,
@@ -171,6 +177,19 @@ export default function App() {
     setControls((current) => ({ ...current, ...resolveContextDrivenControls(current.models, current.selectedModelId, current.selectedEffort, sessionContext) }));
   }, [controls.models.length, sessionContext]);
 
+  useEffect(() => {
+    if (!providerSwitchTargetId) {
+      return;
+    }
+    if (selectedProvider?.id !== providerSwitchTargetId) {
+      return;
+    }
+    if (controls.loading || browser.loading) {
+      return;
+    }
+    setProviderSwitchTargetId(null);
+  }, [browser.loading, controls.loading, providerSwitchTargetId, selectedProvider?.id]);
+
   const providerModelPayload = useMemo(() => {
     if (!selectedProvider?.capabilities.modelSelection) return {};
     return {
@@ -273,6 +292,7 @@ export default function App() {
     if (!selectedProvider) return;
     try {
       await deleteProviderSession(selectedProvider.id, sessionId);
+      clearStoredSelectedSession(selectedProvider.id, sessionId);
       setBrowser((current) => ({
         ...current,
         sessions: current.sessions.filter((s) => s.id !== sessionId),
@@ -282,6 +302,7 @@ export default function App() {
       }));
     } catch (cause) {
       console.error("Failed to delete session:", cause);
+      throw cause;
     }
   }
 
@@ -305,6 +326,26 @@ export default function App() {
       persistProviderControls(selectedProvider.id, nextSelection.selectedModelId, nextSelection.selectedEffort);
       return { ...current, ...nextSelection };
     });
+  }
+
+  function handleSelectProvider(providerId: string) {
+    if (providerId === bootstrap.selectedProviderId) {
+      return;
+    }
+    const nextProvider = bootstrap.providers.find((provider) => provider.id === providerId);
+    if (!nextProvider) {
+      return;
+    }
+
+    setProviderSwitchTargetId(nextProvider.id);
+    setControls((current) => ({ ...current, loading: true, error: null }));
+    setBrowser((current) => ({
+      ...current,
+      loading: true,
+      loadingMore: false,
+      error: null,
+    }));
+    setBootstrap((current) => ({ ...current, selectedProviderId: providerId }));
   }
 
   async function handleRefresh() {
@@ -354,6 +395,11 @@ export default function App() {
     <AppScreen
       authEnabled={Boolean(bootstrap.auth?.authEnabled)}
       bootstrapError={bootstrap.error}
+      blockingOverlayLabel={
+        providerSwitchTargetId
+          ? `正在切换到 ${providerSwitchLabel ?? "Provider"}...`
+          : null
+      }
       browser={browser}
       contextDetails={contextDetails}
       contextLabel={contextLabel}
@@ -381,9 +427,6 @@ export default function App() {
       onLogout={() => handleLogout(setBootstrap)}
       onMessageSent={async (sessionId) => {
         const requestVersion = browserRequestVersionRef.current;
-        const resolvedFromDraft = browser.sessions.some(
-          (s) => s.id === browser.selectedSessionId && s.isDraft,
-        );
         setBrowser((current) => {
           // Only switch if still on the originating session or a draft being resolved
           const currentIsDraft = current.sessions.some(
@@ -398,7 +441,7 @@ export default function App() {
         if (!selectedProvider) {
           return;
         }
-        if (selectedProvider.capabilities.stream && !resolvedFromDraft) {
+        if (!shouldRefreshBrowserAfterSend(selectedProvider)) {
           return;
         }
         await refreshBrowserState({
@@ -417,13 +460,11 @@ export default function App() {
       onSelectEffort={handleSelectEffort}
       onSelectModel={handleSelectModel}
       onSelectProject={(value) => setControls((current) => ({ ...current, selectedProject: value }))}
-      onSelectProvider={(providerId) => setBootstrap((current) => ({ ...current, selectedProviderId: providerId }))}
+      onSelectProvider={handleSelectProvider}
       onSelectSession={(sessionId) => {
         handleSelectSession(sessionId).catch(console.error);
       }}
-      onDeleteSession={(sessionId) => {
-        handleDeleteSession(sessionId).catch(console.error);
-      }}
+      onDeleteSession={handleDeleteSession}
       onToggleDesktopSidebar={() => setDesktopSidebarOpen((value) => !value)}
       panelRefreshVersion={panelRefreshVersion}
       provider={selectedProvider}

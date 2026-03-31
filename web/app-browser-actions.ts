@@ -107,6 +107,10 @@ export async function loadMoreBrowserSessions(props: {
   }
 }
 
+export function shouldRefreshBrowserAfterSend(provider: ProviderSummary): boolean {
+  return !provider.capabilities.stream;
+}
+
 export function applySentSessionSelection(
   current: BrowserState,
   sessionId: string,

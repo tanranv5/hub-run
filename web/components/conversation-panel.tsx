@@ -22,23 +22,29 @@ import {
   EmptyConversationState,
 } from "./conversation-message";
 import ConversationTimeline from "./conversation-timeline";
+import { isSendLifecycleActive, type SendLifecycle } from "../conversation-send-state";
 
 export function canInterruptConversation(props: {
   interruptAvailable: boolean;
   loading: boolean;
+  sendLifecycle: SendLifecycle | null;
   streamStatus: RealtimeStreamStatus;
   threadState: ProviderThreadState | null;
 }) {
   const {
     interruptAvailable,
     loading,
+    sendLifecycle,
     streamStatus: _streamStatus,
     threadState,
   } = props;
   if (loading || !interruptAvailable) {
     return false;
   }
-  return threadState?.isGenerating === true;
+  if (threadState?.isGenerating === true) {
+    return true;
+  }
+  return sendLifecycle !== null && isSendLifecycleActive(sendLifecycle);
 }
 
 interface ConversationPanelProps {
@@ -297,6 +303,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
 
           interruptAvailable: provider.capabilities.interrupt,
           loading: state.loading,
+          sendLifecycle: state.sendLifecycle,
           streamStatus: state.streamStatus,
           threadState: state.threadState,
         })}

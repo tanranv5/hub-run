@@ -9,13 +9,14 @@ import type { SessionPanelCacheEntry } from "../conversation-panel-session-cache
 import type { ProviderControlsState } from "../provider-controls";
 import type { SendConversationResult } from "../conversation-panel-state-types";
 import AppHeader from "./app-header";
-import { ErrorBanner } from "./app-shell";
+import { BlockingScreenOverlay, ErrorBanner } from "./app-shell";
 import BrowserSidebar from "./browser-sidebar";
 import ConversationPanel from "./conversation-panel";
 
 interface AppScreenProps {
   authEnabled: boolean;
   bootstrapError: string | null;
+  blockingOverlayLabel?: string | null;
   browser: BrowserState;
   contextDetails: string | null;
   contextLabel: string | null;
@@ -36,7 +37,7 @@ interface AppScreenProps {
   onSelectProject: (value: string | null) => void;
   onSelectProvider: (providerId: string) => void;
   onSelectSession: (sessionId: string) => void;
-  onDeleteSession?: (sessionId: string) => void;
+  onDeleteSession?: (sessionId: string) => Promise<void> | void;
   onToggleDesktopSidebar: () => void;
   panelRefreshVersion: number;
   provider: ProviderSummary | null;
@@ -51,6 +52,7 @@ export default function AppScreen(props: AppScreenProps) {
   const {
     authEnabled,
     bootstrapError,
+    blockingOverlayLabel = null,
     browser,
     contextDetails,
     contextLabel,
@@ -83,7 +85,10 @@ export default function AppScreen(props: AppScreenProps) {
   } = props;
 
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-[var(--bg)] text-[var(--text)]">
+    <div
+      aria-busy={blockingOverlayLabel ? "true" : undefined}
+      className="relative flex h-screen w-screen flex-col overflow-hidden bg-[var(--bg)] text-[var(--text)]"
+    >
       <AppHeader
         authEnabled={authEnabled}
         provider={provider}
@@ -95,11 +100,12 @@ export default function AppScreen(props: AppScreenProps) {
         onLogout={onLogout}
       />
       <main className="relative flex flex-1 overflow-hidden">
-        <ErrorBanner message={bootstrapError ?? controls.error ?? browser.error} />
+        <ErrorBanner message={bootstrapError ?? browser.error} />
         <div className="relative flex h-full w-full">
           <BrowserSidebar
             browser={browser}
             creatingSession={controls.creatingSession}
+            errorMessage={controls.error}
             newSessionCwd={controls.newSessionCwd}
             open={sidebarOpen}
             desktopOpen={desktopSidebarOpen}
@@ -137,6 +143,9 @@ export default function AppScreen(props: AppScreenProps) {
           </div>
         </div>
       </main>
+      {blockingOverlayLabel ? (
+        <BlockingScreenOverlay label={blockingOverlayLabel} />
+      ) : null}
     </div>
   );
 }

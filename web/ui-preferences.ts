@@ -59,6 +59,36 @@ export function writeSelectedSessionPreference(
   writeJsonValue(storage, buildSessionKey(providerId, null), session);
 }
 
+export function clearSelectedSessionPreference(
+  storage: StorageLike | null | undefined,
+  providerId: ProviderId,
+  sessionId: string,
+) {
+  if (
+    !storage ||
+    typeof storage.key !== "function" ||
+    typeof storage.length !== "number" ||
+    typeof storage.removeItem !== "function"
+  ) {
+    return;
+  }
+
+  const prefix = `${SESSION_KEY_PREFIX}:${providerId}:`;
+  const keys: string[] = [];
+  for (let index = 0; index < storage.length; index += 1) {
+    const key = storage.key(index);
+    if (key?.startsWith(prefix)) {
+      keys.push(key);
+    }
+  }
+  for (const key of keys) {
+    const session = readJsonValue<SessionSummary>(storage, key);
+    if (session?.id === sessionId) {
+      storage.removeItem(key);
+    }
+  }
+}
+
 export function readProviderControlPreference(
   storage: StorageLike | null | undefined,
   providerId: ProviderId,

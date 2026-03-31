@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -11,11 +12,24 @@ export interface ClaudeSendInput {
   cwd: string;
 }
 
+export interface ClaudeCreateSessionInput {
+  sessionId?: string;
+  text: string;
+  cwd: string;
+}
+
 export interface ClaudeSendResult {
   outputText: string | null;
 }
 
-interface ClaudeSendProcessInput {
+export interface ClaudeCreateSessionResult extends ClaudeSendResult {
+  sessionId: string;
+}
+
+type ClaudeSessionMode = "create" | "resume";
+
+interface ClaudeRunProcessInput {
+  mode: ClaudeSessionMode;
   sessionId: string;
   text: string;
   cwd: string;
@@ -51,12 +65,26 @@ export async function sendClaudeMessage(
   input: ClaudeSendInput,
 ): Promise<ClaudeSendResult> {
   return runClaudeSendProcess(
-    validateClaudeSendInput(input),
+    validateClaudeResumeInput(input),
     readClaudeSendRuntimeOptions(),
   );
 }
 
-function validateClaudeSendInput(input: ClaudeSendInput): ClaudeSendProcessInput {
+export async function createClaudeSession(
+  input: ClaudeCreateSessionInput,
+): Promise<ClaudeCreateSessionResult> {
+  const processInput = validateClaudeCreateInput(input);
+  const result = await runClaudeSendProcess(
+    processInput,
+    readClaudeSendRuntimeOptions(),
+  );
+  return {
+    sessionId: processInput.sessionId,
+    outputText: result.outputText,
+  };
+}
+
+function validateClaudeResumeInput(input: ClaudeSendInput): ClaudeRunProcessInput {
   const sessionId = input.sessionId.trim();
   const text = input.text.trim();
   const cwd = input.cwd.trim();
@@ -71,7 +99,24 @@ function validateClaudeSendInput(input: ClaudeSendInput): ClaudeSendProcessInput
     throw new Error("cwd is required");
   }
 
-  return { sessionId, text, cwd };
+  return { mode: "resume", sessionId, text, cwd };
+}
+
+function validateClaudeCreateInput(
+  input: ClaudeCreateSessionInput,
+): ClaudeRunProcessInput {
+  const sessionId = input.sessionId?.trim() || randomUUID();
+  const text = input.text.trim();
+  const cwd = input.cwd.trim();
+
+  if (!text) {
+    throw new Error("text is required");
+  }
+  if (!cwd) {
+    throw new Error("cwd is required");
+  }
+
+  return { mode: "create", sessionId, text, cwd };
 }
 
 function readClaudeSendRuntimeOptions(): ClaudeSendRuntimeOptions {
@@ -103,7 +148,7 @@ function readDurationFromEnv(
 }
 
 function runClaudeSendProcess(
-  input: ClaudeSendProcessInput,
+  input: ClaudeRunProcessInput,
   runtime: ClaudeSendRuntimeOptions,
 ): Promise<ClaudeSendResult> {
   return new Promise((resolve, reject) => {
@@ -179,15 +224,17 @@ function runClaudeSendProcess(
 }
 
 function spawnClaudeCli(
-  input: ClaudeSendProcessInput,
+  input: ClaudeRunProcessInput,
 ) {
   const command = resolveClaudeExecutablePath();
+  const sessionArgs = input.mode === "resume"
+    ? ["--resume", input.sessionId]
+    : ["--session-id", input.sessionId];
   return spawn(
     command === "claude" ? "claude" : process.execPath,
     [
       ...(command === "claude" ? [] : [command]),
-      "--resume",
-      input.sessionId,
+      ...sessionArgs,
       "--print",
       "--output-format",
       "text",

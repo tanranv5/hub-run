@@ -89,6 +89,7 @@ test("app refresh keeps session search editable while conversation refreshes sep
     React.createElement(AppScreen as unknown as React.ComponentType<any>, {
       authEnabled: true,
       bootstrapError: null,
+      blockingOverlayLabel: null,
       browser: {
         sessions: [SESSION],
         nextBefore: null,
@@ -153,6 +154,75 @@ test("app refresh keeps session search editable while conversation refreshes sep
 
   assert.match(markup, /aria-label="搜索会话"/);
   assert.doesNotMatch(markup, /aria-label="搜索会话"[^>]*disabled=""/);
+});
+
+test("provider switch blocks the entire app instead of only the session list", () => {
+  const claudeProvider = {
+    ...PROVIDER,
+    id: "claude",
+    label: "Claude",
+    rootPath: "/Users/tanran/.claude",
+  } as ProviderSummary;
+  const markup = renderToStaticMarkup(
+    React.createElement(AppScreen as unknown as React.ComponentType<any>, {
+      authEnabled: true,
+      bootstrapError: null,
+      blockingOverlayLabel: "正在切换到 Claude...",
+      browser: {
+        sessions: [SESSION],
+        nextBefore: null,
+        selectedSessionId: SESSION.id,
+        streamStatus: {
+          phase: "idle",
+          lastEventAt: null,
+          retryCount: 0,
+        },
+        loading: true,
+        loadingMore: false,
+      },
+      contextDetails: null,
+      contextLabel: null,
+      controls: {
+        models: [],
+        projects: [SESSION.project],
+        selectedProject: SESSION.project,
+        selectedModelId: null,
+        selectedEffort: null,
+        newSessionCwd: SESSION.project,
+        loading: true,
+        creatingSession: false,
+        error: null,
+      },
+      desktopSidebarOpen: true,
+      effortOptions: [],
+      refreshing: false,
+      onCreateSession: () => {},
+      onCloseSidebar: () => {},
+      onLoadMore: () => {},
+      onLogout: () => {},
+      onMessageSent: async () => undefined,
+      onNewSessionCwdChange: () => {},
+      onOpenBrowser: () => {},
+      onRefresh: () => {},
+      onSelectEffort: () => {},
+      onSelectModel: () => {},
+      onSelectProject: () => {},
+      onSelectProvider: () => {},
+      onSelectSession: () => {},
+      onToggleDesktopSidebar: () => {},
+      panelRefreshVersion: 1,
+      provider: claudeProvider,
+      providers: [PROVIDER, claudeProvider],
+      sessionCacheRef: { current: new Map() },
+      selectedSession: SESSION,
+      sendMessage: async () => ({ sessionId: SESSION.id, turnId: null, outputText: null }),
+      sidebarOpen: false,
+    }),
+  );
+
+  assert.match(markup, /aria-busy="true"/);
+  assert.match(markup, /aria-label="正在切换到 Claude\.\.\."|aria-label="正在切换到 Claude..."/);
+  assert.match(markup, /切换 Provider，页面暂时不可操作/);
 });
 
 test("conversation panel keeps composer focused on send controls instead of provider badges", () => {
@@ -237,6 +307,34 @@ test("session browser shows create-session controls and session totals", () => {
   assert.match(markup, /ai软着，需要心理ai方面的源代码，是10号字70度斜体排版/);
 });
 
+test("session browser shows inline create-session error near project path controls", () => {
+  const markup = renderToStaticMarkup(
+    React.createElement(SessionBrowser as unknown as React.ComponentType<any>, {
+      provider: PROVIDER,
+      projects: [SESSION.project],
+      sessions: [SESSION],
+      totalSessionCount: 1,
+      nextBefore: null,
+      loading: false,
+      loadingMore: false,
+      errorMessage: "项目路径不能为空",
+      selectedProject: null,
+      selectedSessionId: SESSION.id,
+      newSessionCwd: "",
+      creatingSession: false,
+      onNewSessionCwdChange: () => {},
+      onCreateSession: () => {},
+      onLoadMore: () => {},
+      onSelectProject: () => {},
+      onSelectSession: () => {},
+    }),
+  );
+
+  assert.match(markup, /项目路径/);
+  assert.match(markup, /项目路径不能为空/);
+  assert.match(markup, /aria-live="polite"/);
+});
+
 test("desktop browser sidebar exposes resize handle and default width", () => {
   const markup = renderToStaticMarkup(
     React.createElement(BrowserSidebar as unknown as React.ComponentType<any>, {
@@ -270,6 +368,80 @@ test("desktop browser sidebar exposes resize handle and default width", () => {
 
   assert.match(markup, /aria-label="调整侧栏宽度"/);
   assert.match(markup, /style="width:320px"/);
+});
+
+test("app screen keeps control errors inside the sidebar instead of the global left banner", () => {
+  const markup = renderToStaticMarkup(
+    React.createElement(AppScreen as unknown as React.ComponentType<any>, {
+      authEnabled: true,
+      bootstrapError: null,
+      blockingOverlayLabel: null,
+      browser: {
+        sessions: [SESSION],
+        nextBefore: null,
+        selectedSessionId: SESSION.id,
+        streamStatus: {
+          phase: "idle",
+          lastEventAt: null,
+          retryCount: 0,
+        },
+        loading: false,
+        loadingMore: false,
+        error: null,
+      },
+      contextDetails: null,
+      contextLabel: null,
+      controls: {
+        models: [
+          {
+            id: "gpt-5-codex",
+            displayName: "GPT-5 Codex",
+            description: "default",
+            isDefault: true,
+            hidden: false,
+            defaultReasoningEffort: "medium",
+            supportedReasoningEfforts: ["low", "medium", "high"],
+          },
+        ],
+        projects: [SESSION.project],
+        selectedProject: null,
+        selectedModelId: "gpt-5-codex",
+        selectedEffort: "high",
+        newSessionCwd: "",
+        loading: false,
+        creatingSession: false,
+        error: "项目路径不能为空",
+      },
+      desktopSidebarOpen: true,
+      effortOptions: ["low", "medium", "high"],
+      refreshing: false,
+      onCreateSession: () => {},
+      onCloseSidebar: () => {},
+      onLoadMore: () => {},
+      onLogout: () => {},
+      onMessageSent: async () => undefined,
+      onNewSessionCwdChange: () => {},
+      onOpenBrowser: () => {},
+      onRefresh: () => {},
+      onSelectEffort: () => {},
+      onSelectModel: () => {},
+      onSelectProject: () => {},
+      onSelectProvider: () => {},
+      onSelectSession: () => {},
+      onToggleDesktopSidebar: () => {},
+      panelRefreshVersion: 1,
+      provider: PROVIDER,
+      providers: [PROVIDER],
+      sessionCacheRef: { current: new Map() },
+      selectedSession: SESSION,
+      sendMessage: async () => ({ sessionId: SESSION.id, turnId: null, outputText: null }),
+      sidebarOpen: false,
+    }),
+  );
+
+  assert.match(markup, /项目路径不能为空/);
+  assert.doesNotMatch(markup, /rounded-2xl border border-rose-400\/20 bg-rose-500\/10/);
+  assert.match(markup, /aria-live="polite"/);
 });
 
 test("mobile browser sidebar shell uses theme colors instead of hard-coded dark classes", () => {

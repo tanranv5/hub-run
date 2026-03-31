@@ -4,6 +4,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ProviderSummary, SessionSummary } from "../api/types";
 import SessionBrowser from "../web/components/session-browser";
+import { SessionBrowserList } from "../web/components/session-browser-list";
 
 Object.assign(globalThis, { React });
 
@@ -71,4 +72,43 @@ test("session browser does not fully render a long list on first paint", () => {
     renderedCount < sessions.length,
     `expected virtualized first paint, but rendered ${renderedCount} of ${sessions.length} sessions`,
   );
+});
+
+test("session browser list keeps latest-first order across projects without project headers", () => {
+  const sessions: SessionSummary[] = [
+    {
+      id: "session-a-1",
+      display: "第一条",
+      timestamp: 3_000,
+      project: "/Users/tanran/a",
+      projectName: "a",
+    },
+    {
+      id: "session-b-1",
+      display: "第二条",
+      timestamp: 2_000,
+      project: "/Users/tanran/b",
+      projectName: "b",
+    },
+    {
+      id: "session-a-2",
+      display: "第三条",
+      timestamp: 1_000,
+      project: "/Users/tanran/a",
+      projectName: "a",
+    },
+  ];
+  const markup = renderToStaticMarkup(
+    React.createElement(SessionBrowserList as unknown as React.ComponentType<any>, {
+      sessions,
+      selectedSessionId: sessions[0]?.id ?? null,
+      onSelectSession: () => {},
+    }),
+  );
+
+  const firstIndex = markup.indexOf("第一条");
+  const secondIndex = markup.indexOf("第二条");
+  const thirdIndex = markup.indexOf("第三条");
+  assert.ok(firstIndex >= 0 && secondIndex > firstIndex && thirdIndex > secondIndex);
+  assert.doesNotMatch(markup, /header:a|header:b|\(无项目\)/);
 });

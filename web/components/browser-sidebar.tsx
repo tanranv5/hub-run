@@ -24,6 +24,7 @@ interface BrowserStateLike {
 interface BrowserSidebarProps {
   browser: BrowserStateLike;
   creatingSession: boolean;
+  errorMessage?: string | null;
   refreshing?: boolean;
   newSessionCwd: string;
   open: boolean;
@@ -44,6 +45,7 @@ function SidebarContent(props: Omit<BrowserSidebarProps, "desktopOpen" | "open" 
   const {
     browser,
     creatingSession,
+    errorMessage = null,
     refreshing = false,
     newSessionCwd,
     projects,
@@ -70,6 +72,7 @@ function SidebarContent(props: Omit<BrowserSidebarProps, "desktopOpen" | "open" 
         nextBefore={browser.nextBefore}
         loading={browser.loading}
         loadingMore={browser.loadingMore}
+        errorMessage={errorMessage}
         creatingSession={creatingSession}
         refreshing={refreshing}
         newSessionCwd={newSessionCwd}
@@ -107,6 +110,7 @@ export default function BrowserSidebar(props: BrowserSidebarProps) {
   const {
     browser,
     creatingSession,
+    errorMessage = null,
     refreshing = false,
     newSessionCwd,
     open,
@@ -182,6 +186,7 @@ export default function BrowserSidebar(props: BrowserSidebarProps) {
           <SidebarContent
             browser={browser}
             creatingSession={creatingSession}
+            errorMessage={errorMessage}
             refreshing={refreshing}
             newSessionCwd={newSessionCwd}
             projects={projects}
@@ -216,6 +221,7 @@ export default function BrowserSidebar(props: BrowserSidebarProps) {
             <SidebarContent
               browser={browser}
               creatingSession={creatingSession}
+              errorMessage={errorMessage}
               refreshing={refreshing}
               newSessionCwd={newSessionCwd}
               projects={projects}

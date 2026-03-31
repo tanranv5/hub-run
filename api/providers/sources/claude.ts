@@ -1,9 +1,10 @@
 import type {
+  CreateSessionInput,
   ProviderModelOption,
   SendMessageInput,
   SendMessageResult,
 } from "../../types";
-import { sendClaudeMessage } from "../transports/claude-cli";
+import { createClaudeSession, sendClaudeMessage } from "../transports/claude-cli";
 import { createClaudeSessionStore } from "./claude-store";
 
 export function createClaudeProvider(rootPath: string) {
@@ -14,7 +15,7 @@ export function createClaudeProvider(rootPath: string) {
     label: "Claude",
     description: "Anthropic Claude Code provider shell",
     rootPath,
-    canCreateSession: false,
+    canCreateSession: true,
     supportsEmptyCreateSession: false,
     supportsModelSelection: false,
     readSessions: store.listSessions,
@@ -22,8 +23,15 @@ export function createClaudeProvider(rootPath: string) {
     listModels: async (): Promise<ProviderModelOption[]> => [],
     readConversationPage: store.getConversationPage,
     deleteSession: store.deleteSession,
-    createSession: async () => {
-      throw new Error("provider does not support creating sessions");
+    createSession: async (input: CreateSessionInput) => {
+      const result = await createClaudeSession({
+        text: input.text?.trim() ?? "",
+        cwd: input.cwd,
+      });
+      return {
+        sessionId: result.sessionId,
+        turnId: null,
+      };
     },
     sendMessage: async (
       sessionId: string,

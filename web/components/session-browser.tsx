@@ -16,6 +16,7 @@ interface SessionBrowserProps {
   projects: string[];
   selectedProject: string | null;
   sessions: SessionSummary[];
+  errorMessage?: string | null;
   totalSessionCount?: number | null;
   nextBefore: string | null;
   loading: boolean;
@@ -29,7 +30,7 @@ interface SessionBrowserProps {
   onLoadMore: () => void;
   onSelectProject: (value: string | null) => void;
   onSelectSession: (sessionId: string) => void;
-  onDeleteSession?: (sessionId: string) => void;
+  onDeleteSession?: (sessionId: string) => Promise<void> | void;
 }
 
 function SearchBar(props: {
@@ -96,6 +97,7 @@ function BrowserHeader(props: {
 function CreateSessionControls(props: {
   creatingSession: boolean;
   disabled?: boolean;
+  errorMessage?: string | null;
   newSessionCwd: string;
   projects: string[];
   selectedProject: string | null;
@@ -107,6 +109,7 @@ function CreateSessionControls(props: {
   const {
     creatingSession,
     disabled = false,
+    errorMessage = null,
     newSessionCwd,
     projects,
     selectedProject,
@@ -148,6 +151,14 @@ function CreateSessionControls(props: {
           <Plus className="h-4 w-4" />
         </button>
       </div>
+      {errorMessage ? (
+        <p
+          aria-live="polite"
+          className="text-xs leading-5 text-rose-700 dark:text-rose-200"
+        >
+          {errorMessage}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -170,6 +181,7 @@ export default function SessionBrowser(props: SessionBrowserProps) {
     projects,
     selectedProject,
     sessions,
+    errorMessage = null,
     totalSessionCount = null,
     nextBefore,
     loading,
@@ -200,6 +212,7 @@ export default function SessionBrowser(props: SessionBrowserProps) {
       <CreateSessionControls
         creatingSession={creatingSession}
         disabled={refreshing}
+        errorMessage={errorMessage}
         newSessionCwd={newSessionCwd}
         projects={projects}
         selectedProject={selectedProject}

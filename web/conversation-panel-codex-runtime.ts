@@ -139,9 +139,23 @@ function mergeReloadedPanelState(
     nextState.pendingUserInputRequests,
     now,
   );
+  const newTerminalMessages = runtimeMerged.messages.slice(current.messages.length);
+  const existingTerminalMessages = current.messages.filter(
+    (m) => m.id.startsWith("terminal-status:"),
+  );
+  const nextServerIds = new Set(nextState.messages.map((m) => m.id));
+  const keptTerminalMessages = existingTerminalMessages.filter(
+    (m) => !nextServerIds.has(m.id),
+  );
+  const allTerminalMessages = [
+    ...keptTerminalMessages,
+    ...newTerminalMessages.filter((m) => !keptTerminalMessages.some((k) => k.id === m.id)),
+  ];
   return {
     ...runtimeMerged,
-    messages: nextState.messages,
+    messages: allTerminalMessages.length
+      ? [...nextState.messages, ...allTerminalMessages]
+      : nextState.messages,
     nextBefore: nextState.nextBefore,
     summary: nextState.summary,
     streamStatus: current.streamStatus,

@@ -37,3 +37,25 @@ export function PanelLoadingState(props: { label: string }) {
     </div>
   );
 }
+
+export function BlockingScreenOverlay(props: {
+  description?: string;
+  label: string;
+}) {
+  const { description = "切换 Provider，页面暂时不可操作。", label } = props;
+
+  return (
+    <div
+      aria-busy="true"
+      aria-label={label}
+      role="status"
+      className="absolute inset-0 z-50 flex items-center justify-center bg-bg/88 px-6 backdrop-blur-sm"
+    >
+      <div className="flex max-w-sm flex-col items-center gap-3 rounded-[28px] border border-bdr bg-panel/92 px-6 py-5 text-center shadow-xl shadow-black/10">
+        <span className="h-5 w-5 animate-spin rounded-full border-2 border-bdr border-t-accent" />
+        <div className="text-sm font-medium text-txt">{label}</div>
+        <div className="text-xs leading-5 text-muted">{description}</div>
+      </div>
+    </div>
+  );
+}

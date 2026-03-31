@@ -12,6 +12,16 @@ if (pidPath) {
   writeFileSync(pidPath, `${process.pid}\n`, "utf-8");
 }
 
+const argsPath = process.env.FAKE_CLAUDE_ARGS_FILE?.trim();
+if (argsPath) {
+  writeFileSync(argsPath, JSON.stringify(process.argv.slice(2)), "utf-8");
+}
+
+const cwdPath = process.env.FAKE_CLAUDE_CWD_FILE?.trim();
+if (cwdPath) {
+  writeFileSync(cwdPath, `${process.cwd()}\n`, "utf-8");
+}
+
 const text = process.argv.at(-1) ?? "";
 if (text.includes("hang")) {
   process.on("SIGTERM", () => undefined);

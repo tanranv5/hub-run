@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import { chmodSync } from "node:fs";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
-import { sendClaudeMessage } from "../api/providers/transports/claude-cli";
+import {
+  createClaudeSession,
+  sendClaudeMessage,
+} from "../api/providers/transports/claude-cli";
 
 const FAKE_CLAUDE_PATH = resolve(
   "/Users/tanran/aiCode/cw/hub-run/test/fixtures/fake-claude-cli.mjs",
@@ -22,6 +25,18 @@ function delay(ms: number) {
 async function readPid(pidPath: string) {
   const raw = await readFile(pidPath, "utf-8");
   return Number.parseInt(raw.trim(), 10);
+}
+
+async function readArgs(argsPath: string) {
+  const raw = await readFile(argsPath, "utf-8");
+  return JSON.parse(raw) as string[];
+}
+
+async function assertSameRealPath(actualPath: string, expectedPath: string) {
+  assert.equal(
+    await realpath(actualPath),
+    await realpath(expectedPath),
+  );
 }
 
 async function waitForPidFile(pidPath: string, timeoutMs: number) {
@@ -56,6 +71,86 @@ async function waitForProcessExit(pid: number, timeoutMs: number) {
   }
   throw new Error(`process ${pid} did not exit within ${timeoutMs}ms`);
 }
+
+test("claude create starts a persisted session in the target cwd", async (t) => {
+  chmodSync(FAKE_CLAUDE_PATH, 0o755);
+  const tempDir = await mkdtemp(join(tmpdir(), "hub-run-claude-create-"));
+  const argsPath = join(tempDir, "fake-claude-args.json");
+  const cwdPath = join(tempDir, "fake-claude-cwd.txt");
+  const previousPath = process.env.CLAUDE_CLI_PATH;
+  const previousArgsPath = process.env.FAKE_CLAUDE_ARGS_FILE;
+  const previousCwdPath = process.env.FAKE_CLAUDE_CWD_FILE;
+  process.env.CLAUDE_CLI_PATH = FAKE_CLAUDE_PATH;
+  process.env.FAKE_CLAUDE_ARGS_FILE = argsPath;
+  process.env.FAKE_CLAUDE_CWD_FILE = cwdPath;
+
+  t.after(async () => {
+    process.env.CLAUDE_CLI_PATH = previousPath;
+    process.env.FAKE_CLAUDE_ARGS_FILE = previousArgsPath;
+    process.env.FAKE_CLAUDE_CWD_FILE = previousCwdPath;
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  const sessionId = "11111111-1111-4111-8111-111111111111";
+  const result = await createClaudeSession({
+    sessionId,
+    text: "start fresh",
+    cwd: tempDir,
+  });
+
+  assert.deepEqual(result, {
+    sessionId,
+    outputText: "echo:start fresh",
+  });
+  assert.deepEqual(await readArgs(argsPath), [
+    "--session-id",
+    sessionId,
+    "--print",
+    "--output-format",
+    "text",
+    "start fresh",
+  ]);
+  await assertSameRealPath((await readFile(cwdPath, "utf-8")).trim(), tempDir);
+});
+
+test("claude send resumes the existing session in the target cwd", async (t) => {
+  chmodSync(FAKE_CLAUDE_PATH, 0o755);
+  const tempDir = await mkdtemp(join(tmpdir(), "hub-run-claude-resume-"));
+  const argsPath = join(tempDir, "fake-claude-args.json");
+  const cwdPath = join(tempDir, "fake-claude-cwd.txt");
+  const previousPath = process.env.CLAUDE_CLI_PATH;
+  const previousArgsPath = process.env.FAKE_CLAUDE_ARGS_FILE;
+  const previousCwdPath = process.env.FAKE_CLAUDE_CWD_FILE;
+  process.env.CLAUDE_CLI_PATH = FAKE_CLAUDE_PATH;
+  process.env.FAKE_CLAUDE_ARGS_FILE = argsPath;
+  process.env.FAKE_CLAUDE_CWD_FILE = cwdPath;
+
+  t.after(async () => {
+    process.env.CLAUDE_CLI_PATH = previousPath;
+    process.env.FAKE_CLAUDE_ARGS_FILE = previousArgsPath;
+    process.env.FAKE_CLAUDE_CWD_FILE = previousCwdPath;
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  const result = await sendClaudeMessage({
+    sessionId: "resume-session-1",
+    text: "继续排查",
+    cwd: tempDir,
+  });
+
+  assert.deepEqual(result, {
+    outputText: "echo:继续排查",
+  });
+  assert.deepEqual(await readArgs(argsPath), [
+    "--resume",
+    "resume-session-1",
+    "--print",
+    "--output-format",
+    "text",
+    "继续排查",
+  ]);
+  await assertSameRealPath((await readFile(cwdPath, "utf-8")).trim(), tempDir);
+});
 
 test("claude send times out promptly and force-kills a CLI that ignores SIGTERM", async (t) => {
   chmodSync(FAKE_CLAUDE_PATH, 0o755);
