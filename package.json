@@ -2,7 +2,16 @@
   "name": "hub-run",
   "version": "0.1.0",
   "description": "Shared web shell for Codex and Claude conversation access",
+  "license": "MIT",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tanranv5/hub-run.git"
+  },
+  "homepage": "https://github.com/tanranv5/hub-run",
+  "bugs": {
+    "url": "https://github.com/tanranv5/hub-run/issues"
+  },
   "bin": {
     "hub-run": "dist/index.js"
   },

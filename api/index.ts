@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { program } from "commander";
 import { buildRuntimeConfig } from "./config";
 import { createServer } from "./server";
