@@ -57,12 +57,10 @@ async function readThreadWithTurns(threadId: string): Promise<unknown> {
   try {
     const result = await getClient().request("thread/read", params);
     if (!shouldResumeThreadReadResult(result)) {
-      console.log("[hub-run] thread/read result:", JSON.stringify(result));
       return result;
     }
     await resumeThread(threadId);
     const resumed = await getClient().request("thread/read", params);
-    console.log("[hub-run] thread/read result (after resume):", JSON.stringify(resumed));
     return resumed;
   } catch (error) {
     if (!shouldRetryAfterResume(error)) {

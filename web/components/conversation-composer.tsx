@@ -1,5 +1,5 @@
 import { Mic, Send, Square } from "lucide-react";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type {
   ProviderModelOption,
   ProviderReasoningEffort,
@@ -13,7 +13,13 @@ import {
 import ConversationContextBadge from "./conversation-context-badge";
 import type { VoiceInputPhase } from "../use-voice-input";
 
+export const COMPOSER_DEFAULT_HEIGHT_PX = 112;
+export const COMPOSER_MIN_HEIGHT_PX = 72;
+export const COMPOSER_MAX_HEIGHT_PX = 320;
+export const COMPOSER_COLLAPSED_HEIGHT_PX = 44;
+
 interface ConversationComposerProps {
+  browseCollapsed?: boolean;
   canInterrupt?: boolean;
   contextDetails?: string | null;
   contextLabel?: string | null;
@@ -26,13 +32,47 @@ interface ConversationComposerProps {
   selectedEffort: ProviderReasoningEffort | null;
   selectedModelId: string | null;
   sending: boolean;
+  storedHeight?: number | null;
   voicePhase?: VoiceInputPhase;
   onDraftChange: (value: string) => void;
+  onExpandFromBrowse?: () => void;
+  onStoredHeightChange?: (height: number) => void;
   onSelectEffort: (value: ProviderReasoningEffort | null) => void;
   onSelectModel: (value: string | null) => void;
   onInterrupt?: () => void;
   onSend: () => void;
   onVoiceClick: () => void;
+}
+
+export function clampComposerStoredHeight(height: number): number {
+  return Math.min(
+    COMPOSER_MAX_HEIGHT_PX,
+    Math.max(COMPOSER_MIN_HEIGHT_PX, Math.round(height)),
+  );
+}
+
+export function resolveComposerTextareaHeight(props: {
+  browseCollapsed: boolean;
+  contentHeight: number;
+  storedHeight: number | null;
+}) {
+  const { browseCollapsed, contentHeight, storedHeight } = props;
+  if (browseCollapsed) {
+    return COMPOSER_COLLAPSED_HEIGHT_PX;
+  }
+  if (typeof storedHeight === "number" && Number.isFinite(storedHeight)) {
+    return clampComposerStoredHeight(storedHeight);
+  }
+  return clampComposerStoredHeight(contentHeight || COMPOSER_DEFAULT_HEIGHT_PX);
+}
+
+export function resolveComposerStoredHeightFromTopDrag(props: {
+  initialHeight: number;
+  originClientY: number;
+  nextClientY: number;
+}) {
+  const { initialHeight, nextClientY, originClientY } = props;
+  return clampComposerStoredHeight(initialHeight + (originClientY - nextClientY));
 }
 
 function ComposerSelect(props: {
@@ -79,6 +119,7 @@ function ComposerSelect(props: {
 
 export default function ConversationComposer(props: ConversationComposerProps) {
   const {
+    browseCollapsed = false,
     canInterrupt = false,
     contextDetails = null,
     contextLabel = null,
@@ -91,8 +132,11 @@ export default function ConversationComposer(props: ConversationComposerProps) {
     selectedEffort,
     selectedModelId,
     sending,
+    storedHeight = null,
     voicePhase = "idle",
     onDraftChange,
+    onExpandFromBrowse,
+    onStoredHeightChange,
     onInterrupt,
     onSelectEffort,
     onSelectModel,
@@ -100,22 +144,83 @@ export default function ConversationComposer(props: ConversationComposerProps) {
     onVoiceClick,
   } = props;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const resizeCleanupRef = useRef<(() => void) | null>(null);
   const buttonLabel = getStatusButtonLabel(conversationStatus, sending);
   const composerDisabled = refreshing;
   const composerPlaceholder = composerDisabled
     ? "刷新中，暂时不可编辑"
     : getVoiceAwarePlaceholder(conversationStatus, voicePhase);
+  const [contentHeight, setContentHeight] = useState(COMPOSER_DEFAULT_HEIGHT_PX);
+  const resolvedHeight = resolveComposerTextareaHeight({
+    browseCollapsed,
+    contentHeight,
+    storedHeight,
+  });
 
-  const autoResize = useCallback(() => {
+  const measureContentHeight = useCallback(() => {
     const el = textareaRef.current;
-    if (!el) return;
+    if (!el) {
+      return COMPOSER_DEFAULT_HEIGHT_PX;
+    }
+    const previousHeight = el.style.height;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+    const measured = clampComposerStoredHeight(el.scrollHeight);
+    el.style.height = previousHeight;
+    setContentHeight(measured);
+    return measured;
   }, []);
+
+  useLayoutEffect(() => {
+    if (browseCollapsed) {
+      return;
+    }
+    if (storedHeight !== null) {
+      return;
+    }
+    measureContentHeight();
+  }, [browseCollapsed, draft, measureContentHeight, storedHeight]);
+
+  useEffect(() => () => {
+    resizeCleanupRef.current?.();
+  }, []);
+
+  const beginManualResize = useCallback((clientY: number) => {
+    const startingHeight = storedHeight ?? measureContentHeight();
+    onExpandFromBrowse?.();
+    const initialHeight = clampComposerStoredHeight(startingHeight);
+    const handleMove = (nextClientY: number) => {
+      const nextHeight = resolveComposerStoredHeightFromTopDrag({
+        initialHeight,
+        nextClientY,
+        originClientY: clientY,
+      });
+      onStoredHeightChange?.(nextHeight);
+      setContentHeight(nextHeight);
+    };
+    const handlePointerMove = (event: PointerEvent) => {
+      handleMove(event.clientY);
+    };
+    const handleMouseMove = (event: MouseEvent) => {
+      handleMove(event.clientY);
+    };
+    const cleanup = () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", cleanup);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", cleanup);
+      resizeCleanupRef.current = null;
+    };
+    resizeCleanupRef.current?.();
+    resizeCleanupRef.current = cleanup;
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", cleanup);
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", cleanup);
+  }, [measureContentHeight, onExpandFromBrowse, onStoredHeightChange, storedHeight]);
 
   return (
     <div className="flex-none p-3 md:p-5">
-        <section className="relative rounded-[32px] border border-bdr bg-panel/60 dark:bg-panel-2 px-3 pb-3 pt-3 shadow-lg shadow-black/5 backdrop-blur-sm transition-all focus-within:border-accent/40 focus-within:ring-4 focus-within:ring-accent/5 dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
+        <section className="relative rounded-2xl border border-bdr bg-panel/60 dark:bg-panel-2 px-3 pb-3 pt-3 shadow-sm shadow-black/5 backdrop-blur-sm transition-all focus-within:border-accent/40 focus-within:ring-4 focus-within:ring-accent/5">
           {contextLabel ? (
             <ConversationContextBadge details={contextDetails} label={contextLabel} />
           ) : null}
@@ -133,9 +238,10 @@ export default function ConversationComposer(props: ConversationComposerProps) {
           disabled={composerDisabled}
           value={draft}
           onChange={(event) => {
+            onExpandFromBrowse?.();
             onDraftChange(event.target.value);
-            autoResize();
           }}
+          onFocus={() => onExpandFromBrowse?.()}
           onKeyDown={(event) => {
             if (
               shouldSubmitOnEnter({
@@ -152,8 +258,24 @@ export default function ConversationComposer(props: ConversationComposerProps) {
           aria-label="发送消息"
           placeholder={composerPlaceholder}
           className="w-full resize-none bg-transparent px-1 pb-14 pt-1 text-[13px] leading-5 text-txt outline-none placeholder:text-muted disabled:cursor-not-allowed disabled:opacity-60 md:pr-[27rem] md:text-sm md:leading-6"
-          style={{ maxHeight: "200px", overflow: "auto" }}
+          style={{
+            height: `${resolvedHeight}px`,
+            maxHeight: `${COMPOSER_MAX_HEIGHT_PX}px`,
+            overflow: browseCollapsed ? "hidden" : "auto",
+          }}
         />
+        <button
+          type="button"
+          aria-label="拖动调整输入框高度"
+          data-slot="composer-resize-handle"
+          onPointerDown={(event) => {
+            event.preventDefault();
+            beginManualResize(event.clientY);
+          }}
+          className="group absolute inset-x-3 top-0 z-10 h-5 -translate-y-1/2 touch-none cursor-row-resize rounded-full bg-transparent"
+        >
+          <span className="pointer-events-none absolute inset-x-[36%] top-1/2 h-1 -translate-y-1/2 rounded-full bg-bdr/70 transition group-hover:bg-bdr" />
+        </button>
         <ComposerActions
           buttonLabel={buttonLabel}
           canInterrupt={canInterrupt}

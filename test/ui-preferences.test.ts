@@ -4,8 +4,10 @@ import type { SessionSummary } from "../api/types";
 import {
   clearSelectedSessionPreference,
   mergePreferredSession,
+  readConversationReadingPreference,
   readProviderControlPreference,
   readSelectedSessionPreference,
+  writeConversationReadingPreference,
   writeProviderControlPreference,
   writeSelectedSessionPreference,
 } from "../web/ui-preferences";
@@ -91,6 +93,22 @@ test("provider control preference round-trips selected model and effort", () => 
     modelId: "gpt-5.4",
   });
   assert.equal(readProviderControlPreference(storage, "claude"), null);
+});
+
+test("conversation reading preference round-trips mode, font scale, and composer height", () => {
+  const storage = createStorage();
+
+  writeConversationReadingPreference(storage, {
+    composerStoredHeight: 188,
+    messageFontScale: 3,
+    messageViewMode: "compact",
+  });
+
+  assert.deepEqual(readConversationReadingPreference(storage), {
+    composerStoredHeight: 188,
+    messageFontScale: 3,
+    messageViewMode: "compact",
+  });
 });
 
 test("preferred session is merged back into the latest window when it is missing", () => {

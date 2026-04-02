@@ -1,27 +1,48 @@
 import { useEffect, useState } from "react";
 import { ConversationTimestamp } from "./conversation-timestamp";
 import { MarkdownRenderer, getFencedCodeBlock } from "./markdown-renderer";
+import {
+  DEFAULT_MESSAGE_FONT_SCALE,
+  getConversationFontScaleClasses,
+} from "../conversation-reading-styles";
 
 export function ConversationExpandableCard(props: {
   badge: string;
   collapsedLabel: string;
+  contentScale?: number;
   expandedLabel: string;
   messageId: string;
+  searchState?: "none" | "match" | "active";
   subtitle: string;
   timestamp?: string;
   text: string;
   tone: "amber" | "rose";
 }) {
-  const { badge, collapsedLabel, expandedLabel, messageId, subtitle, text, timestamp, tone } = props;
+  const {
+    badge,
+    collapsedLabel,
+    contentScale = DEFAULT_MESSAGE_FONT_SCALE,
+    expandedLabel,
+    messageId,
+    searchState = "none",
+    subtitle,
+    text,
+    timestamp,
+    tone,
+  } = props;
   const [expanded, setExpanded] = useState(false);
+  const scale = getConversationFontScaleClasses(contentScale);
+  const searchRing = searchState === "active"
+    ? scale.searchActiveRing
+    : (searchState === "match" ? scale.searchMatchRing : "");
 
   useEffect(() => {
     setExpanded(false);
   }, [messageId]);
 
   return (
-    <article className="mx-auto max-w-full">
-      <div className={`rounded-[22px] border px-3 py-3 shadow-lg shadow-slate-950/15 md:rounded-[26px] md:px-4 md:py-4 ${getToneClass(tone)}`}>
+    <article className="group mx-auto max-w-full">
+      <div className={`rounded-xl border px-3 py-3 md:rounded-2xl md:px-4 md:py-4 ${getToneClass(tone)} ${searchRing}`}>
         <button
           aria-expanded={expanded}
           className={`flex w-full items-center justify-between gap-3 rounded-2xl border px-3 py-2 text-left ${getToneButtonClass(tone)}`}
@@ -36,8 +57,8 @@ export function ConversationExpandableCard(props: {
           <span className="text-[11px]">{expanded ? expandedLabel : collapsedLabel}</span>
         </button>
         {expanded ? (
-          <div className={`mt-3 rounded-2xl border px-3 py-3 ${getToneBodyClass(tone)}`}>
-            <MarkdownRenderer content={formatExpandableText(text)} />
+          <div className={`mt-3 rounded-2xl border px-3 py-3 ${getToneBodyClass(tone)} ${scale.expandableBody}`}>
+            <MarkdownRenderer content={formatExpandableText(text)} fontScale={contentScale} />
           </div>
         ) : null}
         <ConversationTimestamp

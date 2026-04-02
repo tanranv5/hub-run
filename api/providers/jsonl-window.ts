@@ -11,6 +11,18 @@ export interface JsonlTailWindow {
   exhausted: boolean;
 }
 
+export interface JsonlForwardWindow {
+  lines: JsonlLine[];
+  endOffset: number;
+  exhausted: boolean;
+}
+
+export interface JsonlHeadWindow {
+  lines: JsonlLine[];
+  endOffset: number;
+  exhausted: boolean;
+}
+
 export interface MessageWindowCursor {
   kind: "tail" | "prefix";
   offset: number;
@@ -129,6 +141,93 @@ export async function readJsonTailWindow(
 
     windowBytes = Math.min(fileSize, windowBytes * 2);
   }
+}
+
+export async function readJsonTailWindowBeforeOffset(
+  filePath: string,
+  endOffset: number,
+  minimumLineCount: number,
+  minimumBytes: number = DEFAULT_TAIL_BYTES,
+): Promise<JsonlTailWindow> {
+  const safeEndOffset = Math.max(0, endOffset);
+  if (safeEndOffset === 0) {
+    return { lines: [], startOffset: 0, exhausted: true };
+  }
+
+  let windowBytes = Math.min(
+    safeEndOffset,
+    Math.max(minimumBytes, minimumLineCount * 512),
+  );
+
+  while (true) {
+    const startOffset = Math.max(0, safeEndOffset - windowBytes);
+    const text = await readTextSlice(filePath, startOffset, safeEndOffset);
+    const normalized = normalizeTailSlice(text, startOffset);
+    const lines = normalized
+      ? toJsonlLines(normalized.text, normalized.startOffset, false)
+      : [];
+    const exhausted = startOffset === 0;
+
+    if (lines.length >= minimumLineCount || exhausted || windowBytes >= safeEndOffset) {
+      return {
+        lines,
+        startOffset: normalized?.startOffset ?? startOffset,
+        exhausted,
+      };
+    }
+
+    windowBytes = Math.min(safeEndOffset, windowBytes * 2);
+  }
+}
+
+export async function readJsonForwardWindow(
+  filePath: string,
+  startOffset: number,
+  minimumLineCount: number,
+  minimumBytes: number = DEFAULT_TAIL_BYTES,
+): Promise<JsonlForwardWindow> {
+  const fileSize = await stat(filePath)
+    .then((result) => result.size)
+    .catch(() => 0);
+  if (fileSize <= startOffset) {
+    return { lines: [], endOffset: startOffset, exhausted: true };
+  }
+
+  let windowBytes = Math.min(
+    fileSize - startOffset,
+    Math.max(minimumBytes, minimumLineCount * 512),
+  );
+
+  while (true) {
+    const endOffset = Math.min(fileSize, startOffset + windowBytes);
+    const text = await readTextSlice(filePath, startOffset, endOffset);
+    const lines = toJsonlLines(text, startOffset, true);
+    const exhausted = endOffset === fileSize;
+
+    if (lines.length >= minimumLineCount || exhausted || windowBytes >= fileSize - startOffset) {
+      return {
+        lines,
+        endOffset,
+        exhausted,
+      };
+    }
+
+    windowBytes = Math.min(fileSize - startOffset, windowBytes * 2);
+  }
+}
+
+export async function readJsonHeadWindowFromOffset(
+  filePath: string,
+  startOffset: number,
+  minimumLineCount: number,
+  minimumBytes: number = DEFAULT_TAIL_BYTES,
+): Promise<JsonlHeadWindow> {
+  return readJsonForwardWindow(
+    filePath,
+    startOffset,
+    minimumLineCount,
+    minimumBytes,
+  );
 }
 
 export async function readFirstJsonlLine(filePath: string): Promise<string | null> {

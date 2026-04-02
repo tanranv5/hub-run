@@ -1,5 +1,11 @@
 import type {
+  ConversationAnchor,
+  ConversationContextResult,
   ConversationPage,
+  ConversationLocateResult,
+  ConversationSearchPageResult,
+  ConversationSearchResult,
+  ConversationSearchMode,
   CreateSessionResult,
   ProviderModelOption,
   ProviderId,
@@ -183,6 +189,90 @@ export async function getConversationPage(
     },
   );
   return readJson<ConversationPage>(response);
+}
+
+export async function searchConversationMessages(
+  providerId: ProviderId,
+  sessionId: string,
+  query: string,
+  mode: ConversationSearchMode,
+): Promise<ConversationSearchResult> {
+  const search = new URLSearchParams();
+  search.set("q", query);
+  search.set("mode", mode);
+  const response = await fetch(
+    `/api/providers/${providerId}/sessions/${sessionId}/messages/search?${search.toString()}`,
+    {
+      credentials: "include",
+    },
+  );
+  return readJson<ConversationSearchResult>(response);
+}
+
+export async function locateConversationMessage(
+  providerId: ProviderId,
+  sessionId: string,
+  messageId: string,
+  mode: ConversationSearchMode,
+  window: number,
+): Promise<ConversationLocateResult | null> {
+  const search = new URLSearchParams();
+  search.set("messageId", messageId);
+  search.set("mode", mode);
+  search.set("window", String(window));
+  const response = await fetch(
+    `/api/providers/${providerId}/sessions/${sessionId}/messages/locate?${search.toString()}`,
+    {
+      credentials: "include",
+    },
+  );
+  return readJson<ConversationLocateResult | null>(response);
+}
+
+export async function searchConversationMessagePage(
+  providerId: ProviderId,
+  sessionId: string,
+  query: string,
+  mode: ConversationSearchMode,
+  anchor: ConversationAnchor | null,
+  limit: number,
+): Promise<ConversationSearchPageResult> {
+  const search = new URLSearchParams();
+  search.set("q", query);
+  search.set("mode", mode);
+  search.set("limit", String(limit));
+  if (anchor) {
+    search.set("afterOffset", String(anchor.offset));
+    search.set("afterBlockIndex", String(anchor.blockIndex));
+  }
+  const response = await fetch(
+    `/api/providers/${providerId}/sessions/${sessionId}/messages/search-page?${search.toString()}`,
+    {
+      credentials: "include",
+    },
+  );
+  return readJson<ConversationSearchPageResult>(response);
+}
+
+export async function readConversationMessageContext(
+  providerId: ProviderId,
+  sessionId: string,
+  anchor: ConversationAnchor,
+  mode: ConversationSearchMode,
+  window: number,
+): Promise<ConversationContextResult | null> {
+  const search = new URLSearchParams();
+  search.set("offset", String(anchor.offset));
+  search.set("blockIndex", String(anchor.blockIndex));
+  search.set("mode", mode);
+  search.set("window", String(window));
+  const response = await fetch(
+    `/api/providers/${providerId}/sessions/${sessionId}/messages/context?${search.toString()}`,
+    {
+      credentials: "include",
+    },
+  );
+  return readJson<ConversationContextResult | null>(response);
 }
 
 export async function sendConversationMessage(

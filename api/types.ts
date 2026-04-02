@@ -115,12 +115,65 @@ export interface ConversationMessage {
   title?: string;
   timestamp?: string;
   block?: ConversationBlock;
+  anchor?: ConversationAnchor;
 }
 
 export interface ConversationPage {
   messages: ConversationMessage[];
   nextBefore: string | null;
   summary: ConversationMessage | null;
+}
+
+export type ConversationSearchScope = "current" | "all";
+
+export type ConversationSearchMode = "all" | "compact" | "text";
+
+export interface ConversationAnchor {
+  offset: number;
+  blockIndex: number;
+}
+
+export interface ConversationSearchRange {
+  start: number;
+  end: number;
+}
+
+export interface ConversationSearchHit {
+  messageId: string;
+  messageIndex: number;
+  role: ConversationRole;
+  kind: ConversationKind;
+  timestamp?: string;
+  preview: string;
+  ranges: ConversationSearchRange[];
+  anchor: ConversationAnchor;
+}
+
+export interface ConversationSearchResult {
+  query: string;
+  mode: ConversationSearchMode;
+  totalMessages: number;
+  totalHits: number;
+  hits: ConversationSearchHit[];
+}
+
+export interface ConversationSearchPageResult {
+  query: string;
+  mode: ConversationSearchMode;
+  totalHits: number;
+  hits: ConversationSearchHit[];
+  nextAnchor: ConversationAnchor | null;
+}
+
+export interface ConversationLocateResult {
+  hitMessageId: string;
+  messages: ConversationMessage[];
+  hasOlder: boolean;
+  hasNewer: boolean;
+}
+
+export interface ConversationContextResult extends ConversationLocateResult {
+  anchor: ConversationAnchor;
 }
 
 export interface SessionsPage {
@@ -245,6 +298,30 @@ export interface ProviderAdapter {
     before: string | null,
     limit: number,
   ): Promise<ConversationPage>;
+  searchConversation?(
+    sessionId: string,
+    query: string,
+    mode: ConversationSearchMode,
+  ): Promise<ConversationSearchResult>;
+  searchConversationPage?(
+    sessionId: string,
+    query: string,
+    mode: ConversationSearchMode,
+    anchor: ConversationAnchor | null,
+    limit: number,
+  ): Promise<ConversationSearchPageResult>;
+  locateConversation?(
+    sessionId: string,
+    messageId: string,
+    mode: ConversationSearchMode,
+    window: number,
+  ): Promise<ConversationLocateResult | null>;
+  readConversationContext?(
+    sessionId: string,
+    anchor: ConversationAnchor,
+    mode: ConversationSearchMode,
+    window: number,
+  ): Promise<ConversationContextResult | null>;
   createSession(input: CreateSessionInput): Promise<CreateSessionResult>;
   sendMessage(sessionId: string, input: SendMessageInput): Promise<SendMessageResult>;
   getThreadState?(

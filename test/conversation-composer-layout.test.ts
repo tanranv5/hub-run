@@ -108,3 +108,49 @@ test("composer shows existing draft plus live voice text inside the textarea whi
   assert.match(markup, /<textarea[^>]*>先保留这句\n上海今天下雨吗<\/textarea>/);
   assert.doesNotMatch(markup, /data-slot="voice-transcript"/);
 });
+
+test("composer exposes a resize handle and collapses to one line while browsing history", () => {
+  const markup = renderToStaticMarkup(
+    React.createElement(ConversationComposer, {
+      browseCollapsed: true,
+      contextDetails: "211213/258400",
+      contextLabel: "81%",
+      conversationStatus: IDLE_STATUS,
+      draft: "这段草稿在浏览态不应该撑高输入框",
+      effortOptions: ["medium", "high"],
+      modelOptions: [
+        {
+          id: "gpt-5.4",
+          displayName: "GPT-5.4",
+          description: "",
+          isDefault: true,
+          hidden: false,
+          defaultReasoningEffort: "high",
+          supportedReasoningEfforts: ["medium", "high"],
+        },
+      ],
+      selectedEffort: "high",
+      selectedModelId: "gpt-5.4",
+      sending: false,
+      storedHeight: 220,
+      voicePhase: "idle",
+      onDraftChange: () => {},
+      onExpandFromBrowse: () => {},
+      onSelectEffort: () => {},
+      onSelectModel: () => {},
+      onSend: () => {},
+      onStoredHeightChange: () => {},
+      onVoiceClick: () => {},
+    }),
+  );
+
+  assert.match(markup, /data-slot="composer-resize-handle"/);
+  assert.match(markup, /height:44px/);
+  assert.match(markup, /overflow:hidden/);
+  assert.match(markup, /inset-x-3/);
+  assert.match(markup, /top-0/);
+  assert.match(markup, /-translate-y-1\/2/);
+  assert.match(markup, /h-5/);
+  assert.doesNotMatch(markup, /bottom-12/);
+  assert.doesNotMatch(markup, /left-1\/2 top-0 z-10 h-2 w-16/);
+});

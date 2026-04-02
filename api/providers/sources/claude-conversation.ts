@@ -1,4 +1,8 @@
 import type { ConversationMessage } from "../../types";
+import {
+  createConversationAnchor,
+  createConversationMessageId,
+} from "../conversation-anchor";
 import type { JsonlLine } from "../jsonl-window";
 import { safeJsonParse, stringifyContent } from "../shared";
 
@@ -32,6 +36,7 @@ export function parseClaudeConversationEntries(
 
     if (record.type === "summary" && typeof record.summary === "string") {
       summary = {
+        anchor: createConversationAnchor(entry.offset),
         id: `${sessionId}:summary:${entry.offset}`,
         role: "system",
         kind: "summary",
@@ -80,7 +85,8 @@ function normalizeClaudeBlock(
 ): ConversationMessage | null {
   const kind = typeof block.type === "string" ? block.type : "";
   const base = {
-    id: `${sessionId}:${lineOffset}:${blockIndex}`,
+    anchor: createConversationAnchor(lineOffset, blockIndex),
+    id: createConversationMessageId(sessionId, lineOffset, blockIndex),
     role,
     timestamp,
   } as const;

@@ -1,4 +1,12 @@
-import type { ConversationMessage, ProviderSummary } from "../../api/types";
+import {
+  findConversationSearchRanges,
+  readConversationVisibleText,
+} from "../../api/conversation-search";
+import type {
+  ConversationMessage,
+  ConversationSearchMode,
+  ProviderSummary,
+} from "../../api/types";
 import {
   getMessageBlock,
   parseTaggedControlMessage,
@@ -8,10 +16,16 @@ import {
   resolveToolTitle,
   sanitizeConversationText,
 } from "../conversation-message-helpers";
+import {
+  DEFAULT_MESSAGE_FONT_SCALE,
+  getConversationFontScaleClasses,
+} from "../conversation-reading-styles";
 import { ConversationExpandableCard } from "./conversation-expandable-card";
 import { MarkdownRenderer } from "./markdown-renderer";
 import { ConversationTimestamp } from "./conversation-timestamp";
 import { ConversationToolCard } from "./conversation-tool-card";
+
+type SearchVisualState = "none" | "match" | "active";
 
 function roleLabel(role: ConversationMessage["role"]) {
   if (role === "user") {
@@ -48,6 +62,22 @@ function showMetaOnMobile(message: ConversationMessage) {
     return true;
   }
   return message.kind !== "text";
+}
+
+function readProjectedPlainConversationText(message: ConversationMessage): string {
+  const skillInvocation = parseSkillInvocation(message.text);
+  if (skillInvocation) {
+    return sanitizeConversationText(skillInvocation.remainingText);
+  }
+  const notification = parseSubagentNotification(message.text);
+  if (notification) {
+    return sanitizeConversationText(notification.remainingText);
+  }
+  const taggedControlMessage = parseTaggedControlMessage(message.text);
+  if (taggedControlMessage) {
+    return sanitizeConversationText(taggedControlMessage.remainingText);
+  }
+  return readConversationVisibleText(message);
 }
 
 export function SummaryBanner(props: { summary: ConversationMessage | null }) {
@@ -122,25 +152,91 @@ export function EmptyConversationState(props: {
 }
 
 export function ConversationMessageCard(props: {
+  fontScale?: number;
+  highlightQuery?: string;
   message: ConversationMessage;
   previousMessage?: ConversationMessage | null;
+  renderMode?: ConversationSearchMode;
+  searchState?: SearchVisualState;
 }) {
-  const { message, previousMessage = null } = props;
+  const {
+    fontScale = DEFAULT_MESSAGE_FONT_SCALE,
+    highlightQuery = "",
+    message,
+    previousMessage = null,
+    renderMode = "all",
+    searchState = "none",
+  } = props;
   const block = getMessageBlock(message);
   const sanitizedText = sanitizeConversationText(message.text);
   const skillInvocation = parseSkillInvocation(message.text);
   const subagentNotification = parseSubagentNotification(message.text);
   const taggedControlMessage = parseTaggedControlMessage(message.text);
   const showMeta = showMetaOnMobile(message);
+  const plainVisibleText = readProjectedPlainConversationText(message);
+
+  if (renderMode !== "all") {
+    if (block.type === "turn_aborted") {
+      return (
+        <ConversationExpandableCard
+          badge="已中断"
+          collapsedLabel="展开详情"
+          contentScale={fontScale}
+          expandedLabel="收起详情"
+          messageId={message.id}
+          searchState={searchState}
+          subtitle={message.title ?? "status"}
+          timestamp={message.timestamp}
+          text={sanitizedText || message.text}
+          tone="rose"
+        />
+      );
+    }
+    if (!plainVisibleText) {
+      return null;
+    }
+    return (
+      <ConversationTextBubble
+        fontScale={fontScale}
+        forcePlainText
+        highlightQuery={highlightQuery}
+        message={message}
+        searchState={searchState}
+        showMeta={showMeta}
+        text={plainVisibleText}
+      />
+    );
+  }
 
   if (skillInvocation) {
-    return renderSkillInvocationMessage(message, showMeta, skillInvocation);
+    return renderSkillInvocationMessage({
+      fontScale,
+      highlightQuery,
+      message,
+      searchState,
+      showMeta,
+      skillInvocation,
+    });
   }
   if (subagentNotification) {
-    return renderSubagentNotificationMessage(message, showMeta, subagentNotification);
+    return renderSubagentNotificationMessage({
+      fontScale,
+      highlightQuery,
+      message,
+      notification: subagentNotification,
+      searchState,
+      showMeta,
+    });
   }
   if (taggedControlMessage) {
-    return renderTaggedControlMessage(message, showMeta, taggedControlMessage);
+    return renderTaggedControlMessage({
+      fontScale,
+      highlightQuery,
+      message,
+      searchState,
+      showMeta,
+      taggedControlMessage,
+    });
   }
 
   if (block.type === "image") {
@@ -149,6 +245,7 @@ export function ConversationMessageCard(props: {
         imagePath={block.imagePath}
         imageUrl={block.imageUrl}
         message={message}
+        searchState={searchState}
         showMeta={showMeta}
       />
     );
@@ -162,8 +259,10 @@ export function ConversationMessageCard(props: {
       <ConversationExpandableCard
         badge="思考"
         collapsedLabel="展开思考"
+        contentScale={fontScale}
         expandedLabel="收起思考"
         messageId={message.id}
+        searchState={searchState}
         subtitle="assistant reasoning"
         timestamp={message.timestamp}
         text={sanitizedText}
@@ -177,8 +276,10 @@ export function ConversationMessageCard(props: {
       <ConversationExpandableCard
         badge="已中断"
         collapsedLabel="展开详情"
+        contentScale={fontScale}
         expandedLabel="收起详情"
         messageId={message.id}
+        searchState={searchState}
         subtitle={message.title ?? "status"}
         timestamp={message.timestamp}
         text={sanitizedText || message.text}
@@ -192,7 +293,9 @@ export function ConversationMessageCard(props: {
     return (
       <ConversationToolCard
         block={block}
+        contentScale={fontScale}
         messageId={message.id}
+        searchState={searchState}
         timestamp={message.timestamp}
         toolLabel={getToolLabel(toolTitle)}
         toolTitle={toolTitle}
@@ -204,14 +307,34 @@ export function ConversationMessageCard(props: {
     return null;
   }
 
-  return <ConversationTextBubble message={message} showMeta={showMeta} text={sanitizedText} />;
+  return (
+    <ConversationTextBubble
+      fontScale={fontScale}
+      highlightQuery={highlightQuery}
+      message={message}
+      searchState={searchState}
+      showMeta={showMeta}
+      text={sanitizedText}
+    />
+  );
 }
 
-function renderSubagentNotificationMessage(
-  message: ConversationMessage,
-  showMeta: boolean,
-  notification: ReturnType<typeof parseSubagentNotification>,
-) {
+function renderSubagentNotificationMessage(props: {
+  fontScale: number;
+  highlightQuery: string;
+  message: ConversationMessage;
+  notification: ReturnType<typeof parseSubagentNotification>;
+  searchState: SearchVisualState;
+  showMeta: boolean;
+}) {
+  const {
+    fontScale,
+    highlightQuery,
+    message,
+    notification,
+    searchState,
+    showMeta,
+  } = props;
   if (!notification) {
     return null;
   }
@@ -221,25 +344,45 @@ function renderSubagentNotificationMessage(
       <ConversationExpandableCard
         badge="子代理"
         collapsedLabel="展开详情"
+        contentScale={fontScale}
         expandedLabel="收起详情"
         messageId={message.id}
+        searchState={searchState}
         subtitle={notification.statusLabel}
         timestamp={remainingText ? undefined : message.timestamp}
         text={notification.detailsText}
         tone="amber"
       />
       {remainingText ? (
-        <ConversationTextBubble message={message} showMeta={showMeta} text={remainingText} />
+        <ConversationTextBubble
+          fontScale={fontScale}
+          highlightQuery={highlightQuery}
+          message={message}
+          searchState={searchState}
+          showMeta={showMeta}
+          text={remainingText}
+        />
       ) : null}
     </>
   );
 }
 
-function renderSkillInvocationMessage(
-  message: ConversationMessage,
-  showMeta: boolean,
-  skillInvocation: ReturnType<typeof parseSkillInvocation>,
-) {
+function renderSkillInvocationMessage(props: {
+  fontScale: number;
+  highlightQuery: string;
+  message: ConversationMessage;
+  searchState: SearchVisualState;
+  showMeta: boolean;
+  skillInvocation: ReturnType<typeof parseSkillInvocation>;
+}) {
+  const {
+    fontScale,
+    highlightQuery,
+    message,
+    searchState,
+    showMeta,
+    skillInvocation,
+  } = props;
   if (!skillInvocation) {
     return null;
   }
@@ -249,25 +392,45 @@ function renderSkillInvocationMessage(
       <ConversationExpandableCard
         badge="技能"
         collapsedLabel="展开详情"
+        contentScale={fontScale}
         expandedLabel="收起详情"
         messageId={message.id}
+        searchState={searchState}
         subtitle={skillInvocation.name}
         timestamp={remainingText ? undefined : message.timestamp}
         text={skillInvocation.detailsText}
         tone="amber"
       />
       {remainingText ? (
-        <ConversationTextBubble message={message} showMeta={showMeta} text={remainingText} />
+        <ConversationTextBubble
+          fontScale={fontScale}
+          highlightQuery={highlightQuery}
+          message={message}
+          searchState={searchState}
+          showMeta={showMeta}
+          text={remainingText}
+        />
       ) : null}
     </>
   );
 }
 
-function renderTaggedControlMessage(
-  message: ConversationMessage,
-  showMeta: boolean,
-  taggedControlMessage: ReturnType<typeof parseTaggedControlMessage>,
-) {
+function renderTaggedControlMessage(props: {
+  fontScale: number;
+  highlightQuery: string;
+  message: ConversationMessage;
+  searchState: SearchVisualState;
+  showMeta: boolean;
+  taggedControlMessage: ReturnType<typeof parseTaggedControlMessage>;
+}) {
+  const {
+    fontScale,
+    highlightQuery,
+    message,
+    searchState,
+    showMeta,
+    taggedControlMessage,
+  } = props;
   if (!taggedControlMessage) {
     return null;
   }
@@ -275,7 +438,16 @@ function renderTaggedControlMessage(
   const remainingText = sanitizeConversationText(taggedControlMessage.remainingText);
   if (!detailsText) {
     return remainingText
-      ? <ConversationTextBubble message={message} showMeta={showMeta} text={remainingText} />
+      ? (
+          <ConversationTextBubble
+            fontScale={fontScale}
+            highlightQuery={highlightQuery}
+            message={message}
+            searchState={searchState}
+            showMeta={showMeta}
+            text={remainingText}
+          />
+        )
       : null;
   }
   return (
@@ -283,33 +455,63 @@ function renderTaggedControlMessage(
       <ConversationExpandableCard
         badge={taggedControlMessage.badge}
         collapsedLabel="展开详情"
+        contentScale={fontScale}
         expandedLabel="收起详情"
         messageId={message.id}
+        searchState={searchState}
         subtitle={taggedControlMessage.subtitle}
         timestamp={remainingText ? undefined : message.timestamp}
         text={detailsText}
         tone={taggedControlMessage.tone}
       />
       {remainingText ? (
-        <ConversationTextBubble message={message} showMeta={showMeta} text={remainingText} />
+        <ConversationTextBubble
+          fontScale={fontScale}
+          highlightQuery={highlightQuery}
+          message={message}
+          searchState={searchState}
+          showMeta={showMeta}
+          text={remainingText}
+        />
       ) : null}
     </>
   );
 }
 
 function ConversationTextBubble(props: {
+  fontScale: number;
+  forcePlainText?: boolean;
+  highlightQuery?: string;
   message: ConversationMessage;
+  searchState?: SearchVisualState;
   showMeta: boolean;
   text: string;
 }) {
-  const { message, showMeta, text } = props;
+  const {
+    fontScale,
+    forcePlainText = false,
+    highlightQuery = "",
+    message,
+    searchState = "none",
+    showMeta,
+    text,
+  } = props;
+  const scale = getConversationFontScaleClasses(fontScale);
+  const normalizedHighlightQuery = highlightQuery.trim();
+  const highlightRanges = normalizedHighlightQuery
+    ? findConversationSearchRanges(text, normalizedHighlightQuery)
+    : [];
+  const shouldHighlight = highlightRanges.length > 0;
+  const searchRing = searchState === "active"
+    ? scale.searchActiveRing
+    : (searchState === "match" ? scale.searchMatchRing : "");
   return (
     <article className={layoutTone(message)}>
       <div
-        className={`rounded-[22px] border px-3 py-3 shadow-lg shadow-slate-950/15 md:rounded-[26px] md:px-4 md:py-4 ${bubbleTone(message)}`}
+        className={`rounded-xl border px-3 py-3 md:rounded-2xl md:px-4 md:py-4 ${bubbleTone(message)} ${searchRing}`}
       >
         <div
-          className={`${showMeta ? "flex" : "hidden md:flex"} flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-muted md:text-[11px]`}
+          className={`${showMeta ? "flex" : "hidden md:flex"} flex-wrap items-center gap-2 uppercase tracking-[0.18em] text-muted ${scale.meta}`}
         >
           <span>{roleLabel(message.role)}</span>
           <span className="text-muted/50">/</span>
@@ -323,12 +525,24 @@ function ConversationTextBubble(props: {
             </>
           ) : null}
         </div>
-        {message.role === "assistant" || message.role === "system" ? (
-          <div className="mt-3 text-[14px] leading-6 md:text-[15px] md:leading-7">
-            <MarkdownRenderer content={text} />
+        {shouldHighlight ? (
+          <HighlightedConversationText
+            highlightState={searchState}
+            message={message}
+            ranges={highlightRanges}
+            scaleClassName={scale.textBody}
+            text={text}
+          />
+        ) : message.role === "assistant" || message.role === "system" ? (
+          <div className={`mt-3 ${forcePlainText ? scale.textBody : ""}`}>
+            {forcePlainText ? (
+              <div className={`whitespace-pre-wrap break-words ${scale.textBody}`}>{text}</div>
+            ) : (
+              <MarkdownRenderer content={text} fontScale={fontScale} />
+            )}
           </div>
         ) : (
-          <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-words text-[14px] leading-5 md:text-[15px] md:leading-6">
+          <pre className={`mt-3 overflow-x-auto whitespace-pre-wrap break-words ${scale.textBody}`}>
             {text}
           </pre>
         )}
@@ -342,17 +556,28 @@ function ConversationImageBubble(props: {
   imagePath?: string;
   imageUrl?: string;
   message: ConversationMessage;
+  searchState?: SearchVisualState;
   showMeta: boolean;
 }) {
-  const { imagePath, imageUrl, message, showMeta } = props;
+  const {
+    imagePath,
+    imageUrl,
+    message,
+    searchState = "none",
+    showMeta,
+  } = props;
   const imageAlt = message.role === "user" ? "用户图片" : "助手图片";
+  const scale = getConversationFontScaleClasses(DEFAULT_MESSAGE_FONT_SCALE);
+  const searchRing = searchState === "active"
+    ? scale.searchActiveRing
+    : (searchState === "match" ? scale.searchMatchRing : "");
   return (
-    <article className={layoutTone(message)}>
+    <article className={`group ${layoutTone(message)}`}>
       <div
-        className={`rounded-[22px] border px-3 py-3 shadow-lg shadow-slate-950/15 md:rounded-[26px] md:px-4 md:py-4 ${bubbleTone(message)}`}
+        className={`rounded-xl border px-3 py-3 md:rounded-2xl md:px-4 md:py-4 ${bubbleTone(message)} ${searchRing}`}
       >
         <div
-          className={`${showMeta ? "flex" : "hidden md:flex"} flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-muted md:text-[11px]`}
+          className={`${showMeta ? "flex" : "hidden md:flex"} flex-wrap items-center gap-2 uppercase tracking-[0.18em] text-muted ${scale.meta}`}
         >
           <span>{roleLabel(message.role)}</span>
           <span className="text-muted/50">/</span>
@@ -376,4 +601,76 @@ function ConversationImageBubble(props: {
       </div>
     </article>
   );
+}
+
+function HighlightedConversationText(props: {
+  highlightState: SearchVisualState;
+  message: ConversationMessage;
+  ranges: Array<{ start: number; end: number }>;
+  scaleClassName: string;
+  text: string;
+}) {
+  const { highlightState, message, ranges, scaleClassName, text } = props;
+  const content = (
+    <>
+      {sliceHighlightedText(text, ranges).map((part, index) => (
+        part.highlight ? (
+          <mark
+            key={`${part.text}-${index}`}
+            className={highlightState === "active" && part.active
+              ? "rounded bg-amber-400/50 px-0.5 text-current"
+              : "rounded bg-amber-300/25 px-0.5 text-current"}
+          >
+            {part.text}
+          </mark>
+        ) : (
+          <span key={`${part.text}-${index}`}>{part.text}</span>
+        )
+      ))}
+    </>
+  );
+
+  if (message.role === "assistant" || message.role === "system") {
+    return (
+      <div className={`mt-3 whitespace-pre-wrap break-words ${scaleClassName}`}>
+        {content}
+      </div>
+    );
+  }
+  return (
+    <pre className={`mt-3 overflow-x-auto whitespace-pre-wrap break-words ${scaleClassName}`}>
+      {content}
+    </pre>
+  );
+}
+
+function sliceHighlightedText(
+  text: string,
+  ranges: Array<{ start: number; end: number }>,
+) {
+  const parts: Array<{ active: boolean; highlight: boolean; text: string }> = [];
+  let cursor = 0;
+  ranges.forEach((range, index) => {
+    if (range.start > cursor) {
+      parts.push({
+        active: false,
+        highlight: false,
+        text: text.slice(cursor, range.start),
+      });
+    }
+    parts.push({
+      active: index === 0,
+      highlight: true,
+      text: text.slice(range.start, range.end),
+    });
+    cursor = range.end;
+  });
+  if (cursor < text.length) {
+    parts.push({
+      active: false,
+      highlight: false,
+      text: text.slice(cursor),
+    });
+  }
+  return parts.filter((part) => part.text.length > 0);
 }

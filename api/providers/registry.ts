@@ -3,7 +3,13 @@ import { homedir } from "os";
 import { join } from "path";
 import { encodeSessionKey } from "../session-ref";
 import type {
+  ConversationAnchor,
+  ConversationContextResult,
+  ConversationLocateResult,
   ConversationPage,
+  ConversationSearchPageResult,
+  ConversationSearchMode,
+  ConversationSearchResult,
   CreateSessionInput,
   CreateSessionResult,
   ProviderModelOption,
@@ -45,6 +51,30 @@ interface AdapterSource {
     before: string | null,
     limit: number,
   ) => Promise<ConversationPage>;
+  searchConversation?: (
+    sessionId: string,
+    query: string,
+    mode: ConversationSearchMode,
+  ) => Promise<ConversationSearchResult>;
+  searchConversationPage?: (
+    sessionId: string,
+    query: string,
+    mode: ConversationSearchMode,
+    anchor: ConversationAnchor | null,
+    limit: number,
+  ) => Promise<ConversationSearchPageResult>;
+  locateConversation?: (
+    sessionId: string,
+    messageId: string,
+    mode: ConversationSearchMode,
+    window: number,
+  ) => Promise<ConversationLocateResult | null>;
+  readConversationContext?: (
+    sessionId: string,
+    anchor: ConversationAnchor,
+    mode: ConversationSearchMode,
+    window: number,
+  ) => Promise<ConversationContextResult | null>;
   createSession: (input: CreateSessionInput) => Promise<CreateSessionResult>;
   sendMessage: (sessionId: string, input: SendMessageInput) => Promise<{
     turnId: string | null;
@@ -218,6 +248,26 @@ function createAdapter(
     listModels: source.listModels,
     getConversationPage: (sessionId, before, limit) =>
       source.readConversationPage(sessionId, before, limit),
+    ...(source.searchConversation
+      ? {
+          searchConversation: source.searchConversation,
+        }
+      : {}),
+    ...(source.searchConversationPage
+      ? {
+          searchConversationPage: source.searchConversationPage,
+        }
+      : {}),
+    ...(source.locateConversation
+      ? {
+          locateConversation: source.locateConversation,
+        }
+      : {}),
+    ...(source.readConversationContext
+      ? {
+          readConversationContext: source.readConversationContext,
+        }
+      : {}),
     createSession: source.createSession,
     sendMessage: source.sendMessage,
     ...(source.getThreadState

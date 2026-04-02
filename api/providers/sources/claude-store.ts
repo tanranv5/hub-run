@@ -1,6 +1,19 @@
 import { mkdir, readFile, rename, writeFile } from "fs/promises";
 import { join } from "path";
-import type { ConversationPage, SessionSummary } from "../../types";
+import {
+  locateConversationMessages,
+  searchConversationMessages,
+} from "../../conversation-search";
+import type {
+  ConversationAnchor,
+  ConversationLocateResult,
+  ConversationContextResult,
+  ConversationPage,
+  ConversationSearchPageResult,
+  ConversationSearchMode,
+  ConversationSearchResult,
+  SessionSummary,
+} from "../../types";
 import {
   isNumericBeforeCursor,
   parseMessageWindowCursor,
@@ -14,6 +27,8 @@ import {
   readPrefixClaudeConversationPage,
   readTailClaudeConversationPage,
 } from "./claude-conversation-pages";
+import { readConversationSearchPage } from "./conversation-search-page";
+import { readConversationContextWindow } from "./conversation-context-window";
 import {
   encodeProjectPath,
   readClaudeHistoryEntries,
@@ -174,6 +189,98 @@ export function createClaudeSessionStore(rootPath: string) {
         ),
         summary: conversation.summary,
       };
+    },
+    searchConversation: async (
+      sessionId: string,
+      query: string,
+      mode: ConversationSearchMode,
+    ): Promise<ConversationSearchResult> => {
+      const sessionFiles = await loadSessionFiles(state, projectsDir, historyPath);
+      const sessionFile = sessionFiles.get(sessionId);
+      if (!sessionFile) {
+        return searchConversationMessages({ messages: [], mode, query });
+      }
+      return searchConversationMessages({
+        messages: (await readFullConversation(sessionFile.filePath, sessionId)).messages,
+        mode,
+        query,
+      });
+    },
+    searchConversationPage: async (
+      sessionId: string,
+      query: string,
+      mode: ConversationSearchMode,
+      anchor: ConversationAnchor | null,
+      limit: number,
+    ): Promise<ConversationSearchPageResult> => {
+      const sessionFiles = await loadSessionFiles(state, projectsDir, historyPath);
+      const sessionFile = sessionFiles.get(sessionId);
+      if (!sessionFile) {
+        return {
+          query: query.trim(),
+          mode,
+          totalHits: 0,
+          hits: [],
+          nextAnchor: null,
+        };
+      }
+      const page = await readConversationSearchPage({
+        anchor,
+        filePath: sessionFile.filePath,
+        limit,
+        mode,
+        parseMessages: (lines) => parseClaudeConversationEntries(lines, sessionId).messages,
+        query,
+      });
+      const totalHits = searchConversationMessages({
+        messages: parseClaudeConversationEntries(
+          await readJsonLinesWithOffsets(sessionFile.filePath),
+          sessionId,
+        ).messages,
+        mode,
+        query,
+      }).totalHits;
+      return {
+        ...page,
+        totalHits,
+      };
+    },
+    locateConversation: async (
+      sessionId: string,
+      messageId: string,
+      mode: ConversationSearchMode,
+      window: number,
+    ): Promise<ConversationLocateResult | null> => {
+      const sessionFiles = await loadSessionFiles(state, projectsDir, historyPath);
+      const sessionFile = sessionFiles.get(sessionId);
+      if (!sessionFile) {
+        return null;
+      }
+      return locateConversationMessages({
+        messageId,
+        messages: (await readFullConversation(sessionFile.filePath, sessionId)).messages,
+        mode,
+        window,
+      });
+    },
+    readConversationContext: async (
+      sessionId: string,
+      anchor: ConversationAnchor,
+      mode: ConversationSearchMode,
+      window: number,
+    ): Promise<ConversationContextResult | null> => {
+      const sessionFiles = await loadSessionFiles(state, projectsDir, historyPath);
+      const sessionFile = sessionFiles.get(sessionId);
+      if (!sessionFile) {
+        return null;
+      }
+      return readConversationContextWindow({
+        anchor,
+        filePath: sessionFile.filePath,
+        mode,
+        parseMessages: (lines) => parseClaudeConversationEntries(lines, sessionId).messages,
+        window,
+      });
     },
     getSessionProjectPath: async (sessionId: string) => {
       const [historyEntries, sessionFiles] = await Promise.all([

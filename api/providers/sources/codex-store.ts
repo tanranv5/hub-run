@@ -1,6 +1,19 @@
 import { mkdir, readFile, rename, stat, writeFile } from "fs/promises";
 import { join } from "path";
-import type { ConversationPage, SessionSummary } from "../../types";
+import {
+  locateConversationMessages,
+  searchConversationMessages,
+} from "../../conversation-search";
+import type {
+  ConversationAnchor,
+  ConversationLocateResult,
+  ConversationContextResult,
+  ConversationPage,
+  ConversationSearchPageResult,
+  ConversationSearchMode,
+  ConversationSearchResult,
+  SessionSummary,
+} from "../../types";
 import {
   isNumericBeforeCursor,
   parseMessageWindowCursor,
@@ -23,11 +36,13 @@ import {
   readCodexSessionMeta,
   type CodexSessionFile,
 } from "./codex-session-files";
+import { readConversationSearchPage } from "./conversation-search-page";
 import {
   readLatestCodexConversationPage,
   readPrefixCodexConversationPage,
   readTailCodexConversationPage,
 } from "./codex-conversation-pages";
+import { readConversationContextWindow as readContextWindow } from "./conversation-context-window";
 import { readCodexSessionContext } from "./codex-session-context";
 import { readHiddenCodexSessionIds } from "./codex-thread-metadata";
 
@@ -154,6 +169,91 @@ export function createCodexSessionStore(rootPath: string) {
         ),
         summary: null,
       };
+    },
+    searchConversation: async (
+      sessionId: string,
+      query: string,
+      mode: ConversationSearchMode,
+    ): Promise<ConversationSearchResult> => {
+      const filePath = await getSessionFilePath(state, sessionsDir, sessionId);
+      if (!filePath) {
+        return searchConversationMessages({ messages: [], mode, query });
+      }
+      return searchConversationMessages({
+        messages: await readCodexConversation(filePath, sessionId),
+        mode,
+        query,
+      });
+    },
+    searchConversationPage: async (
+      sessionId: string,
+      query: string,
+      mode: ConversationSearchMode,
+      anchor: ConversationAnchor | null,
+      limit: number,
+    ): Promise<ConversationSearchPageResult> => {
+      const filePath = await getSessionFilePath(state, sessionsDir, sessionId);
+      if (!filePath) {
+        return {
+          query: query.trim(),
+          mode,
+          totalHits: 0,
+          hits: [],
+          nextAnchor: null,
+        };
+      }
+      const page = await readConversationSearchPage({
+        anchor,
+        filePath,
+        limit,
+        mode,
+        parseMessages: (lines) => readCodexConversationEntries(lines, sessionId),
+        query,
+      });
+      const totalHits = searchConversationMessages({
+        messages: await readCodexConversation(filePath, sessionId),
+        mode,
+        query,
+      }).totalHits;
+      return {
+        ...page,
+        totalHits,
+      };
+    },
+    locateConversation: async (
+      sessionId: string,
+      messageId: string,
+      mode: ConversationSearchMode,
+      window: number,
+    ): Promise<ConversationLocateResult | null> => {
+      const filePath = await getSessionFilePath(state, sessionsDir, sessionId);
+      if (!filePath) {
+        return null;
+      }
+      return locateConversationMessages({
+        messageId,
+        messages: await readCodexConversation(filePath, sessionId),
+        mode,
+        window,
+      });
+    },
+    readConversationContext: async (
+      sessionId: string,
+      anchor: ConversationAnchor,
+      mode: ConversationSearchMode,
+      window: number,
+    ): Promise<ConversationContextResult | null> => {
+      const filePath = await getSessionFilePath(state, sessionsDir, sessionId);
+      if (!filePath) {
+        return null;
+      }
+      return readContextWindow({
+        anchor,
+        filePath,
+        mode,
+        parseMessages: (lines) => readCodexConversationEntries(lines, sessionId),
+        window,
+      });
     },
     getSessionCwd: async (sessionId: string) => {
       const sessionFiles = await loadSessionFiles(state, sessionsDir);

@@ -1,6 +1,7 @@
-import { Check, Copy, PanelLeft } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Copy, PanelLeft, Search, X } from "lucide-react";
 import { useState } from "react";
 import type { SessionSummary } from "../../api/types";
+import type { ConversationSearchScope } from "../conversation-panel-search";
 import type { ConversationStatus } from "../conversation-status";
 import { getSessionTitle } from "../session-browser-state";
 import { formatTime } from "../utils";
@@ -9,8 +10,47 @@ import ConversationSessionStatus from "./conversation-session-status";
 const COPY_TOOLTIP_LABEL = "复制会话 ID";
 const COPIED_TOOLTIP_LABEL = "已复制会话 ID";
 
+function SearchScopeIcon(props: { scope: ConversationSearchScope }) {
+  const { scope } = props;
+  if (scope === "all") {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 20 20" className="h-4 w-4 fill-none stroke-current stroke-1.8">
+        <path d="M4 6h7" />
+        <path d="M4 10h6" />
+        <path d="M4 14h7" />
+        <circle cx="14.5" cy="10" r="2.5" />
+        <path d="m16.5 12 1.5 1.5" />
+      </svg>
+    );
+  }
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20" className="h-4 w-4 fill-none stroke-current stroke-1.8">
+      <circle cx="9" cy="9" r="4" />
+      <path d="m12 12 3 3" />
+      <path d="M9 3.5v2" />
+      <path d="M9 12.5v2" />
+      <path d="M3.5 9h2" />
+      <path d="M12.5 9h2" />
+    </svg>
+  );
+}
+
 interface ConversationHeaderProps {
   conversationStatus: ConversationStatus;
+  searchActiveIndex?: number;
+  searchError?: string | null;
+  searchLoading?: boolean;
+  searchOpen?: boolean;
+  searchQuery?: string;
+  searchScope?: ConversationSearchScope;
+  searchStatusLabel?: string;
+  onCloseSearch?: () => void;
+  onEscSearch?: () => void;
+  onNextSearchHit?: () => void;
+  onPreviousSearchHit?: () => void;
+  onSearchQueryChange?: (value: string) => void;
+  onSearchScopeChange?: (scope: ConversationSearchScope) => void;
+  onToggleSearch?: () => void;
   session: SessionSummary;
   onToggleDesktopSidebar: () => void;
 }
@@ -20,11 +60,27 @@ export default function ConversationHeader(props: ConversationHeaderProps) {
     conversationStatus,
     session,
     onToggleDesktopSidebar,
+    searchActiveIndex = -1,
+    searchError = null,
+    searchLoading = false,
+    searchOpen = false,
+    searchQuery = "",
+    searchScope = "current",
+    searchStatusLabel = "0/0",
+    onCloseSearch,
+    onEscSearch,
+    onNextSearchHit,
+    onPreviousSearchHit,
+    onSearchQueryChange,
+    onSearchScopeChange,
+    onToggleSearch,
   } = props;
   const [copied, setCopied] = useState(false);
   const title = getSessionTitle(session.display);
   const projectLabel = session.projectName || session.project;
   const relativeTime = formatTime(session.timestamp);
+  const searchPlaceholder = searchScope === "all" ? "搜索全部历史" : "搜索当前页面";
+  const searchNavigationDisabled = searchLoading || searchStatusLabel.startsWith("0/0");
 
   async function handleCopySessionId() {
     if (!navigator.clipboard) {
@@ -57,6 +113,15 @@ export default function ConversationHeader(props: ConversationHeaderProps) {
                 <span className="shrink-0">{relativeTime}</span>
               </span>
               <span className="ml-auto inline-flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  aria-label="搜索当前会话"
+                  onClick={onToggleSearch}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-bdr bg-surface text-muted transition hover:bg-surface-hover"
+                  data-slot="conversation-search-toggle"
+                >
+                  <Search className="h-4 w-4" />
+                </button>
                 <span className="group relative inline-flex">
                   <button
                     type="button"
@@ -88,6 +153,98 @@ export default function ConversationHeader(props: ConversationHeaderProps) {
                 </div>
               </span>
             </p>
+            {searchOpen ? (
+              <div
+                data-slot="conversation-search-bar"
+                className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-bdr bg-surface/80 px-3 py-2"
+              >
+                <Search className="h-4 w-4 text-muted" />
+                <input
+                  value={searchQuery}
+                  onChange={(event) => onSearchQueryChange?.(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      if (onEscSearch) {
+                        onEscSearch();
+                      } else {
+                        onCloseSearch?.();
+                      }
+                    } else if (event.key === "ArrowDown" || (event.key === "Enter" && !event.shiftKey)) {
+                      event.preventDefault();
+                      onNextSearchHit?.();
+                    } else if (event.key === "ArrowUp" || (event.key === "Enter" && event.shiftKey)) {
+                      event.preventDefault();
+                      onPreviousSearchHit?.();
+                    }
+                  }}
+                  placeholder={searchPlaceholder}
+                  aria-label={searchPlaceholder}
+                  className="min-w-[10rem] flex-1 bg-transparent text-sm text-txt outline-none placeholder:text-muted"
+                />
+                <div className="inline-flex items-center rounded-full border border-bdr bg-panel p-1 text-[11px] text-muted">
+                  <button
+                    type="button"
+                    aria-label="搜索当前页面"
+                    onClick={() => onSearchScopeChange?.("current")}
+                    data-slot="conversation-search-scope-current"
+                    className={`rounded-full p-1.5 transition ${
+                      searchScope === "current" ? "bg-surface text-txt" : ""
+                    }`}
+                  >
+                    <SearchScopeIcon scope="current" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="搜索全部历史"
+                    onClick={() => onSearchScopeChange?.("all")}
+                    data-slot="conversation-search-scope-all"
+                    className={`rounded-full p-1.5 transition ${
+                      searchScope === "all" ? "bg-surface text-txt" : ""
+                    }`}
+                  >
+                    <SearchScopeIcon scope="all" />
+                  </button>
+                </div>
+                <span
+                  data-slot="conversation-search-count"
+                  className="rounded-full border border-bdr px-2 py-1 text-[11px] text-muted"
+                >
+                  {searchLoading ? "搜索中..." : searchStatusLabel}
+                </span>
+                <button
+                  type="button"
+                  aria-label="上一个命中"
+                  onClick={onPreviousSearchHit}
+                  disabled={searchNavigationDisabled}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-bdr bg-panel text-muted transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <ChevronUp className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="下一个命中"
+                  onClick={onNextSearchHit}
+                  disabled={searchNavigationDisabled}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-bdr bg-panel text-muted transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="关闭搜索"
+                  onClick={onCloseSearch}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-bdr bg-panel text-muted transition hover:bg-surface-hover"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+                {searchError ? (
+                  <span className="ml-1 text-xs text-rose-600 dark:text-rose-300">
+                    {searchError}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

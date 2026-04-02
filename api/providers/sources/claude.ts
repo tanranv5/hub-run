@@ -22,6 +22,10 @@ export function createClaudeProvider(rootPath: string) {
     readProjects: store.listProjects,
     listModels: async (): Promise<ProviderModelOption[]> => [],
     readConversationPage: store.getConversationPage,
+    searchConversation: store.searchConversation,
+    searchConversationPage: store.searchConversationPage,
+    locateConversation: store.locateConversation,
+    readConversationContext: store.readConversationContext,
     deleteSession: store.deleteSession,
     createSession: async (input: CreateSessionInput) => {
       const result = await createClaudeSession({

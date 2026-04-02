@@ -1,4 +1,11 @@
-import type { ConversationKind, ConversationMessage } from "../../types";
+import type {
+  ConversationKind,
+  ConversationMessage,
+} from "../../types";
+import {
+  createConversationAnchor,
+  createConversationMessageId,
+} from "../conversation-anchor";
 import { stringifyContent } from "../shared";
 
 const IMAGE_PLACEHOLDER_PATTERN = /^<image name=\[[^\]]+\]>$/i;
@@ -6,10 +13,10 @@ const IMAGE_WRAPPER_TAGS = new Set(["<image>", "</image>"]);
 
 export function createMessageId(
   sessionId: string,
-  lineIndex: number,
-  order: number,
+  lineOffset: number,
+  blockIndex: number,
 ) {
-  return `${sessionId}:${lineIndex}:${order}`;
+  return createConversationMessageId(sessionId, lineOffset, blockIndex);
 }
 
 export function readToolTitle(
@@ -54,7 +61,9 @@ export function readReasoningText(payload: Record<string, unknown>): string {
 }
 
 export function normalizeCodexBlock(
-  id: string,
+  sessionId: string,
+  lineOffset: number,
+  blockIndex: number,
   role: "user" | "assistant",
   timestamp: string | undefined,
   item: unknown,
@@ -66,7 +75,12 @@ export function normalizeCodexBlock(
   const block = item as Record<string, unknown>;
   const text = typeof block.text === "string" ? block.text : "";
   const kind = typeof block.type === "string" ? block.type : "";
-  const base = { id, role, timestamp } as const;
+  const base = {
+    anchor: createConversationAnchor(lineOffset, blockIndex),
+    id: createMessageId(sessionId, lineOffset, blockIndex),
+    role,
+    timestamp,
+  } as const;
 
   if (kind === "input_text" || kind === "output_text" || kind === "text") {
     if (isIgnorableImageWrapperText(text)) {

@@ -73,8 +73,8 @@ test("static codex models expose a default cli-safe option", () => {
 
   assert.equal(models.length, 6);
   assert.deepEqual(models[0], {
-    id: "gpt-5.3-codex",
-    displayName: "gpt-5.3-codex",
+    id: "gpt-5.4",
+    displayName: "gpt-5.4",
     description: "Latest frontier agentic coding model.",
     isDefault: true,
     hidden: false,

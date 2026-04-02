@@ -1,6 +1,10 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { MutableRefObject } from "react";
-import type { ProviderUserInputRequest, SessionSummary } from "../api/types";
+import type {
+  ConversationLocateResult,
+  ProviderUserInputRequest,
+  SessionSummary,
+} from "../api/types";
 import { interruptProviderSession } from "./api";
 import {
   bootstrapConversationPanel,
@@ -34,7 +38,17 @@ import {
   INITIAL_PANEL_STATE,
   type PanelState,
   type SendConversationResult,
+  type BufferedConversationWindow,
 } from "./conversation-panel-state-types";
+
+function readCurrentConversationWindow(state: PanelState): BufferedConversationWindow {
+  return state.bufferedConversationWindow ?? {
+    messages: state.messages,
+    nextBefore: state.nextBefore,
+    summary: state.summary,
+    streamOffset: state.streamOffset,
+  };
+}
 
 export function useConversationPanelState(props: {
   providerId: "codex" | "claude" | null;
@@ -345,6 +359,16 @@ export function useConversationPanelState(props: {
     handleSend,
     handleViewLatest: () => {
       setState((current) => applyBufferedConversationWindow(current));
+    },
+    handleShowLocatedWindow: (result: ConversationLocateResult) => {
+      setState((current) => ({
+        ...current,
+        messages: result.messages,
+        nextBefore: null,
+        summary: null,
+        messageWindowFrozen: true,
+        bufferedConversationWindow: readCurrentConversationWindow(current),
+      }));
     },
     handleMessageWindowFrozenChange: (frozen: boolean) => {
       setState((current) => {

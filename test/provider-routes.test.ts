@@ -335,8 +335,8 @@ test("codex models route returns static CLI-backed model metadata", async () => 
   const payload = await response.json();
   assert.deepEqual(payload.models, [
     {
-      id: "gpt-5.3-codex",
-      displayName: "gpt-5.3-codex",
+      id: "gpt-5.4",
+      displayName: "gpt-5.4",
       description: "Latest frontier agentic coding model.",
       isDefault: true,
       hidden: false,
@@ -344,8 +344,8 @@ test("codex models route returns static CLI-backed model metadata", async () => 
       supportedReasoningEfforts: ["low", "medium", "high", "xhigh"],
     },
     {
-      id: "gpt-5.4",
-      displayName: "gpt-5.4",
+      id: "gpt-5.3-codex",
+      displayName: "gpt-5.3-codex",
       description: "Latest frontier agentic coding model.",
       isDefault: false,
       hidden: false,

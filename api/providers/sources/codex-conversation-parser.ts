@@ -1,4 +1,5 @@
 import type { ConversationMessage } from "../../types";
+import { createConversationAnchor } from "../conversation-anchor";
 import type { JsonlLine } from "../jsonl-window";
 import { safeJsonParse, stringifyContent } from "../shared";
 import {
@@ -129,9 +130,11 @@ function parseResponseMessage(
   if (role === "assistant") {
     flushPendingStatusMessages(state);
   }
-  for (const item of payload.content) {
+  for (const [blockIndex, item] of payload.content.entries()) {
     const message = normalizeCodexBlock(
-      createMessageId(sessionId, lineIndex, state.messages.length),
+      sessionId,
+      lineIndex,
+      blockIndex,
       role,
       timestamp,
       item,
@@ -159,7 +162,8 @@ function parseResponseReasoning(
     return;
   }
   state.messages.push({
-    id: createMessageId(sessionId, lineIndex, state.messages.length),
+    anchor: createConversationAnchor(lineIndex),
+    id: createMessageId(sessionId, lineIndex, 0),
     role: "assistant",
     kind: "thinking",
     text,
@@ -184,7 +188,8 @@ function parseResponseToolCall(
   const title = readToolTitle(payload, payloadType);
   state.toolNames.set(callId, title);
   state.messages.push({
-    id: createMessageId(sessionId, lineIndex, state.messages.length),
+    anchor: createConversationAnchor(lineIndex),
+    id: createMessageId(sessionId, lineIndex, 0),
     role: "assistant",
     kind: "tool_use",
     text: stringifyContent(payload.arguments ?? payload.input ?? ""),
@@ -210,7 +215,8 @@ function parseResponseToolResult(
   const callId = readCallId(payload, lineIndex);
   const title = state.toolNames.get(callId);
   state.messages.push({
-    id: createMessageId(sessionId, lineIndex, state.messages.length),
+    anchor: createConversationAnchor(lineIndex),
+    id: createMessageId(sessionId, lineIndex, 0),
     role: "assistant",
     kind: "tool_result",
     text: stringifyContent(payload.output ?? payload.content ?? ""),
@@ -241,7 +247,8 @@ function parseEventMessage(
       return;
     }
     state.messages.push({
-      id: createMessageId(sessionId, lineIndex, state.messages.length),
+      anchor: createConversationAnchor(lineIndex),
+      id: createMessageId(sessionId, lineIndex, 0),
       role: "assistant",
       kind: "thinking",
       text,
@@ -259,7 +266,8 @@ function parseEventMessage(
     return;
   }
   const message = {
-    id: createMessageId(sessionId, lineIndex, state.messages.length),
+    anchor: createConversationAnchor(lineIndex),
+    id: createMessageId(sessionId, lineIndex, 0),
     role: "system",
     kind: statusText.kind,
     text: statusText.text,

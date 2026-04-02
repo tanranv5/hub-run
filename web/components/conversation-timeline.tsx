@@ -1,6 +1,7 @@
 import { memo, useEffect, useRef, useState } from "react";
 import type {
   ConversationMessage,
+  ConversationSearchMode,
   ProviderUserInputRequest,
 } from "../../api/types";
 import {
@@ -14,14 +15,20 @@ import {
 import ScrollToLatestButton from "./scroll-to-latest-button";
 
 interface ConversationTimelineProps {
+  activeSearchMessageId?: string | null;
   error: string | null;
   hasOlderMessages: boolean;
   hasBufferedLatest: boolean;
+  highlightQuery?: string;
   loading: boolean;
   loadingOlder: boolean;
   messageWindowFrozen: boolean;
+  messageFontScale?: number;
+  messageViewMode?: ConversationSearchMode;
   messages: ConversationMessage[];
+  matchedSearchMessageIds?: ReadonlySet<string>;
   olderLoadCount?: number;
+  onBrowseMessages?: () => void;
   pendingUserInputRequests: ProviderUserInputRequest[];
   respondingRequestId: string | null;
   sessionId?: string | null;
@@ -41,14 +48,20 @@ const LOAD_TO_START_THRESHOLD = 10;
 
 export default memo(function ConversationTimeline(props: ConversationTimelineProps) {
   const {
+    activeSearchMessageId = null,
     error,
     hasOlderMessages,
     hasBufferedLatest,
+    highlightQuery = "",
     loading,
     loadingOlder,
+    matchedSearchMessageIds = new Set<string>(),
     messageWindowFrozen,
+    messageFontScale = 4,
+    messageViewMode = "all",
     messages,
     olderLoadCount = 0,
+    onBrowseMessages,
     pendingUserInputRequests,
     respondingRequestId,
     sessionId = null,
@@ -61,6 +74,7 @@ export default memo(function ConversationTimeline(props: ConversationTimelinePro
   } = props;
   const containerRef = useRef<HTMLDivElement>(null);
   const latestAnchorRef = useRef<HTMLDivElement>(null);
+  const messageRefs = useRef(new Map<string, HTMLDivElement>());
   const scrollingRef = useRef(false);
   const [pinnedToLatest, setPinnedToLatest] = useState(true);
   const resetToken = createConversationTimelineResetToken(
@@ -97,11 +111,31 @@ export default memo(function ConversationTimeline(props: ConversationTimelinePro
     });
   }, [loading, messages, pinnedToLatest]);
 
+  useEffect(() => {
+    if (!activeSearchMessageId) {
+      return;
+    }
+    const element = messageRefs.current.get(activeSearchMessageId);
+    if (!element) {
+      return;
+    }
+    scrollingRef.current = true;
+    setPinnedToLatest(false);
+    element.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+    setTimeout(() => {
+      scrollingRef.current = false;
+    }, 250);
+  }, [activeSearchMessageId, messages]);
+
   function syncPinnedState() {
     if (!containerRef.current || scrollingRef.current) {
       return;
     }
 
+    onBrowseMessages?.();
     const nextPinned = isNearConversationBottom({
       clientHeight: containerRef.current.clientHeight,
       scrollHeight: containerRef.current.scrollHeight,
@@ -139,7 +173,7 @@ export default memo(function ConversationTimeline(props: ConversationTimelinePro
       <div
         ref={containerRef}
         onScroll={syncPinnedState}
-        className="h-full overflow-y-auto px-4 py-4 md:px-6 md:py-6"
+        className="h-full overflow-y-auto px-4 pb-4 pt-16 md:px-6 md:pb-6 md:pt-[4.5rem]"
       >
         <div className="space-y-4">
           {hasOlderMessages ? (
@@ -223,13 +257,33 @@ export default memo(function ConversationTimeline(props: ConversationTimelinePro
               该会话当前没有可渲染消息。
             </div>
           ) : null}
-          {messages.map((message, index) => (
-            <ConversationMessageCard
-              key={message.id}
-              message={message}
-              previousMessage={messages[index - 1] ?? null}
-            />
-          ))}
+          {messages.map((message, index) => {
+            const searchState = activeSearchMessageId === message.id
+              ? "active"
+              : (matchedSearchMessageIds.has(message.id) ? "match" : "none");
+            return (
+              <div
+                key={message.id}
+                data-message-id={message.id}
+                ref={(node) => {
+                  if (node) {
+                    messageRefs.current.set(message.id, node);
+                    return;
+                  }
+                  messageRefs.current.delete(message.id);
+                }}
+              >
+                <ConversationMessageCard
+                  fontScale={messageFontScale}
+                  highlightQuery={highlightQuery}
+                  message={message}
+                  previousMessage={messages[index - 1] ?? null}
+                  renderMode={messageViewMode}
+                  searchState={searchState}
+                />
+              </div>
+            );
+          })}
           <div ref={latestAnchorRef} />
         </div>
       </div>

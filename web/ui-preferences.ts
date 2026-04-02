@@ -1,4 +1,5 @@
 import type {
+  ConversationSearchMode,
   ProviderId,
   ProviderReasoningEffort,
   SessionSummary,
@@ -7,6 +8,12 @@ import type {
 export interface ProviderControlPreference {
   modelId: string | null;
   effort: ProviderReasoningEffort | null;
+}
+
+export interface ConversationReadingPreference {
+  composerStoredHeight: number | null;
+  messageFontScale: number;
+  messageViewMode: ConversationSearchMode;
 }
 
 interface StorageLike {
@@ -19,6 +26,7 @@ interface StorageLike {
 
 const SESSION_KEY_PREFIX = "hub-run:selected-session:v1";
 const CONTROL_KEY_PREFIX = "hub-run:provider-controls:v1";
+const READING_PREFERENCE_KEY = "hub-run:conversation-reading:v1";
 
 export function getBrowserStorage(): StorageLike | null {
   return typeof window === "undefined" ? null : window.localStorage;
@@ -115,6 +123,39 @@ export function mergePreferredSession(
   const entries = new Map(sessions.map((session) => [session.id, session]));
   entries.set(preferredSession.id, preferredSession);
   return [...entries.values()].sort((left, right) => right.timestamp - left.timestamp);
+}
+
+export function readConversationReadingPreference(
+  storage: StorageLike | null | undefined,
+): ConversationReadingPreference | null {
+  const value = readJsonValue<ConversationReadingPreference>(storage, READING_PREFERENCE_KEY);
+  if (!value) {
+    return null;
+  }
+  if (
+    (value.messageViewMode !== "all" &&
+      value.messageViewMode !== "compact" &&
+      value.messageViewMode !== "text") ||
+    !Number.isFinite(value.messageFontScale)
+  ) {
+    storage?.removeItem?.(READING_PREFERENCE_KEY);
+    return null;
+  }
+  return {
+    composerStoredHeight:
+      typeof value.composerStoredHeight === "number" && Number.isFinite(value.composerStoredHeight)
+        ? value.composerStoredHeight
+        : null,
+    messageFontScale: value.messageFontScale,
+    messageViewMode: value.messageViewMode,
+  };
+}
+
+export function writeConversationReadingPreference(
+  storage: StorageLike | null | undefined,
+  preference: ConversationReadingPreference,
+) {
+  writeJsonValue(storage, READING_PREFERENCE_KEY, preference);
 }
 
 function buildSessionKey(providerId: ProviderId, project: string | null) {

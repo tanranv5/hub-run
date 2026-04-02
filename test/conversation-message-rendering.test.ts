@@ -440,3 +440,44 @@ test("tool card also shows exact timestamp in bottom-right metadata", () => {
   assert.match(markup, /19:15:26/);
   assert.match(markup, /data-slot="message-timestamp"/);
 });
+
+test("text mode renders wrapped skill text as plain conversation text instead of a skill card", () => {
+  const markup = renderToStaticMarkup(
+    React.createElement(ConversationMessageCard, {
+      renderMode: "text",
+      message: {
+        id: "skill-text-1",
+        role: "user",
+        kind: "text",
+        text:
+          "<skill>\n" +
+          "  <name>taskmaster</name>\n" +
+          "  <path>/Users/tanran/.codex/skills/taskmaster/SKILL.md</path>\n" +
+          "</skill>\n" +
+          "这种消息在纯文本模式下只保留正文。",
+      },
+    }),
+  );
+
+  assert.match(markup, /这种消息在纯文本模式下只保留正文。/);
+  assert.doesNotMatch(markup, />技能</);
+  assert.doesNotMatch(markup, /SKILL\.md/);
+});
+
+test("active search hit adds a stronger ring and highlighted mark to the message bubble", () => {
+  const markup = renderToStaticMarkup(
+    React.createElement(ConversationMessageCard, {
+      highlightQuery: "alpha",
+      searchState: "active",
+      message: {
+        id: "search-hit-1",
+        role: "assistant",
+        kind: "text",
+        text: "alpha beta alpha",
+      },
+    }),
+  );
+
+  assert.match(markup, /ring-2 ring-amber-400\/80/);
+  assert.match(markup, /<mark class="rounded bg-amber-400\/50 px-0\.5 text-current">alpha<\/mark>/);
+});

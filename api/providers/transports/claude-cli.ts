@@ -221,14 +221,18 @@ function collectClaudeProcessOutput(
   stdout: string[],
   stderr: string[],
 ) {
-  child.stdout.setEncoding("utf-8");
-  child.stdout.on("data", (chunk: string) => {
-    stdout.push(chunk);
-  });
-  child.stderr.setEncoding("utf-8");
-  child.stderr.on("data", (chunk: string) => {
-    stderr.push(chunk);
-  });
+  if (child.stdout) {
+    child.stdout.setEncoding("utf-8");
+    child.stdout.on("data", (chunk: string) => {
+      stdout.push(chunk);
+    });
+  }
+  if (child.stderr) {
+    child.stderr.setEncoding("utf-8");
+    child.stderr.on("data", (chunk: string) => {
+      stderr.push(chunk);
+    });
+  }
 }
 
 function describeClaudeAction(mode: ClaudeSessionMode): "create" | "send" {

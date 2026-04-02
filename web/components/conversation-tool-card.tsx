@@ -7,23 +7,41 @@ import {
 } from "../conversation-message-helpers";
 import { ConversationTimestamp } from "./conversation-timestamp";
 import { MarkdownRenderer, getFencedCodeBlock } from "./markdown-renderer";
+import {
+  DEFAULT_MESSAGE_FONT_SCALE,
+  getConversationFontScaleClasses,
+} from "../conversation-reading-styles";
 
 const LAYERED_TOOL_LABELS = new Set(["脚本", "写入文件"]);
 
 export function ConversationToolCard(props: {
   block: ConversationBlock;
+  contentScale?: number;
   messageId: string;
+  searchState?: "none" | "match" | "active";
   timestamp?: string;
   toolLabel: string;
   toolTitle: string | null;
 }) {
-  const { block, messageId, timestamp, toolLabel, toolTitle } = props;
+  const {
+    block,
+    contentScale = DEFAULT_MESSAGE_FONT_SCALE,
+    messageId,
+    searchState = "none",
+    timestamp,
+    toolLabel,
+    toolTitle,
+  } = props;
   const [expanded, setExpanded] = useState(false);
   const [resultExpanded, setResultExpanded] = useState(false);
   const layeredCollapse = shouldUseLayeredCollapse(toolLabel);
   const preview = summarizeToolBlock(block);
   const isResult = block.type === "tool_result";
   const toggleLabel = getTopToggleLabel(expanded, isResult, layeredCollapse);
+  const scale = getConversationFontScaleClasses(contentScale);
+  const searchRing = searchState === "active"
+    ? scale.searchActiveRing
+    : (searchState === "match" ? scale.searchMatchRing : "");
 
   useEffect(() => {
     setExpanded(false);
@@ -31,8 +49,8 @@ export function ConversationToolCard(props: {
   }, [messageId]);
 
   return (
-    <article className="mx-auto max-w-full">
-      <div className="rounded-[22px] border border-accent/20 bg-accent/8 px-3 py-3 text-txt shadow-lg shadow-black/10 md:rounded-[26px] md:px-4 md:py-4">
+    <article className="group mx-auto max-w-full">
+      <div className={`rounded-xl border border-accent/20 bg-accent/8 px-3 py-3 text-txt md:rounded-2xl md:px-4 md:py-4 ${searchRing}`}>
         <button
           aria-expanded={expanded}
           className="flex w-full items-center justify-between gap-3 rounded-2xl border border-bdr bg-surface px-3 py-2 text-left"
@@ -51,13 +69,14 @@ export function ConversationToolCard(props: {
           <span className="text-[11px] text-accent">{toggleLabel}</span>
         </button>
         {!layeredCollapse || expanded ? (
-          <p className="mt-3 whitespace-pre-wrap break-words text-[13px] leading-6 text-txt/90 md:text-sm md:leading-7">
+          <p className={`mt-3 whitespace-pre-wrap break-words text-txt/90 ${scale.toolPreview}`}>
             {preview}
           </p>
         ) : null}
         {expanded ? (
           <ToolExpandedBody
             block={block}
+            contentScale={contentScale}
             layeredCollapse={layeredCollapse}
             resultExpanded={resultExpanded}
             setResultExpanded={setResultExpanded}
@@ -89,13 +108,14 @@ function shouldUseLayeredCollapse(toolLabel: string) {
 
 function ToolExpandedBody(props: {
   block: ConversationBlock;
+  contentScale: number;
   layeredCollapse: boolean;
   resultExpanded: boolean;
   setResultExpanded: (value: boolean | ((current: boolean) => boolean)) => void;
 }) {
-  const { block, layeredCollapse, resultExpanded, setResultExpanded } = props;
+  const { block, contentScale, layeredCollapse, resultExpanded, setResultExpanded } = props;
   if (!layeredCollapse || block.type !== "tool_result") {
-    return <ToolValueContent block={block} />;
+    return <ToolValueContent block={block} contentScale={contentScale} />;
   }
 
   return (
@@ -109,13 +129,14 @@ function ToolExpandedBody(props: {
       >
         {resultExpanded ? "收起执行结果" : "展开执行结果"}
       </button>
-      {resultExpanded ? <ToolValueContent block={block} /> : null}
+      {resultExpanded ? <ToolValueContent block={block} contentScale={contentScale} /> : null}
     </div>
   );
 }
 
-function ToolValueContent(props: { block: ConversationBlock }) {
-  const { block } = props;
+function ToolValueContent(props: { block: ConversationBlock; contentScale: number }) {
+  const { block, contentScale } = props;
+  const scale = getConversationFontScaleClasses(contentScale);
   const value = block.type === "tool_use" ? block.input : block.content;
   const text = stringifyStructuredValue(value);
   if (!text.trim()) {
@@ -130,7 +151,7 @@ function ToolValueContent(props: { block: ConversationBlock }) {
   const parsed = typeof value === "string" ? parseJsonLikeText(value) : value;
   if (parsed && typeof parsed === "object") {
     return (
-      <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-all rounded-2xl border border-bdr bg-surface px-3 py-3 text-xs leading-6 text-txt/90">
+      <pre className={`mt-3 overflow-x-auto whitespace-pre-wrap break-all rounded-2xl border border-bdr bg-surface px-3 py-3 text-txt/90 ${scale.expandableBody}`}>
         {JSON.stringify(parsed, null, 2)}
       </pre>
     );
@@ -138,7 +159,7 @@ function ToolValueContent(props: { block: ConversationBlock }) {
 
   return (
     <div className="mt-3 rounded-2xl border border-bdr bg-surface px-3 py-3">
-      <MarkdownRenderer content={formatToolText(text, block.type)} />
+      <MarkdownRenderer content={formatToolText(text, block.type)} fontScale={contentScale} />
     </div>
   );
 }

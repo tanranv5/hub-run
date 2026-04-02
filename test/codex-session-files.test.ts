@@ -3,8 +3,10 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { readJsonLinesWithOffsets } from "../api/providers/jsonl-window";
 import {
   readCodexConversation,
+  readCodexConversationEntries,
   readCodexFirstUserSnippet,
 } from "../api/providers/sources/codex-session-files";
 
@@ -462,6 +464,61 @@ test("codex conversation parser renders task_complete as a terminal status messa
     assert.equal(messages[1]?.role, "system");
     assert.equal(messages[1]?.title, "status");
     assert.equal(messages[1]?.text, "任务已完成（turn=turn-1）");
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("codex conversation parser keeps stable ids and anchors across full and tail parses", async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), "hub-run-codex-anchor-"));
+  const filePath = join(tempDir, "session.jsonl");
+  const lines = [
+    JSON.stringify({
+      type: "session_meta",
+      payload: { id: "session-anchor", cwd: "/workspace/demo" },
+    }),
+    JSON.stringify({
+      type: "response_item",
+      timestamp: "2026-04-02T02:00:00.000Z",
+      payload: {
+        type: "message",
+        role: "assistant",
+        content: [{ type: "output_text", text: "A" }],
+      },
+    }),
+    JSON.stringify({
+      type: "response_item",
+      timestamp: "2026-04-02T02:00:01.000Z",
+      payload: {
+        type: "message",
+        role: "assistant",
+        content: [
+          { type: "output_text", text: "B1" },
+          { type: "output_text", text: "B2" },
+        ],
+      },
+    }),
+  ];
+  await writeFile(filePath, `${lines.join("\n")}\n`, "utf-8");
+
+  try {
+    const full = await readCodexConversation(filePath, "session-anchor");
+    const tailLines = (await readJsonLinesWithOffsets(filePath)).slice(2);
+    const tail = readCodexConversationEntries(tailLines, "session-anchor");
+    assert.deepEqual(
+      full.slice(1).map((message) => ({
+        anchor: message.anchor,
+        id: message.id,
+        text: message.text,
+      })),
+      tail.map((message) => ({
+        anchor: message.anchor,
+        id: message.id,
+        text: message.text,
+      })),
+    );
+    assert.deepEqual(full[1]?.anchor, { offset: tailLines[0]?.offset, blockIndex: 0 });
+    assert.deepEqual(full[2]?.anchor, { offset: tailLines[0]?.offset, blockIndex: 1 });
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }

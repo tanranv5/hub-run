@@ -1,7 +1,9 @@
-import { memo, useMemo, useState } from "react";
-import type { MutableRefObject } from "react";
+import { filterConversationMessages } from "../../api/conversation-search";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import type { MutableRefObject, ReactNode } from "react";
 import type {
   ConversationMessage,
+  ConversationSearchMode,
   ProviderModelOption,
   ProviderReasoningEffort,
   ProviderSummary,
@@ -9,14 +11,24 @@ import type {
   ProviderUserInputRequest,
   SessionSummary,
 } from "../../api/types";
+import { useConversationPanelSearch } from "../conversation-panel-search";
 import { useConversationPanelState } from "../conversation-panel-state";
 import type { SendConversationResult } from "../conversation-panel-state-types";
 import type { SessionPanelCacheEntry } from "../conversation-panel-session-cache";
+import { DEFAULT_MESSAGE_FONT_SCALE } from "../conversation-reading-styles";
 import type { RealtimeStreamStatus } from "../realtime-stream-status";
 import { resolveConversationStatus, type ConversationStatus } from "../conversation-status";
+import {
+  getBrowserStorage,
+  readConversationReadingPreference,
+  writeConversationReadingPreference,
+} from "../ui-preferences";
 import { PanelLoadingState } from "./app-shell";
 import ConversationComposer from "./conversation-composer";
 import ConversationHeader from "./conversation-header";
+import ConversationReadingToolbar from "./conversation-reading-toolbar";
+import ConversationSearchResultsPage from "./conversation-search-results-page";
+import SearchContextBar from "./search-context-bar";
 import { useVoiceInput } from "../use-voice-input";
 import {
   EmptyConversationState,
@@ -47,6 +59,22 @@ export function canInterruptConversation(props: {
   return sendLifecycle !== null && isSendLifecycleActive(sendLifecycle);
 }
 
+function cycleMessageViewMode(
+  mode: ConversationSearchMode,
+): ConversationSearchMode {
+  if (mode === "all") {
+    return "compact";
+  }
+  if (mode === "compact") {
+    return "text";
+  }
+  return "all";
+}
+
+function cycleMessageFontScale(current: number): number {
+  return current >= 6 ? 1 : current + 1;
+}
+
 interface ConversationPanelProps {
   contextDetails?: string | null;
   contextLabel?: string | null;
@@ -68,6 +96,9 @@ interface ConversationPanelProps {
 }
 
 interface ConversationBodyProps {
+  activeSearchMessageId?: string | null;
+  composerBrowseCollapsed?: boolean;
+  composerStoredHeight?: number | null;
   canInterrupt: boolean;
   contextDetails?: string | null;
   contextLabel?: string | null;
@@ -79,8 +110,12 @@ interface ConversationBodyProps {
   loading: boolean;
   loadingOlder: boolean;
   hasBufferedLatest: boolean;
+  highlightQuery?: string;
+  matchedSearchMessageIds?: ReadonlySet<string>;
   messages: ConversationMessage[];
   messageWindowFrozen: boolean;
+  messageFontScale: number;
+  messageViewMode: ConversationSearchMode;
   modelOptions: ProviderModelOption[];
   olderLoadCount: number;
   pendingUserInputRequests: ProviderUserInputRequest[];
@@ -88,15 +123,23 @@ interface ConversationBodyProps {
   refreshing?: boolean;
   respondingRequestId: string | null;
   interrupting: boolean;
+  searchContextLoading?: boolean;
+  searchMode?: "off" | "all-results" | "all-context";
+  searchResultsPage?: ReactNode;
+  searchHitLabel?: string;
   sessionId?: string | null;
   selectedEffort: ProviderReasoningEffort | null;
   selectedModelId: string | null;
   sending: boolean;
+  onReturnToSearchResults?: () => void;
   summary: ConversationMessage | null;
   onDraftChange: (value: string) => void;
   onInterrupt: () => void;
   onLoadOlder: () => void;
   onLoadOlderToStart: () => void;
+  onBrowseMessages?: () => void;
+  onComposerExpand?: () => void;
+  onComposerStoredHeightChange?: (height: number) => void;
   onMessageWindowFrozenChange: (frozen: boolean) => void;
   onRespondUserInput: (
     request: ProviderUserInputRequest,
@@ -108,6 +151,9 @@ interface ConversationBodyProps {
   onSend: () => void;
   onViewLatest: () => void;
   voicePhase: "idle" | "starting" | "recording" | "stopping";
+  onDecreaseFontScale: () => void;
+  onIncreaseFontScale: () => void;
+  onCycleMessageViewMode: () => void;
   onVoiceClick: () => void;
 }
 
@@ -129,6 +175,9 @@ function ConversationRefreshOverlay() {
 
 export const ConversationBody = memo(function ConversationBody(props: ConversationBodyProps) {
   const {
+    activeSearchMessageId = null,
+    composerBrowseCollapsed = false,
+    composerStoredHeight = null,
     canInterrupt,
     contextDetails = null,
     contextLabel = null,
@@ -138,12 +187,19 @@ export const ConversationBody = memo(function ConversationBody(props: Conversati
     error,
     hasOlderMessages,
     hasBufferedLatest,
+    highlightQuery = "",
     loading,
     loadingOlder,
+    matchedSearchMessageIds = new Set<string>(),
     messageWindowFrozen,
+    messageFontScale,
+    messageViewMode,
     messages,
     modelOptions,
     olderLoadCount,
+    onBrowseMessages,
+    onComposerExpand,
+    onComposerStoredHeightChange,
     pendingUserInputRequests,
     onDraftChange,
     onInterrupt,
@@ -156,15 +212,23 @@ export const ConversationBody = memo(function ConversationBody(props: Conversati
     onSend,
     onViewLatest,
     voicePhase,
+    onDecreaseFontScale,
+    onIncreaseFontScale,
+    onCycleMessageViewMode,
     onVoiceClick,
     interrupting,
     providerSendAvailable,
     refreshing = false,
     respondingRequestId,
+    searchContextLoading = false,
+    searchMode = "off",
+    searchResultsPage = null,
+    searchHitLabel = "",
     sessionId = null,
     selectedEffort,
     selectedModelId,
     sending,
+    onReturnToSearchResults,
     summary,
   } = props;
 
@@ -176,32 +240,63 @@ export const ConversationBody = memo(function ConversationBody(props: Conversati
     );
   }
 
+  const isInAllSearch = searchMode === "all-results" || searchMode === "all-context";
+
   return (
     <div
       aria-busy={refreshing}
       className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
     >
-      <ConversationTimeline
-        error={error}
-        hasOlderMessages={hasOlderMessages}
-        hasBufferedLatest={hasBufferedLatest}
-        loading={loading}
-        loadingOlder={loadingOlder}
-        messageWindowFrozen={messageWindowFrozen}
-        messages={messages}
-        olderLoadCount={olderLoadCount}
-        pendingUserInputRequests={pendingUserInputRequests}
-        respondingRequestId={respondingRequestId}
-        sessionId={sessionId}
-        summary={summary}
-        onLoadOlder={onLoadOlder}
-        onLoadOlderToStart={onLoadOlderToStart}
-        onSetMessageWindowFrozen={onMessageWindowFrozenChange}
-        onRespondUserInput={onRespondUserInput}
-        onViewLatest={onViewLatest}
-      />
-      {providerSendAvailable ? (
+      {isInAllSearch ? null : (
+        <ConversationReadingToolbar
+          fontScale={messageFontScale}
+          messageViewMode={messageViewMode}
+          onDecreaseFontScale={onDecreaseFontScale}
+          onIncreaseFontScale={onIncreaseFontScale}
+          onCycleMessageViewMode={onCycleMessageViewMode}
+        />
+      )}
+      {searchMode === "all-results" && searchResultsPage ? (
+        searchResultsPage
+      ) : (
+        <>
+          {searchMode === "all-context" ? (
+            <SearchContextBar
+              hitLabel={searchHitLabel}
+              loading={searchContextLoading}
+              onReturn={onReturnToSearchResults}
+            />
+          ) : null}
+          <ConversationTimeline
+            activeSearchMessageId={activeSearchMessageId}
+            error={error}
+            hasOlderMessages={hasOlderMessages}
+            hasBufferedLatest={hasBufferedLatest}
+            highlightQuery={highlightQuery}
+            loading={loading}
+            loadingOlder={loadingOlder}
+            messageWindowFrozen={messageWindowFrozen}
+            matchedSearchMessageIds={matchedSearchMessageIds}
+            messageFontScale={messageFontScale}
+            messageViewMode={messageViewMode}
+            messages={messages}
+            olderLoadCount={olderLoadCount}
+            onBrowseMessages={onBrowseMessages}
+            pendingUserInputRequests={pendingUserInputRequests}
+            respondingRequestId={respondingRequestId}
+            sessionId={sessionId}
+            summary={summary}
+            onLoadOlder={onLoadOlder}
+            onLoadOlderToStart={onLoadOlderToStart}
+            onSetMessageWindowFrozen={onMessageWindowFrozenChange}
+            onRespondUserInput={onRespondUserInput}
+            onViewLatest={onViewLatest}
+          />
+        </>
+      )}
+      {!isInAllSearch && providerSendAvailable ? (
         <ConversationComposer
+          browseCollapsed={composerBrowseCollapsed}
           canInterrupt={canInterrupt}
           contextDetails={contextDetails}
           contextLabel={contextLabel}
@@ -214,12 +309,15 @@ export const ConversationBody = memo(function ConversationBody(props: Conversati
           selectedEffort={selectedEffort}
           selectedModelId={selectedModelId}
           sending={sending}
+          storedHeight={composerStoredHeight}
           voicePhase={voicePhase}
           onDraftChange={onDraftChange}
+          onExpandFromBrowse={onComposerExpand}
           onInterrupt={onInterrupt}
           onSelectEffort={onSelectEffort}
           onSelectModel={onSelectModel}
           onSend={onSend}
+          onStoredHeightChange={onComposerStoredHeightChange}
           onVoiceClick={onVoiceClick}
         />
       ) : null}
@@ -229,6 +327,7 @@ export const ConversationBody = memo(function ConversationBody(props: Conversati
 });
 
 export default function ConversationPanel(props: ConversationPanelProps) {
+  const storedReadingPreference = readConversationReadingPreference(getBrowserStorage());
   const {
     contextDetails = null,
     contextLabel = null,
@@ -257,6 +356,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     handleLoadOlderToStart,
     handleRespondUserInput,
     handleSend,
+    handleShowLocatedWindow,
     handleViewLatest,
     setDraft,
     state,
@@ -271,11 +371,99 @@ export default function ConversationPanel(props: ConversationPanelProps) {
       onMessageSent,
     });
   const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [messageViewMode, setMessageViewMode] = useState<ConversationSearchMode>(
+    storedReadingPreference?.messageViewMode ?? "all",
+  );
+  const [messageFontScale, setMessageFontScale] = useState(
+    storedReadingPreference?.messageFontScale ?? DEFAULT_MESSAGE_FONT_SCALE,
+  );
+  const [composerStoredHeight, setComposerStoredHeight] = useState<number | null>(
+    storedReadingPreference?.composerStoredHeight ?? null,
+  );
+  const [composerBrowseCollapsed, setComposerBrowseCollapsed] = useState(false);
   const { handleVoiceClick, voicePhase } = useVoiceInput({
     draft,
     onError: setVoiceError,
     setDraft,
   });
+  const visibleMessages = useMemo(
+    () => filterConversationMessages(state.messages, messageViewMode),
+    [messageViewMode, state.messages],
+  );
+  const {
+    activeHitIndex,
+    activeMessageId,
+    clearSearch,
+    contextLoading: searchContextLoading,
+    error: searchError,
+    goToNextHit,
+    goToPreviousHit,
+    loading: searchLoading,
+    matchedMessageIds,
+    openAllSearchHit,
+    query: searchQuery,
+    reopenAllSearchResults,
+    scope: searchScope,
+    searchPageCountLabel,
+    searchPageHits,
+    searchPageTotalHits,
+    setQuery: setSearchQuery,
+    setScope: setSearchScope,
+    showSearchResultsPage,
+    statusLabel: searchStatusLabel,
+  } = useConversationPanelSearch({
+    mode: messageViewMode,
+    onShowLocatedWindow: handleShowLocatedWindow,
+    providerId: provider?.id ?? null,
+    sessionId: session?.id ?? null,
+    visibleMessages,
+  });
+
+  useEffect(() => {
+    setSearchOpen(false);
+    setComposerBrowseCollapsed(false);
+    clearSearch();
+  }, [clearSearch, provider?.id, session?.id]);
+
+  useEffect(() => {
+    writeConversationReadingPreference(getBrowserStorage(), {
+      composerStoredHeight,
+      messageFontScale,
+      messageViewMode,
+    });
+  }, [composerStoredHeight, messageFontScale, messageViewMode]);
+
+  const isAllSearchActive = searchOpen && searchScope === "all" && searchQuery.trim().length > 0;
+  const searchMode: "off" | "all-results" | "all-context" = isAllSearchActive
+    ? (showSearchResultsPage ? "all-results" : "all-context")
+    : "off";
+
+  const handleSearchEsc = useCallback(() => {
+    if (searchMode === "all-context") {
+      reopenAllSearchResults();
+    } else {
+      setSearchOpen(false);
+      clearSearch();
+    }
+  }, [clearSearch, reopenAllSearchResults, searchMode]);
+
+  useEffect(() => {
+    if (!searchOpen) {
+      return;
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) {
+        return;
+      }
+      event.preventDefault();
+      handleSearchEsc();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [handleSearchEsc, searchOpen]);
 
   if (!provider || !session) {
     return (
@@ -302,12 +490,39 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     <section className="flex h-full min-h-0 flex-1 flex-col bg-transparent">
       <ConversationHeader
         conversationStatus={conversationStatus}
+        searchActiveIndex={activeHitIndex}
+        searchError={searchError}
+        searchLoading={searchLoading}
+        searchOpen={searchOpen}
+        searchQuery={searchQuery}
+        searchScope={searchScope}
+        searchStatusLabel={searchStatusLabel}
         session={session}
+        onCloseSearch={() => {
+          setSearchOpen(false);
+          clearSearch();
+        }}
+        onEscSearch={searchOpen ? handleSearchEsc : undefined}
+        onNextSearchHit={() => {
+          goToNextHit().catch(console.error);
+        }}
+        onPreviousSearchHit={() => {
+          goToPreviousHit().catch(console.error);
+        }}
+        onSearchQueryChange={setSearchQuery}
+        onSearchScopeChange={setSearchScope}
         onToggleDesktopSidebar={onToggleDesktopSidebar}
+        onToggleSearch={() => {
+          setSearchOpen((current) => {
+            if (current) {
+              clearSearch();
+            }
+            return !current;
+          });
+        }}
       />
       <ConversationBody
         canInterrupt={canInterruptConversation({
-
           interruptAvailable: provider.capabilities.interrupt,
           loading: state.loading,
           sendLifecycle: state.sendLifecycle,
@@ -324,22 +539,51 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         hasBufferedLatest={Boolean(state.bufferedConversationWindow)}
         loading={state.loading}
         loadingOlder={state.loadingOlder}
+        messageFontScale={messageFontScale}
         messageWindowFrozen={state.messageWindowFrozen}
-        messages={state.messages}
+        messageViewMode={messageViewMode}
+        messages={visibleMessages}
         modelOptions={modelOptions}
         olderLoadCount={state.olderLoadCount}
-        pendingUserInputRequests={state.pendingUserInputRequests}
+        onBrowseMessages={() => {
+          setComposerBrowseCollapsed(true);
+        }}
+        pendingUserInputRequests={
+          messageViewMode === "all" ? state.pendingUserInputRequests : []
+        }
         providerSendAvailable={provider.status.sendAvailable}
         refreshing={refreshing}
         respondingRequestId={state.respondingRequestId}
         interrupting={state.interrupting}
+        searchContextLoading={searchContextLoading}
+        searchMode={searchMode}
+        searchResultsPage={
+          <ConversationSearchResultsPage
+            activeHitIndex={activeHitIndex}
+            activeMessageId={activeMessageId}
+            error={searchError}
+            fontScale={messageFontScale}
+            hits={searchPageHits}
+            loading={searchLoading}
+            onOpenHit={(hit) => {
+              openAllSearchHit(hit).catch(console.error);
+            }}
+            totalHits={searchPageTotalHits}
+          />
+        }
+        searchHitLabel={searchPageCountLabel}
         selectedEffort={selectedEffort}
         selectedModelId={selectedModelId}
         sessionId={session.id}
         sending={state.sending}
-        summary={state.summary}
+        onReturnToSearchResults={reopenAllSearchResults}
+        summary={messageViewMode === "all" ? state.summary : null}
         voicePhase={voicePhase}
+        activeSearchMessageId={activeMessageId}
+        composerBrowseCollapsed={composerBrowseCollapsed}
+        composerStoredHeight={composerStoredHeight}
         onDraftChange={setDraft}
+        highlightQuery={searchQuery}
         onInterrupt={() => {
           handleInterrupt().catch(console.error);
         }}
@@ -349,16 +593,30 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         onLoadOlderToStart={() => {
           handleLoadOlderToStart().catch(console.error);
         }}
+        onComposerExpand={() => {
+          setComposerBrowseCollapsed(false);
+        }}
+        onComposerStoredHeightChange={setComposerStoredHeight}
         onMessageWindowFrozenChange={handleMessageWindowFrozenChange}
         onRespondUserInput={(request, questionId, optionLabel) => {
           handleRespondUserInput(request, questionId, optionLabel).catch(console.error);
         }}
+        matchedSearchMessageIds={matchedMessageIds}
         onSelectEffort={onSelectEffort}
         onSelectModel={onSelectModel}
         onSend={() => {
           handleSend().catch(console.error);
         }}
         onViewLatest={handleViewLatest}
+        onDecreaseFontScale={() => {
+          setMessageFontScale((current) => current <= 1 ? 6 : current - 1);
+        }}
+        onIncreaseFontScale={() => {
+          setMessageFontScale((current) => cycleMessageFontScale(current));
+        }}
+        onCycleMessageViewMode={() => {
+          setMessageViewMode((current) => cycleMessageViewMode(current));
+        }}
         onVoiceClick={() => {
           handleVoiceClick().catch(console.error);
         }}

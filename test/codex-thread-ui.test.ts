@@ -6,6 +6,8 @@ import type { ProviderSummary, SessionSummary } from "../api/types";
 import BrowserSidebar from "../web/components/browser-sidebar";
 import { canInterruptConversation } from "../web/components/conversation-panel";
 import ConversationHeader from "../web/components/conversation-header";
+import ConversationReadingToolbar from "../web/components/conversation-reading-toolbar";
+import ConversationSearchResultsPage from "../web/components/conversation-search-results-page";
 import ConversationTimeline from "../web/components/conversation-timeline";
 import { resolveConversationStatus } from "../web/conversation-status";
 
@@ -27,6 +29,7 @@ const PROVIDER: ProviderSummary = {
     threadState: true,
     interrupt: true,
     userInput: true,
+    deleteSession: false,
   },
   status: {
     historyReadable: true,
@@ -74,6 +77,7 @@ test("conversation header shows codex runtime status without a duplicate interru
   assert.match(markup, /data-slot="conversation-session-status"/);
   assert.match(markup, /data-slot="conversation-session-status-tooltip"/);
   assert.match(markup, />正在生成\.\.\.</);
+  assert.match(markup, /aria-label="搜索当前会话"/);
   assert.match(markup, /aria-label="复制会话 ID"/);
   assert.match(markup, /data-slot="session-copy-tooltip"/);
   assert.match(markup, /thread-1/);
@@ -81,14 +85,135 @@ test("conversation header shows codex runtime status without a duplicate interru
   assert.doesNotMatch(markup, /title="正在生成\.\.\."/);
   assert.match(markup, /bg-accent/);
   const metaIndex = markup.indexOf('data-region="conversation-header-meta"');
+  const searchIndex = markup.indexOf('data-slot="conversation-search-toggle"');
   const copyIndex = markup.indexOf('aria-label="复制会话 ID"');
   const statusIndex = markup.indexOf('data-slot="conversation-session-status"');
   assert.notEqual(metaIndex, -1);
+  assert.notEqual(searchIndex, -1);
   assert.notEqual(copyIndex, -1);
   assert.notEqual(statusIndex, -1);
   assert.ok(metaIndex < copyIndex);
+  assert.ok(searchIndex < copyIndex);
   assert.ok(copyIndex < statusIndex);
   assert.doesNotMatch(markup, /aria-label="中断当前回合"/);
+});
+
+test("conversation header expands an inline search bar when search is open", () => {
+  const conversationStatus = resolveConversationStatus({
+    interrupting: false,
+    lifecycle: null,
+    loading: false,
+    pendingUserInputRequests: [],
+    providerId: "codex",
+    respondingRequestId: null,
+    sendAvailable: true,
+    streamStatus: { phase: "idle", lastEventAt: null, retryCount: 0 },
+    threadState: null,
+  });
+  const markup = renderToStaticMarkup(
+    React.createElement(ConversationHeader as unknown as React.ComponentType<any>, {
+      conversationStatus,
+      searchActiveIndex: 0,
+      searchOpen: true,
+      searchQuery: "alpha",
+      searchScope: "current",
+      searchStatusLabel: "1/3",
+      session: SESSION,
+      onToggleDesktopSidebar: () => {},
+    }),
+  );
+
+  assert.match(markup, /data-slot="conversation-search-bar"/);
+  assert.match(markup, /data-slot="conversation-search-count"/);
+  assert.match(markup, /value="alpha"/);
+  assert.match(markup, /data-slot="conversation-search-scope-current"/);
+  assert.match(markup, /data-slot="conversation-search-scope-all"/);
+  assert.match(markup, /aria-label="上一个命中"/);
+  assert.match(markup, /aria-label="下一个命中"/);
+  assert.match(markup, />1\/3</);
+});
+
+test("conversation reading toolbar stays fixed at the top-right of the message area", () => {
+  const markup = renderToStaticMarkup(
+    React.createElement(ConversationReadingToolbar as unknown as React.ComponentType<any>, {
+      fontScale: 4,
+      messageViewMode: "compact",
+      onDecreaseFontScale: () => {},
+      onIncreaseFontScale: () => {},
+      onCycleMessageViewMode: () => {},
+    }),
+  );
+
+  assert.match(markup, /data-slot="conversation-reading-toolbar"/);
+  assert.match(markup, /absolute right-4 top-3/);
+  assert.match(markup, /消息模式：精简/);
+  assert.match(markup, /data-slot="conversation-reading-mode-toggle"/);
+  assert.match(markup, /data-slot="conversation-reading-font-decrease"/);
+  assert.match(markup, /data-slot="conversation-reading-font-increase"/);
+  assert.match(markup, />A-</);
+  assert.match(markup, />A\+</);
+  assert.doesNotMatch(markup, />4\/6</);
+});
+
+test("conversation reading toolbar disables font buttons at min and max scale", () => {
+  const minMarkup = renderToStaticMarkup(
+    React.createElement(ConversationReadingToolbar as unknown as React.ComponentType<any>, {
+      fontScale: 1,
+      messageViewMode: "compact",
+      onDecreaseFontScale: () => {},
+      onIncreaseFontScale: () => {},
+      onCycleMessageViewMode: () => {},
+    }),
+  );
+  const maxMarkup = renderToStaticMarkup(
+    React.createElement(ConversationReadingToolbar as unknown as React.ComponentType<any>, {
+      fontScale: 6,
+      messageViewMode: "compact",
+      onDecreaseFontScale: () => {},
+      onIncreaseFontScale: () => {},
+      onCycleMessageViewMode: () => {},
+    }),
+  );
+
+  assert.match(minMarkup, /data-slot="conversation-reading-font-decrease"/);
+  assert.match(minMarkup, /disabled=""/);
+  assert.match(maxMarkup, /data-slot="conversation-reading-font-increase"/);
+  assert.match(maxMarkup, /disabled=""/);
+});
+
+test("conversation search results page renders full-page summary and highlighted hits", () => {
+  const markup = renderToStaticMarkup(
+    React.createElement(ConversationSearchResultsPage as unknown as React.ComponentType<any>, {
+      activeHitIndex: 0,
+      activeMessageId: "msg-2",
+      error: null,
+      fontScale: 4,
+      hits: [{
+        anchor: { offset: 128, blockIndex: 0 },
+        kind: "text",
+        messageId: "msg-2",
+        messageIndex: 0,
+        preview: "alpha 搜索命中",
+        ranges: [{ start: 0, end: 5 }],
+        role: "assistant",
+        timestamp: "2026-04-02T01:23:45.000Z",
+      }],
+      loading: false,
+      onOpenHit: () => {},
+      totalHits: 139,
+    }),
+  );
+
+  assert.match(markup, /全部历史搜索/);
+  assert.match(markup, /点击结果查看上下文/);
+  assert.match(markup, /共 139 条结果 · 当前显示前 100 条/);
+  assert.match(markup, /仅展示前 100 条/);
+  assert.match(markup, /助手/);
+  assert.match(markup, /文本/);
+  assert.match(markup, /01:23:45/);
+  assert.match(markup, /alpha/);
+  assert.match(markup, /<mark/);
+  assert.doesNotMatch(markup, /加载更多搜索命中/);
 });
 
 test("conversation timeline renders pending codex user input requests", () => {
