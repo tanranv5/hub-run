@@ -168,6 +168,9 @@ function getRuntimeTerminalStatus(
   if (providerId !== "codex" || !threadState || threadState.isGenerating) {
     return null;
   }
+  if (threadState.stalled) {
+    return "当前回合长时间无输出，可能已卡死";
+  }
   switch (threadState.requestedTurnStatus) {
     case "completed":
       return "当前回合已完成";

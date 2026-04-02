@@ -222,6 +222,120 @@ test("codex state route downgrades stale terminal snapshots when the latest mess
   });
 });
 
+test("codex state route marks the latest turn as stalled after prolonged inactivity", async () => {
+  const app = createApp(
+    buildRuntimeConfig({
+      host: "127.0.0.1",
+      port: 12001,
+      password: "secret-123",
+    }),
+    {
+      registry: createRegistry({
+        getConversationPage: async () => ({
+          messages: [
+            {
+              id: "msg-1",
+              role: "user",
+              kind: "text",
+              text: "继续执行",
+              timestamp: "2026-03-27T07:40:04.631Z",
+            },
+          ],
+          nextBefore: null,
+          summary: null,
+        }),
+        getThreadState: async () => ({
+          threadId: "session-1",
+          activeTurnId: null,
+          isGenerating: false,
+          requestedTurnId: "turn-9",
+          requestedTurnStatus: null,
+          snapshotAt: "2026-03-27T07:29:58.000Z",
+        }),
+      }),
+    },
+  );
+
+  const cookie = await login(app);
+  const response = await app.request("/api/providers/codex/sessions/session-1/state", {
+    headers: { cookie },
+  });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    threadId: "session-1",
+    activeTurnId: null,
+    isGenerating: false,
+    requestedTurnId: "turn-9",
+    requestedTurnStatus: null,
+    stalled: true,
+    stallReason: "noRecentActivity",
+    snapshotAt: "2026-03-27T07:29:58.000Z",
+    latestMessageAt: "2026-03-27T07:40:04.631Z",
+    lastActivityAt: "2026-03-27T07:40:04.631Z",
+  });
+});
+
+test("codex state route does not mark waiting-input turns as stalled", async () => {
+  const app = createApp(
+    buildRuntimeConfig({
+      host: "127.0.0.1",
+      port: 12001,
+      password: "secret-123",
+    }),
+    {
+      registry: createRegistry({
+        getConversationPage: async () => ({
+          messages: [
+            {
+              id: "msg-1",
+              role: "assistant",
+              kind: "tool_use",
+              text: "请选择下一步",
+              timestamp: "2026-03-27T07:40:04.631Z",
+            },
+          ],
+          nextBefore: null,
+          summary: null,
+        }),
+        getThreadState: async () => ({
+          threadId: "session-1",
+          activeTurnId: null,
+          isGenerating: false,
+          requestedTurnId: "turn-9",
+          requestedTurnStatus: null,
+          snapshotAt: "2026-03-27T07:29:58.000Z",
+        }),
+        listUserInputRequests: async () => [
+          {
+            requestId: "req-1",
+            threadId: "session-1",
+            turnId: "turn-9",
+            itemId: "item-1",
+            title: "继续执行",
+            questions: [],
+          },
+        ],
+      }),
+    },
+  );
+
+  const cookie = await login(app);
+  const response = await app.request("/api/providers/codex/sessions/session-1/state", {
+    headers: { cookie },
+  });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    threadId: "session-1",
+    activeTurnId: null,
+    isGenerating: false,
+    requestedTurnId: "turn-9",
+    requestedTurnStatus: null,
+    snapshotAt: "2026-03-27T07:29:58.000Z",
+  });
+});
+
 test("codex interrupt route delegates to provider adapter", async () => {
   let interruptedSessionId: string | null = null;
   const app = createApp(

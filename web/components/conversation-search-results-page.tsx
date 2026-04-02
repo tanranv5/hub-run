@@ -99,10 +99,10 @@ export default function ConversationSearchResultsPage(
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="flex-none border-b border-bdr bg-surface/70 px-4 py-3 backdrop-blur md:px-6">
+      <div className="flex-none border-b border-bdr bg-surface/70 px-4 py-3 backdrop-blur md:px-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <p className="text-xs font-semibold tracking-wide text-txt">
+            <p className="text-sm font-semibold text-txt">
               全部历史搜索
             </p>
             <p className="mt-0.5 text-[11px] text-muted">
@@ -110,25 +110,25 @@ export default function ConversationSearchResultsPage(
               {showingLimitedSummary ? " · 仅展示前 100 条" : ""}
             </p>
           </div>
-          <span className="rounded border border-bdr px-2 py-0.5 text-[11px] text-muted">
+          <span className="rounded-lg border border-bdr bg-surface px-2.5 py-1 text-[11px] text-muted">
             {summaryLabel}
           </span>
         </div>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2 md:px-5">
-        <div className="flex flex-col gap-1.5">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 md:px-5">
+        <div className="flex flex-col gap-2">
           {error ? (
-            <div className="rounded-lg border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-700 dark:text-rose-100">
+            <div className="rounded-xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:text-rose-100">
               {error}
             </div>
           ) : null}
           {loading && hits.length === 0 ? (
-            <div className="rounded-lg border border-bdr bg-surface/40 px-4 py-8 text-center text-sm text-muted">
+            <div className="rounded-xl border border-bdr bg-surface/40 px-4 py-8 text-center text-sm text-muted">
               正在搜索历史消息...
             </div>
           ) : null}
           {!loading && hits.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-bdr bg-surface/40 px-4 py-8 text-center text-sm text-muted">
+            <div className="rounded-xl border border-dashed border-bdr bg-surface/40 px-4 py-8 text-center text-sm text-muted">
               当前没有搜索命中。
             </div>
           ) : null}
@@ -140,17 +140,17 @@ export default function ConversationSearchResultsPage(
                 ref={active ? activeItemRef : undefined}
                 type="button"
                 onClick={() => onOpenHit(hit)}
-                className={`rounded-lg border px-3 py-2.5 text-left transition hover:bg-surface-hover ${
+                className={`group rounded-xl border px-4 py-3 text-left transition hover:bg-surface-hover ${
                   active
-                    ? "border-amber-400/60 bg-amber-400/10 ring-1 ring-amber-400/40"
-                    : "border-bdr bg-panel"
+                    ? "border-amber-400/50 bg-amber-400/8 ring-1 ring-amber-400/30"
+                    : "border-bdr bg-panel/80"
                 }`}
               >
-                <div className="mb-1 flex items-center gap-2 text-[11px] text-muted">
-                  <span className="rounded border border-bdr px-1.5 py-px">
+                <div className="mb-1.5 flex items-center gap-2 text-[11px] text-muted">
+                  <span className="rounded-md bg-accent/10 px-1.5 py-0.5 text-accent/80">
                     {getSearchHitRoleLabel(hit.role)}
                   </span>
-                  <span className="rounded border border-bdr px-1.5 py-px">
+                  <span className="rounded-md bg-surface px-1.5 py-0.5">
                     {getSearchHitKindLabel(hit.kind)}
                   </span>
                   {hit.timestamp ? (
@@ -159,7 +159,7 @@ export default function ConversationSearchResultsPage(
                     </span>
                   ) : null}
                 </div>
-                <div className={`${classes.textBody} line-clamp-3 whitespace-pre-wrap text-txt`}>
+                <div className={`${classes.textBody} line-clamp-3 whitespace-pre-wrap text-txt/90`}>
                   {renderHighlightedPreview(hit)}
                 </div>
               </button>

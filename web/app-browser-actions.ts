@@ -122,6 +122,7 @@ export function createLoadingBrowserState(_current: BrowserState): BrowserState 
 export function applySentSessionSelection(
   current: BrowserState,
   sessionId: string,
+  initialDisplay?: string | null,
 ): BrowserState {
   const sessionsWithoutDrafts = current.sessions.filter((session) => !session.isDraft);
   if (sessionsWithoutDrafts.some((session) => session.id === sessionId)) {
@@ -147,7 +148,11 @@ export function applySentSessionSelection(
   const { isDraft: _isDraft, ...resolvedSession } = draftSession;
   return {
     ...current,
-    sessions: [{ ...resolvedSession, id: sessionId }, ...sessionsWithoutDrafts],
+    sessions: [{
+      ...resolvedSession,
+      id: sessionId,
+      display: initialDisplay?.trim() || resolvedSession.display,
+    }, ...sessionsWithoutDrafts],
     selectedSessionId: sessionId,
   };
 }

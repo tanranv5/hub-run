@@ -228,10 +228,16 @@ test("draft send keeps current panel state visible until the real session finish
   const draftStore = createStringStore("从 draft 首次发送");
   const stateStore = createPanelStateStore(INITIAL_PANEL_STATE);
   const sidebarDeferred = createDeferred<void>();
+  let capturedSessionId: string | null = null;
+  let capturedInitialDisplay: string | null = null;
 
   const pending = sendConversation({
     draft: draftStore.read(),
-    onMessageSent: async () => sidebarDeferred.promise,
+    onMessageSent: async (sessionId, initialDisplay) => {
+      capturedSessionId = sessionId;
+      capturedInitialDisplay = initialDisplay ?? null;
+      return sidebarDeferred.promise;
+    },
     onSendMessage: async () => ({
       sessionId: "thread-real-1",
       turnId: "turn-draft-1",
@@ -250,6 +256,8 @@ test("draft send keeps current panel state visible until the real session finish
   assert.equal(stateStore.read().messages.length, 1);
   assert.equal(stateStore.read().messages[0]?.text, "从 draft 首次发送");
   assert.equal(stateStore.read().sendLifecycle?.phase, "accepted");
+  assert.equal(capturedSessionId, "thread-real-1");
+  assert.equal(capturedInitialDisplay, "从 draft 首次发送");
 
   sidebarDeferred.resolve();
   await pending;

@@ -214,6 +214,9 @@ export type ProviderThreadDesyncReason =
   | "recentMessagesWithNoSnapshot"
   | "activeFileWriteWithInterruptedTurn";
 
+export type ProviderThreadStallReason =
+  | "noRecentActivity";
+
 export interface ProviderThreadState {
   threadId: string;
   activeTurnId: string | null;
@@ -223,8 +226,11 @@ export interface ProviderThreadState {
   rawRequestedTurnStatus?: ProviderTurnStatus | null;
   desynced?: boolean;
   desyncReason?: ProviderThreadDesyncReason | null;
+  stalled?: boolean;
+  stallReason?: ProviderThreadStallReason | null;
   snapshotAt?: string | null;
   latestMessageAt?: string | null;
+  lastActivityAt?: string | null;
 }
 
 export interface ProviderSessionContext {

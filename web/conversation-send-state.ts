@@ -127,7 +127,7 @@ export function getSendLifecycleStatus(current: SendLifecycle): string {
     case "failed":
       return "当前回合执行失败";
     case "timedOut":
-      return "消息已被接受，但长时间没有同步结果";
+      return "当前回合长时间无输出，可能已卡死";
   }
 }
 

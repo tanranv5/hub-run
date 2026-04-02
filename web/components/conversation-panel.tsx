@@ -53,10 +53,13 @@ export function canInterruptConversation(props: {
   if (loading || !interruptAvailable) {
     return false;
   }
-  if (threadState?.isGenerating === true) {
+  if (threadState?.isGenerating === true || threadState?.stalled === true) {
     return true;
   }
-  return sendLifecycle !== null && isSendLifecycleActive(sendLifecycle);
+  if (!sendLifecycle) {
+    return false;
+  }
+  return isSendLifecycleActive(sendLifecycle) || sendLifecycle.phase === "timedOut";
 }
 
 function cycleMessageViewMode(
@@ -87,7 +90,7 @@ interface ConversationPanelProps {
   selectedEffort: ProviderReasoningEffort | null;
   selectedModelId: string | null;
   session: SessionSummary | null;
-  onMessageSent: (sessionId: string) => Promise<void>;
+  onMessageSent: (sessionId: string, initialDisplay?: string | null) => Promise<void>;
   onOpenBrowser: () => void;
   onSelectEffort: (value: ProviderReasoningEffort | null) => void;
   onSelectModel: (value: string | null) => void;

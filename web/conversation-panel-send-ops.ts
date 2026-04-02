@@ -4,6 +4,7 @@ import type {
   ProviderId,
   SessionSummary,
 } from "../api/types";
+import { extractMeaningfulDisplay } from "../api/providers/display-text";
 import {
   appendImmediateAssistantMessage,
   appendOptimisticUserMessage,
@@ -30,7 +31,7 @@ const POST_SEND_REFRESH_INTERVAL_MS = 1_000;
 
 export async function sendConversation(props: {
   draft: string;
-  onMessageSent: (sessionId: string) => Promise<void>;
+  onMessageSent: (sessionId: string, initialDisplay?: string | null) => Promise<void>;
   onSendMessage: (text: string) => Promise<SendConversationResult>;
   providerId: ProviderId;
   session: SessionSummary;
@@ -134,7 +135,10 @@ async function redirectDraftSessionIfNeeded(
     return false;
   }
   persistDraftAcceptedSession(props, result, baselineMessages, text);
-  await props.onMessageSent(result.sessionId);
+  await props.onMessageSent(
+    result.sessionId,
+    extractMeaningfulDisplay(text) ?? text.trim(),
+  );
   return true;
 }
 

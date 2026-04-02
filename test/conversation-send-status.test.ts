@@ -144,8 +144,67 @@ test("send lifecycle enters timed out when accepted state makes no progress afte
     },
   });
 
-  assert.equal(getSendLifecycleStatus(timedOut), "消息已被接受，但长时间没有同步结果");
+  assert.equal(getSendLifecycleStatus(timedOut), "当前回合长时间无输出，可能已卡死");
   assert.equal(isSendLifecycleActive(timedOut), false);
+});
+
+test("resolveSendStatus exposes stalled runtime state before other fallback labels", () => {
+  const status = resolveSendStatus({
+    interrupting: false,
+    lifecycle: null,
+    pendingUserInputRequests: [],
+    providerId: "codex",
+    respondingRequestId: null,
+    threadState: {
+      threadId: "thread-1",
+      activeTurnId: null,
+      isGenerating: false,
+      requestedTurnId: "turn-1",
+      requestedTurnStatus: null,
+      stalled: true,
+      stallReason: "noRecentActivity",
+    },
+  });
+
+  assert.equal(status, "当前回合长时间无输出，可能已卡死");
+});
+
+test("resolveSendStatus keeps timed out lifecycle as a stalled-turn message", () => {
+  const timedOut = advanceSendLifecycle(
+    acceptSendLifecycle(
+      createSubmittedSendLifecycle("codex", "thread-1", 1000),
+      "thread-1",
+      "turn-1",
+      1200,
+    ),
+    {
+      now: 1200 + SEND_PHASE_TIMEOUT_MS * 2 + 1,
+      threadState: {
+        threadId: "thread-1",
+        activeTurnId: null,
+        isGenerating: false,
+        requestedTurnId: "turn-1",
+        requestedTurnStatus: null,
+      },
+    },
+  );
+
+  const status = resolveSendStatus({
+    interrupting: false,
+    lifecycle: timedOut,
+    pendingUserInputRequests: [],
+    providerId: "codex",
+    respondingRequestId: null,
+    threadState: {
+      threadId: "thread-1",
+      activeTurnId: null,
+      isGenerating: false,
+      requestedTurnId: "turn-1",
+      requestedTurnStatus: null,
+    },
+  });
+
+  assert.equal(status, "当前回合长时间无输出，可能已卡死");
 });
 
 test("resolveSendStatus falls back to completed runtime state when lifecycle is missing", () => {

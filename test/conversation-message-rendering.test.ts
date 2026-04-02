@@ -355,6 +355,8 @@ test("assistant message card shows exact timestamp in bottom-right metadata", ()
 
   assert.match(markup, /19:14:25/);
   assert.match(markup, /data-slot="message-timestamp"/);
+  assert.doesNotMatch(markup, /opacity-0/);
+  assert.doesNotMatch(markup, /group-hover:opacity-100/);
 });
 
 test("turn aborted message renders as a dedicated interrupted card", () => {
@@ -439,6 +441,8 @@ test("tool card also shows exact timestamp in bottom-right metadata", () => {
 
   assert.match(markup, /19:15:26/);
   assert.match(markup, /data-slot="message-timestamp"/);
+  assert.doesNotMatch(markup, /opacity-0/);
+  assert.doesNotMatch(markup, /group-hover:opacity-100/);
 });
 
 test("text mode renders wrapped skill text as plain conversation text instead of a skill card", () => {

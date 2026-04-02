@@ -70,7 +70,7 @@ export default function ConversationReadingToolbar(
   return (
     <div
       data-slot="conversation-reading-toolbar"
-      className="absolute right-4 top-3 z-10 flex items-center gap-2 rounded-2xl border border-bdr bg-panel/95 px-2 py-2 shadow-lg shadow-black/10 backdrop-blur md:right-6 md:top-4"
+      className="absolute right-4 top-3 z-10 flex items-center gap-2 rounded-xl border border-bdr bg-panel/95 px-2 py-2 shadow-sm backdrop-blur md:right-6 md:top-4"
     >
       <button
         type="button"

@@ -15,6 +15,9 @@ export function getConversationSessionStatusLabel(
   if (!sendAvailable) {
     return "当前会话只读";
   }
+  if (threadState?.stalled) {
+    return "当前回合可能已卡死";
+  }
   if (threadState?.desynced) {
     if (threadState.desyncReason === "activeFileWriteWithInterruptedTurn") {
       return "当前会话生成中";
@@ -54,6 +57,9 @@ export function getConversationSessionStatusTone(
   threadState: ProviderThreadState | null = null,
 ): ConversationSessionStatusTone {
   if (!sendAvailable) {
+    return "danger";
+  }
+  if (threadState?.stalled) {
     return "danger";
   }
   if (threadState?.desynced) {

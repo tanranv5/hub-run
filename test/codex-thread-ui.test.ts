@@ -211,6 +211,8 @@ test("conversation search results page renders full-page summary and highlighted
   assert.match(markup, /助手/);
   assert.match(markup, /文本/);
   assert.match(markup, /01:23:45/);
+  assert.doesNotMatch(markup, /opacity-0/);
+  assert.doesNotMatch(markup, /group-hover:opacity-100/);
   assert.match(markup, /alpha/);
   assert.match(markup, /<mark/);
   assert.doesNotMatch(markup, /加载更多搜索命中/);
@@ -414,6 +416,38 @@ test("conversation header status shows syncing when the runtime snapshot is mark
   assert.match(markup, /bg-accent/);
 });
 
+test("conversation header status shows stalled when the latest turn has no progress for too long", () => {
+  const conversationStatus = resolveConversationStatus({
+    interrupting: false,
+    lifecycle: null,
+    loading: false,
+    pendingUserInputRequests: [],
+    providerId: "codex",
+    respondingRequestId: null,
+    sendAvailable: true,
+    streamStatus: { phase: "idle", lastEventAt: null, retryCount: 0 },
+    threadState: {
+      threadId: SESSION.id,
+      activeTurnId: null,
+      isGenerating: false,
+      requestedTurnId: "turn-12",
+      requestedTurnStatus: null,
+      stalled: true,
+      stallReason: "noRecentActivity",
+    } as any,
+  });
+  const markup = renderToStaticMarkup(
+    React.createElement(ConversationHeader as unknown as React.ComponentType<any>, {
+      conversationStatus,
+      session: SESSION,
+      onToggleDesktopSidebar: () => {},
+    }),
+  );
+
+  assert.match(markup, /长时间无输出，可能已卡死/);
+  assert.match(markup, /bg-danger/);
+});
+
 test("conversation header status uses a neutral ready color before any task starts", () => {
   const conversationStatus = resolveConversationStatus({
     interrupting: false,
@@ -459,6 +493,31 @@ test("interrupt action ignores heartbeat-only live stream when the runtime state
       },
     }),
     false,
+  );
+});
+
+test("interrupt action stays available for stalled turns", () => {
+  assert.equal(
+    canInterruptConversation({
+      interruptAvailable: true,
+      loading: false,
+      sendLifecycle: null,
+      streamStatus: {
+        phase: "idle",
+        lastEventAt: null,
+        retryCount: 0,
+      },
+      threadState: {
+        threadId: SESSION.id,
+        activeTurnId: null,
+        isGenerating: false,
+        requestedTurnId: "turn-12",
+        requestedTurnStatus: null,
+        stalled: true,
+        stallReason: "noRecentActivity",
+      } as any,
+    }),
+    true,
   );
 });
 

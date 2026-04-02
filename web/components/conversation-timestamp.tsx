@@ -13,7 +13,7 @@ export function ConversationTimestamp(props: {
   return (
     <div
       data-slot="message-timestamp"
-      className={`mt-3 flex justify-end text-[11px] leading-none opacity-0 transition-opacity group-hover:opacity-100 ${className}`}
+      className={`mt-3 flex justify-end text-[11px] leading-none ${className}`}
       title={timestamp}
     >
       {display}

@@ -198,6 +198,7 @@ test("applySentSessionSelection promotes the selected draft session into the rea
       selectedSessionId: "draft:1",
     },
     "session-real",
+    "从 draft 首次发送",
   );
 
   assert.deepEqual(
@@ -205,6 +206,7 @@ test("applySentSessionSelection promotes the selected draft session into the rea
     ["session-real", "session-old"],
   );
   assert.equal(nextState.sessions[0]?.isDraft, undefined);
+  assert.equal(nextState.sessions[0]?.display, "从 draft 首次发送");
   assert.equal(nextState.selectedSessionId, "session-real");
 });
 

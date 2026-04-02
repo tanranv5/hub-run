@@ -9,6 +9,7 @@ export type ConversationStatusPhase =
   | "interrupting"
   | "respondingInput"
   | "waitingInput"
+  | "stalled"
   | "syncing"
   | "sending"
   | "generating"
@@ -82,7 +83,16 @@ export function resolveConversationStatus(props: {
     return { phase: "sending", label: getSendingLabel(lifecycle), tone: "active" };
   }
 
-  // 7. 状态同步中
+  // 7. 卡死 / 长时间无输出
+  if (threadState?.stalled || lifecycle?.phase === "timedOut") {
+    return {
+      phase: "stalled",
+      label: "当前回合长时间无输出，可能已卡死",
+      tone: "danger",
+    };
+  }
+
+  // 8. 状态同步中
   if (threadState?.desynced) {
     if (threadState.desyncReason === "activeFileWriteWithInterruptedTurn") {
       return { phase: "generating", label: "生成中", tone: "active" };
@@ -90,7 +100,7 @@ export function resolveConversationStatus(props: {
     return { phase: "syncing", label: "状态同步中", tone: "active" };
   }
 
-  // 8. 终态：完成/中断/失败
+  // 9. 终态：完成/中断/失败
   if (threadState?.requestedTurnStatus === "completed") {
     return { phase: "completed", label: "当前回合已完成", tone: "success" };
   }
@@ -101,12 +111,12 @@ export function resolveConversationStatus(props: {
     return { phase: "failed", label: "当前回合执行失败", tone: "danger" };
   }
 
-  // 9. 正在生成
+  // 10. 正在生成
   if (threadState?.isGenerating) {
     return { phase: "generating", label: "正在生成...", tone: "active" };
   }
 
-  // 10. 连接异常
+  // 11. 连接异常
   if (streamStatus.phase === "disconnected") {
     return { phase: "streamError", label: "消息流未连接", tone: "danger" };
   }
@@ -114,7 +124,7 @@ export function resolveConversationStatus(props: {
     return { phase: "streamError", label: "消息流重连中", tone: "active" };
   }
 
-  // 11. 空闲
+  // 12. 空闲
   return { phase: "idle", label: "就绪", tone: "neutral" };
 }
 
@@ -148,6 +158,8 @@ export function getStatusPlaceholder(status: ConversationStatus): string {
       return "提交中...";
     case "waitingInput":
       return "等待输入";
+    case "stalled":
+      return "当前回合可能已卡死";
     case "syncing":
       return "状态同步中...";
     case "sending":
@@ -175,6 +187,8 @@ export function getStatusButtonLabel(status: ConversationStatus, sending: boolea
     case "sending":
     case "generating":
       return "生成中";
+    case "stalled":
+      return "已卡住";
     case "interrupting":
       return "中断中";
     default:
@@ -186,6 +200,7 @@ export function getStatusButtonLabel(status: ConversationStatus, sending: boolea
 export function isConversationBusy(status: ConversationStatus): boolean {
   return (
     status.phase === "sending" ||
+    status.phase === "stalled" ||
     status.phase === "syncing" ||
     status.phase === "generating" ||
     status.phase === "interrupting" ||

@@ -204,7 +204,7 @@ export default memo(function ConversationTimeline(props: ConversationTimelinePro
           {pendingUserInputRequests.map((request) => (
             <div
               key={request.requestId}
-              className="rounded-[24px] border border-amber-400/20 bg-amber-400/8 px-4 py-4"
+              className="rounded-2xl border border-amber-400/20 bg-amber-400/8 px-4 py-4"
             >
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>

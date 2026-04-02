@@ -146,14 +146,15 @@ export async function getCodexThreadState(
 
 export async function interruptCodexThread(threadId: string): Promise<void> {
   const threadState = await getCodexThreadState(threadId);
-  if (!threadState.activeTurnId) {
+  const interruptTurnId = resolveInterruptTurnId(threadState);
+  if (!interruptTurnId) {
     return;
   }
 
   try {
     await getClient().request("turn/interrupt", {
       threadId: threadState.threadId,
-      turnId: threadState.activeTurnId,
+      turnId: interruptTurnId,
     });
   } catch (error) {
     if (!shouldRetryAfterResume(error)) {
@@ -161,12 +162,13 @@ export async function interruptCodexThread(threadId: string): Promise<void> {
     }
     await resumeThread(threadState.threadId);
     const refreshedState = await getCodexThreadState(threadState.threadId);
-    if (!refreshedState.activeTurnId) {
+    const refreshedInterruptTurnId = resolveInterruptTurnId(refreshedState);
+    if (!refreshedInterruptTurnId) {
       return;
     }
     await getClient().request("turn/interrupt", {
       threadId: refreshedState.threadId,
-      turnId: refreshedState.activeTurnId,
+      turnId: refreshedInterruptTurnId,
     });
   }
 }
@@ -204,4 +206,17 @@ export function shouldResumeThreadReadResult(result: unknown): boolean {
     return false;
   }
   return (thread as { status?: { type?: unknown } }).status?.type === "notLoaded";
+}
+
+export function resolveInterruptTurnId(threadState: ProviderThreadState): string | null {
+  if (threadState.activeTurnId) {
+    return threadState.activeTurnId;
+  }
+  if (
+    threadState.requestedTurnId &&
+    (threadState.stalled || threadState.requestedTurnStatus === null)
+  ) {
+    return threadState.requestedTurnId;
+  }
+  return null;
 }

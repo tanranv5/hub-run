@@ -40,6 +40,7 @@ import {
   type SendConversationResult,
   type BufferedConversationWindow,
 } from "./conversation-panel-state-types";
+import { isSendLifecycleActive } from "./conversation-send-state";
 
 function readCurrentConversationWindow(state: PanelState): BufferedConversationWindow {
   return state.bufferedConversationWindow ?? {
@@ -57,7 +58,7 @@ export function useConversationPanelState(props: {
   sendMessage: (text: string) => Promise<SendConversationResult>;
   session: SessionSummary | null;
   streamAvailable: boolean;
-  onMessageSent: (sessionId: string) => Promise<void>;
+  onMessageSent: (sessionId: string, initialDisplay?: string | null) => Promise<void>;
 }) {
   const {
     onMessageSent,
@@ -315,7 +316,13 @@ export function useConversationPanelState(props: {
   }
 
   async function handleInterrupt() {
-    if (!providerId || !session || !state.threadState?.isGenerating || state.interrupting) {
+    const canInterruptCurrentTurn =
+      state.threadState?.isGenerating === true ||
+      state.threadState?.stalled === true ||
+      (state.sendLifecycle !== null &&
+        (isSendLifecycleActive(state.sendLifecycle) ||
+          state.sendLifecycle.phase === "timedOut"));
+    if (!providerId || !session || !canInterruptCurrentTurn || state.interrupting) {
       return;
     }
 

@@ -430,6 +430,92 @@ test("codex runtime state stream downgrades stale terminal snapshots when the la
   await sse.close();
 });
 
+test("codex runtime state stream marks stalled turns after prolonged inactivity", async () => {
+  const app = createApp(
+    buildRuntimeConfig({
+      host: "127.0.0.1",
+      port: 12001,
+      password: "secret-123",
+    }),
+    {
+      registry: {
+        codex: {
+          summary: createSummary("/tmp/codex"),
+          listSessions: async () => [],
+          listProjects: async () => [],
+          listModels: async () => [],
+          getConversationPage: async () => ({
+            messages: [
+              {
+                id: "msg-1",
+                role: "user",
+                kind: "text",
+                text: "继续执行",
+                timestamp: "2026-03-27T07:40:04.631Z",
+              },
+            ],
+            nextBefore: null,
+            summary: null,
+          }),
+          createSession: async () => ({
+            sessionId: "session-1",
+            turnId: null,
+          }),
+          sendMessage: async () => ({
+            turnId: null,
+            outputText: null,
+          }),
+          getThreadState: async () => ({
+            threadId: "session-1",
+            activeTurnId: null,
+            isGenerating: false,
+            requestedTurnId: "turn-2",
+            requestedTurnStatus: null as const,
+            snapshotAt: "2026-03-27T07:29:58.000Z",
+          }),
+          listUserInputRequests: async () => [],
+        } as unknown as ProviderAdapter,
+        claude: createClaudeAdapter(),
+      },
+    },
+  );
+
+  const cookie = await login(app);
+  const controller = new AbortController();
+  const response = await app.request(
+    "/api/providers/codex/sessions/session-1/state/stream",
+    {
+      headers: { cookie },
+      signal: controller.signal,
+    },
+  );
+
+  assert.equal(response.status, 200);
+  const sse = createSseReader(response, controller);
+  const snapshot = await sse.readJsonEvent<{
+    threadState: Record<string, unknown>;
+    pendingUserInputRequests: [];
+  }>("runtimeState");
+
+  assert.deepEqual(snapshot, {
+    threadState: {
+      threadId: "session-1",
+      activeTurnId: null,
+      isGenerating: false,
+      requestedTurnId: "turn-2",
+      requestedTurnStatus: null,
+      stalled: true,
+      stallReason: "noRecentActivity",
+      snapshotAt: "2026-03-27T07:29:58.000Z",
+      latestMessageAt: "2026-03-27T07:40:04.631Z",
+      lastActivityAt: "2026-03-27T07:40:04.631Z",
+    },
+    pendingUserInputRequests: [],
+  });
+
+  await sse.close();
+});
+
 test("codex sessions stream emits snapshot and loaded-window diff updates", async (t) => {
   const setup = createCodexStreamApp();
   t.after(async () => {

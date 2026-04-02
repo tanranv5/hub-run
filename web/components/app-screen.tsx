@@ -28,7 +28,7 @@ interface AppScreenProps {
   onCloseSidebar: () => void;
   onLoadMore: () => void;
   onLogout: () => void;
-  onMessageSent: (sessionId: string) => Promise<void>;
+  onMessageSent: (sessionId: string, initialDisplay?: string | null) => Promise<void>;
   onNewSessionCwdChange: (value: string) => void;
   onOpenBrowser: () => void;
   onRefresh: () => void;

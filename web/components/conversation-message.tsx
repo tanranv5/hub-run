@@ -87,7 +87,7 @@ export function SummaryBanner(props: { summary: ConversationMessage | null }) {
   }
 
   return (
-    <section className="rounded-[24px] border border-amber-400/20 bg-amber-400/8 px-4 py-3">
+    <section className="rounded-2xl border border-amber-400/20 bg-amber-400/8 px-4 py-3">
       <div className="text-[11px] uppercase tracking-[0.2em] text-amber-700">
         总结
       </div>

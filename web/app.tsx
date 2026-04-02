@@ -430,7 +430,7 @@ export default function App() {
         }).catch(console.error);
       }}
       onLogout={() => handleLogout(setBootstrap)}
-      onMessageSent={async (sessionId) => {
+      onMessageSent={async (sessionId, initialDisplay) => {
         const requestVersion = browserRequestVersionRef.current;
         setBrowser((current) => {
           // Only switch if still on the originating session or a draft being resolved
@@ -441,7 +441,7 @@ export default function App() {
             // User has switched away — don't snap back
             return current;
           }
-          return applySentSessionSelection(current, sessionId);
+          return applySentSessionSelection(current, sessionId, initialDisplay);
         });
         if (!selectedProvider) {
           return;
