@@ -98,7 +98,7 @@ export default function ConversationHeader(props: ConversationHeaderProps) {
           <button
             type="button"
             onClick={onToggleDesktopSidebar}
-            className="hidden h-9 w-9 items-center justify-center rounded-xl border border-bdr bg-surface text-txt transition hover:bg-surface-hover lg:inline-flex"
+            className="hidden h-8 w-8 items-center justify-center rounded-md border border-bdr bg-surface text-txt transition hover:bg-surface-hover lg:inline-flex"
             aria-label="切换侧边栏"
           >
             <PanelLeft className="h-4 w-4" />
@@ -182,13 +182,13 @@ export default function ConversationHeader(props: ConversationHeaderProps) {
                   aria-label={searchPlaceholder}
                   className="min-w-[10rem] flex-1 bg-transparent text-sm text-txt outline-none placeholder:text-muted"
                 />
-                <div className="inline-flex items-center rounded-full border border-bdr bg-panel p-1 text-[11px] text-muted">
+                <div className="inline-flex items-center gap-1 rounded-full border border-bdr bg-panel p-1 text-[11px] text-muted">
                   <button
                     type="button"
                     aria-label="搜索当前页面"
                     onClick={() => onSearchScopeChange?.("current")}
                     data-slot="conversation-search-scope-current"
-                    className={`rounded-full p-1.5 transition ${
+                    className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition ${
                       searchScope === "current" ? "bg-surface text-txt" : ""
                     }`}
                   >
@@ -199,7 +199,7 @@ export default function ConversationHeader(props: ConversationHeaderProps) {
                     aria-label="搜索全部历史"
                     onClick={() => onSearchScopeChange?.("all")}
                     data-slot="conversation-search-scope-all"
-                    className={`rounded-full p-1.5 transition ${
+                    className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition ${
                       searchScope === "all" ? "bg-surface text-txt" : ""
                     }`}
                   >

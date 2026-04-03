@@ -51,7 +51,7 @@ function SearchBar(props: {
         onChange={(event) => onChange(event.target.value)}
         placeholder="搜索会话..."
         aria-label="搜索会话"
-        className="w-full rounded-lg border border-bdr bg-surface py-2 pl-9 pr-8 text-sm text-txt outline-none transition placeholder:text-muted focus:border-bdr focus:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
+        className="w-full rounded-lg border border-bdr bg-surface py-2 pl-9 pr-10 text-sm text-txt outline-none transition placeholder:text-muted focus:border-bdr focus:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
       />
       {value && (
         <button
@@ -61,10 +61,10 @@ function SearchBar(props: {
             onChange("");
             inputRef.current?.focus();
           }}
-          className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted transition hover:text-txt disabled:cursor-not-allowed disabled:opacity-60"
+          className="absolute right-1 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-muted transition hover:text-txt disabled:cursor-not-allowed disabled:opacity-60"
           aria-label="清除搜索"
         >
-          <X className="h-3 w-3" />
+          <X className="h-4 w-4" />
         </button>
       )}
     </div>
@@ -146,7 +146,7 @@ function CreateSessionControls(props: {
           disabled={creatingSession || disabled}
           aria-label="新建会话"
           title={disabled ? "刷新中..." : creatingSession ? "创建中..." : "新建会话"}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-cyan-400/20 bg-cyan-500/15 text-cyan-700 dark:text-cyan-100 transition hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-cyan-400/20 bg-cyan-500/15 text-cyan-700 transition hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-50 dark:text-cyan-100"
         >
           <Plus className="h-4 w-4" />
         </button>

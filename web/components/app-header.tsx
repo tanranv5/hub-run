@@ -62,11 +62,11 @@ function HeaderActions(props: HeaderActionsProps) {
       <button
         type="button"
         onClick={onToggleTheme}
-        className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-bdr bg-surface text-txt transition hover:bg-surface-hover"
+        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-bdr bg-surface text-txt transition hover:bg-surface-hover"
         title={`切换主题 (当前: ${theme})`}
         aria-label="切换主题"
       >
-        {theme === "light" ? <Sun className="h-5 w-5" /> : theme === "dark" ? <Moon className="h-5 w-5" /> : <Monitor className="h-5 w-5" />}
+        {theme === "light" ? <Sun className="h-4 w-4" /> : theme === "dark" ? <Moon className="h-4 w-4" /> : <Monitor className="h-4 w-4" />}
       </button>
       <button
         type="button"
@@ -113,10 +113,10 @@ export default function AppHeader(props: AppHeaderProps) {
           <button
             type="button"
             onClick={onOpenBrowser}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-bdr bg-surface text-txt transition hover:bg-surface-hover lg:hidden"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-bdr bg-surface text-txt transition hover:bg-surface-hover lg:hidden"
             aria-label="打开会话面板"
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="h-4 w-4" />
           </button>
           <div className="min-w-0">
             <div className="flex items-center gap-3">

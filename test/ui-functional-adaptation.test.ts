@@ -13,6 +13,30 @@ import type { ConversationStatus } from "../web/conversation-status";
 
 Object.assign(globalThis, { React });
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function assertButtonClassContains(props: {
+  attribute: "aria-label" | "title";
+  classFragment: string;
+  markup: string;
+  value: string;
+}) {
+  const {
+    attribute,
+    classFragment,
+    markup,
+    value,
+  } = props;
+  const escapedClass = escapeRegExp(classFragment);
+  const escapedValue = escapeRegExp(value);
+  const pattern = new RegExp(
+    `<button[^>]*(?:class="[^"]*${escapedClass}[^"]*"[^>]*${attribute}="${escapedValue}"|${attribute}="${escapedValue}"[^>]*class="[^"]*${escapedClass}[^"]*")`,
+  );
+  assert.match(markup, pattern);
+}
+
 const PROVIDER: ProviderSummary = {
   id: "codex",
   label: "Codex",
@@ -62,6 +86,18 @@ test("app header renders real provider status instead of placeholder language to
   assert.doesNotMatch(markup, /EN\/ZH/);
   assert.doesNotMatch(markup, /可发送/);
   assert.match(markup, /刷新消息/);
+  assertButtonClassContains({
+    markup,
+    attribute: "aria-label",
+    value: "切换主题",
+    classFragment: "h-8 w-8",
+  });
+  assertButtonClassContains({
+    markup,
+    attribute: "aria-label",
+    value: "打开会话面板",
+    classFragment: "h-8 w-8",
+  });
 });
 
 test("app header shows loading state while refresh is running", () => {
@@ -271,6 +307,12 @@ test("conversation panel keeps composer focused on send controls instead of prov
   assert.match(markup, /h-full overflow-y-auto/);
   assert.match(markup, /placeholder="加载中\.\.\."/);
   assert.doesNotMatch(markup, /Message Hub-Run/);
+  assertButtonClassContains({
+    markup,
+    attribute: "title",
+    value: "开始语音输入",
+    classFragment: "h-8 w-8",
+  });
 });
 
 test("session browser shows create-session controls and session totals", () => {
@@ -305,6 +347,18 @@ test("session browser shows create-session controls and session totals", () => {
   assert.match(markup, /aria-label="新建会话"/);
   assert.doesNotMatch(markup, />新建会话</);
   assert.match(markup, /ai软着，需要心理ai方面的源代码，是10号字70度斜体排版/);
+  assertButtonClassContains({
+    markup,
+    attribute: "aria-label",
+    value: "展开项目列表",
+    classFragment: "h-8 w-8",
+  });
+  assertButtonClassContains({
+    markup,
+    attribute: "aria-label",
+    value: "新建会话",
+    classFragment: "h-8 w-8",
+  });
 });
 
 test("session browser shows inline create-session error near project path controls", () => {

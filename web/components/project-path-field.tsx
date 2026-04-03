@@ -36,7 +36,7 @@ export default function ProjectPathField(props: ProjectPathFieldProps) {
 
   return (
     <div className="relative flex-1" onBlur={handleBlur}>
-      <div className="flex h-9 items-center rounded-lg border border-bdr bg-surface">
+      <div className="flex h-9 items-center rounded-lg border border-bdr bg-surface pr-0.5">
         <input
           disabled={disabled}
           value={value}
@@ -54,7 +54,7 @@ export default function ProjectPathField(props: ProjectPathFieldProps) {
           disabled={disabled}
           aria-label="展开项目列表"
           onClick={() => setOpen((current) => !current)}
-          className="flex h-full w-9 shrink-0 items-center justify-center text-muted transition hover:text-txt disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted transition hover:text-txt disabled:cursor-not-allowed disabled:opacity-60"
         >
           <ChevronDown className={`h-4 w-4 transition ${open ? "rotate-180" : ""}`} />
         </button>

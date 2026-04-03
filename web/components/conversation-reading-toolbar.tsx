@@ -77,7 +77,7 @@ export default function ConversationReadingToolbar(
         onClick={onCycleMessageViewMode}
         aria-label={`消息模式：${getConversationMessageViewLabel(messageViewMode)}`}
         data-slot="conversation-reading-mode-toggle"
-        className="rounded-xl border border-bdr bg-surface p-2 text-txt transition hover:bg-surface-hover"
+        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-bdr bg-surface text-txt transition hover:bg-surface-hover"
       >
         <MessageViewIcon mode={messageViewMode} />
       </button>
@@ -87,7 +87,7 @@ export default function ConversationReadingToolbar(
         aria-label={`缩小消息字体，当前档位 ${fontScale}/6`}
         data-slot="conversation-reading-font-decrease"
         disabled={!canDecreaseFontScale}
-        className="rounded-xl border border-bdr bg-surface px-3 py-2 text-sm font-semibold text-txt transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-45"
+        className="inline-flex h-8 min-w-8 items-center justify-center rounded-md border border-bdr bg-surface px-2.5 text-sm font-semibold text-txt transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-45"
       >
         A-
       </button>
@@ -97,7 +97,7 @@ export default function ConversationReadingToolbar(
         aria-label={`放大消息字体，当前档位 ${fontScale}/6`}
         data-slot="conversation-reading-font-increase"
         disabled={!canIncreaseFontScale}
-        className="rounded-xl border border-bdr bg-surface px-3 py-2 text-sm font-semibold text-txt transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-45"
+        className="inline-flex h-8 min-w-8 items-center justify-center rounded-md border border-bdr bg-surface px-2.5 text-sm font-semibold text-txt transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-45"
       >
         A+
       </button>

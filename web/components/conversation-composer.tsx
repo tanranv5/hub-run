@@ -371,6 +371,9 @@ function ComposerActions(props: {
     refreshing || voicePhase === "starting" || voicePhase === "stopping";
   const voiceRecording = voicePhase === "recording";
   const voiceTitle = getVoiceButtonTitle(voicePhase);
+  const sendButtonClassName = buttonLabel
+    ? "inline-flex h-9 min-w-9 items-center justify-center rounded-full bg-accent px-3 text-sm font-medium text-bg transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+    : "inline-flex h-8 w-8 items-center justify-center rounded-md bg-accent text-bg transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50";
 
   return (
     <div
@@ -382,7 +385,7 @@ function ComposerActions(props: {
         onClick={onVoiceClick}
         title={voiceTitle}
         disabled={voiceBusy}
-        className={`flex h-9 min-w-9 items-center justify-center rounded-full border px-3 text-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${
+        className={`inline-flex h-8 w-8 items-center justify-center rounded-md border transition disabled:cursor-not-allowed disabled:opacity-60 ${
           voiceRecording
             ? "border-rose-400/30 bg-rose-500/12 text-rose-700 dark:text-rose-100 hover:bg-rose-500/18"
             : "border-bdr bg-surface text-txt hover:bg-surface-hover"
@@ -406,7 +409,7 @@ function ComposerActions(props: {
           type="button"
           onClick={onSend}
           disabled={refreshing || sending || voicePhase !== "idle" || !draft.trim()}
-          className="flex h-9 min-w-9 items-center justify-center rounded-full bg-accent px-3 text-sm font-medium text-bg transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+          className={sendButtonClassName}
         >
           {buttonLabel ?? <Send className="h-4 w-4" />}
         </button>

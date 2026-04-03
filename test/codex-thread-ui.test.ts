@@ -13,6 +13,30 @@ import { resolveConversationStatus } from "../web/conversation-status";
 
 Object.assign(globalThis, { React });
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function assertButtonClassContains(props: {
+  attribute: "aria-label" | "title";
+  classFragment: string;
+  markup: string;
+  value: string;
+}) {
+  const {
+    attribute,
+    classFragment,
+    markup,
+    value,
+  } = props;
+  const escapedClass = escapeRegExp(classFragment);
+  const escapedValue = escapeRegExp(value);
+  const pattern = new RegExp(
+    `<button[^>]*(?:class="[^"]*${escapedClass}[^"]*"[^>]*${attribute}="${escapedValue}"|${attribute}="${escapedValue}"[^>]*class="[^"]*${escapedClass}[^"]*")`,
+  );
+  assert.match(markup, pattern);
+}
+
 const PROVIDER: ProviderSummary = {
   id: "codex",
   label: "Codex",
@@ -96,6 +120,24 @@ test("conversation header shows codex runtime status without a duplicate interru
   assert.ok(searchIndex < copyIndex);
   assert.ok(copyIndex < statusIndex);
   assert.doesNotMatch(markup, /aria-label="中断当前回合"/);
+  assertButtonClassContains({
+    markup,
+    attribute: "aria-label",
+    value: "切换侧边栏",
+    classFragment: "h-8 w-8",
+  });
+  assertButtonClassContains({
+    markup,
+    attribute: "aria-label",
+    value: "搜索当前会话",
+    classFragment: "h-8 w-8",
+  });
+  assertButtonClassContains({
+    markup,
+    attribute: "aria-label",
+    value: "复制会话 ID",
+    classFragment: "h-8 w-8",
+  });
 });
 
 test("conversation header expands an inline search bar when search is open", () => {
@@ -131,6 +173,36 @@ test("conversation header expands an inline search bar when search is open", () 
   assert.match(markup, /aria-label="上一个命中"/);
   assert.match(markup, /aria-label="下一个命中"/);
   assert.match(markup, />1\/3</);
+  assertButtonClassContains({
+    markup,
+    attribute: "aria-label",
+    value: "搜索当前页面",
+    classFragment: "h-8 w-8",
+  });
+  assertButtonClassContains({
+    markup,
+    attribute: "aria-label",
+    value: "搜索全部历史",
+    classFragment: "h-8 w-8",
+  });
+  assertButtonClassContains({
+    markup,
+    attribute: "aria-label",
+    value: "上一个命中",
+    classFragment: "h-8 w-8",
+  });
+  assertButtonClassContains({
+    markup,
+    attribute: "aria-label",
+    value: "下一个命中",
+    classFragment: "h-8 w-8",
+  });
+  assertButtonClassContains({
+    markup,
+    attribute: "aria-label",
+    value: "关闭搜索",
+    classFragment: "h-8 w-8",
+  });
 });
 
 test("conversation reading toolbar stays fixed at the top-right of the message area", () => {
@@ -153,6 +225,24 @@ test("conversation reading toolbar stays fixed at the top-right of the message a
   assert.match(markup, />A-</);
   assert.match(markup, />A\+</);
   assert.doesNotMatch(markup, />4\/6</);
+  assertButtonClassContains({
+    markup,
+    attribute: "aria-label",
+    value: "消息模式：精简",
+    classFragment: "h-8 w-8",
+  });
+  assertButtonClassContains({
+    markup,
+    attribute: "aria-label",
+    value: "缩小消息字体，当前档位 4/6",
+    classFragment: "h-8 min-w-8",
+  });
+  assertButtonClassContains({
+    markup,
+    attribute: "aria-label",
+    value: "放大消息字体，当前档位 4/6",
+    classFragment: "h-8 min-w-8",
+  });
 });
 
 test("conversation reading toolbar disables font buttons at min and max scale", () => {
