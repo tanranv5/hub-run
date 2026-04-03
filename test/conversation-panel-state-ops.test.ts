@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Dispatch, SetStateAction } from "react";
+import { loadInitialPage } from "../web/conversation-panel-state-ops";
 import { INITIAL_PANEL_STATE, type PanelState } from "../web/conversation-panel-state-types";
 import { loadOlderMessagesUntilStart } from "../web/conversation-panel-state-ops";
 
@@ -73,5 +74,89 @@ test("loadOlderMessagesUntilStart keeps loading pages until nextBefore becomes n
   assert.deepEqual(
     stateStore.read().messages.map((message) => message.id),
     ["older-1", "older-2", "latest-1"],
+  );
+});
+
+test("loadInitialPage keeps a runtime completed status message visible before task_complete is persisted", async () => {
+  const state = await loadInitialPage("codex", "thread-1", {
+    getPage: async () => ({
+      messages: [
+        {
+          id: "msg-1",
+          role: "assistant",
+          kind: "text",
+          text: "最终输出",
+          timestamp: "2026-03-20T12:00:00.000Z",
+        },
+        {
+          id: "status-start-1",
+          role: "system",
+          kind: "text",
+          title: "status",
+          text: "任务已开始（turn=turn-1）。",
+          timestamp: "2026-03-20T12:00:01.000Z",
+        },
+      ],
+      nextBefore: null,
+      summary: null,
+    }),
+    loadRuntime: async () => ({
+      pendingUserInputRequests: [],
+      threadState: {
+        threadId: "thread-1",
+        activeTurnId: null,
+        isGenerating: false,
+        requestedTurnId: "turn-1",
+        requestedTurnStatus: "completed",
+      },
+    }),
+    now: () => 1_710_000_000_000,
+  });
+
+  assert.deepEqual(
+    state.messages.map((message) => message.text),
+    ["最终输出", "任务已开始（turn=turn-1）。", "任务已完成（turn=turn-1）"],
+  );
+});
+
+test("loadInitialPage does not duplicate runtime completed status when task_complete is already persisted", async () => {
+  const state = await loadInitialPage("codex", "thread-1", {
+    getPage: async () => ({
+      messages: [
+        {
+          id: "msg-1",
+          role: "assistant",
+          kind: "text",
+          text: "最终输出",
+          timestamp: "2026-03-20T12:00:00.000Z",
+        },
+        {
+          id: "status-complete-1",
+          role: "system",
+          kind: "text",
+          title: "status",
+          text: "任务已完成（turn=turn-1）",
+          timestamp: "2026-03-20T12:00:02.000Z",
+        },
+      ],
+      nextBefore: null,
+      summary: null,
+    }),
+    loadRuntime: async () => ({
+      pendingUserInputRequests: [],
+      threadState: {
+        threadId: "thread-1",
+        activeTurnId: null,
+        isGenerating: false,
+        requestedTurnId: "turn-1",
+        requestedTurnStatus: "completed",
+      },
+    }),
+    now: () => 1_710_000_000_000,
+  });
+
+  assert.deepEqual(
+    state.messages.map((message) => message.id),
+    ["msg-1", "status-complete-1"],
   );
 });

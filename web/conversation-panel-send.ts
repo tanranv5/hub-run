@@ -1,4 +1,5 @@
 import type {
+  ConversationMessage,
   ProviderId,
   ProviderThreadState,
   ProviderUserInputRequest,
@@ -161,6 +162,23 @@ export function resolveSendStatus(props: {
   return null;
 }
 
+export function appendMissingRuntimeTerminalStatusMessage(
+  messages: ConversationMessage[],
+  providerId: ProviderId,
+  threadState: ProviderThreadState | null,
+  now: number,
+): ConversationMessage[] {
+  const terminalMessage = buildRuntimeTerminalStatusMessage(
+    providerId,
+    threadState,
+    now,
+  );
+  if (!terminalMessage || hasEquivalentStatusMessage(messages, terminalMessage)) {
+    return messages;
+  }
+  return [...messages, terminalMessage];
+}
+
 function getRuntimeTerminalStatus(
   providerId: ProviderId,
   threadState: ProviderThreadState | null,
@@ -181,6 +199,36 @@ function getRuntimeTerminalStatus(
     default:
       return null;
   }
+}
+
+function buildRuntimeTerminalStatusMessage(
+  providerId: ProviderId,
+  threadState: ProviderThreadState | null,
+  now: number,
+): ConversationMessage | null {
+  if (
+    providerId !== "codex" ||
+    !threadState ||
+    threadState.isGenerating ||
+    !threadState.requestedTurnStatus
+  ) {
+    return null;
+  }
+  const label = getTerminalTransitionLabel(
+    threadState.requestedTurnStatus,
+    threadState.requestedTurnId,
+  );
+  if (!label) {
+    return null;
+  }
+  return {
+    id: `terminal-status:${now}`,
+    role: "system",
+    kind: "text",
+    title: "status",
+    text: label,
+    timestamp: new Date(now).toISOString(),
+  };
 }
 
 function applySendLifecycle(

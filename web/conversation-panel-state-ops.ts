@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from "react";
 import type { ProviderId } from "../api/types";
 import { getConversationPage } from "./api";
 import { getCodexSendStatus, loadRuntimeState } from "./conversation-panel-codex-runtime";
+import { appendMissingRuntimeTerminalStatusMessage } from "./conversation-panel-send";
 import {
   INITIAL_PANEL_STATE,
   type PanelState,
@@ -30,15 +31,31 @@ function applyOlderPage(
 export async function loadInitialPage(
   providerId: ProviderId,
   sessionId: string,
+  deps: {
+    getPage?: typeof getConversationPage;
+    loadRuntime?: typeof loadRuntimeState;
+    now?: () => number;
+  } = {},
 ): Promise<PanelState> {
+  const {
+    getPage = getConversationPage,
+    loadRuntime = loadRuntimeState,
+    now = () => Date.now(),
+  } = deps;
   const [page, runtime] = await Promise.all([
-    getConversationPage(providerId, sessionId, null, PAGE_SIZE),
-    loadRuntimeState(providerId, sessionId),
+    getPage(providerId, sessionId, null, PAGE_SIZE),
+    loadRuntime(providerId, sessionId),
   ]);
+  const messages = appendMissingRuntimeTerminalStatusMessage(
+    page.messages,
+    providerId,
+    runtime.threadState,
+    now(),
+  );
 
   return {
     ...INITIAL_PANEL_STATE,
-    messages: page.messages,
+    messages,
     nextBefore: page.nextBefore,
     summary: page.summary,
     sending: runtime.threadState?.isGenerating ?? false,
