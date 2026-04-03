@@ -92,6 +92,7 @@ test("conversation header shows codex runtime status without a duplicate interru
   const markup = renderToStaticMarkup(
     React.createElement(ConversationHeader as unknown as React.ComponentType<any>, {
       conversationStatus,
+      onToggleCollapsed: () => {},
       session: SESSION,
       onToggleDesktopSidebar: () => {},
     }),
@@ -138,6 +139,13 @@ test("conversation header shows codex runtime status without a duplicate interru
     value: "复制会话 ID",
     classFragment: "h-8 w-8",
   });
+  assertButtonClassContains({
+    markup,
+    attribute: "aria-label",
+    value: "隐藏标题栏",
+    classFragment: "h-8 w-8",
+  });
+  assert.doesNotMatch(markup, /mt-2 flex justify-center/);
 });
 
 test("conversation header expands an inline search bar when search is open", () => {
@@ -203,6 +211,43 @@ test("conversation header expands an inline search bar when search is open", () 
     value: "关闭搜索",
     classFragment: "h-8 w-8",
   });
+});
+
+test("conversation header collapses into a compact status bar with an expand action", () => {
+  const conversationStatus = resolveConversationStatus({
+    interrupting: false,
+    lifecycle: null,
+    loading: false,
+    pendingUserInputRequests: [],
+    providerId: "codex",
+    respondingRequestId: null,
+    sendAvailable: true,
+    streamStatus: { phase: "idle", lastEventAt: null, retryCount: 0 },
+    threadState: null,
+  });
+  const markup = renderToStaticMarkup(
+    React.createElement(ConversationHeader as unknown as React.ComponentType<any>, {
+      collapsed: true,
+      conversationStatus,
+      onToggleCollapsed: () => {},
+      session: SESSION,
+      onToggleDesktopSidebar: () => {},
+    }),
+  );
+
+  assert.match(markup, /data-slot="conversation-header-collapsed"/);
+  assert.match(markup, /data-slot="conversation-header-collapse-control"/);
+  assert.match(markup, /补齐 codex app-server 状态监控/);
+  assert.doesNotMatch(markup, /标题栏已隐藏/);
+  assertButtonClassContains({
+    markup,
+    attribute: "aria-label",
+    value: "展开标题栏",
+    classFragment: "h-8 w-8",
+  });
+  assert.doesNotMatch(markup, /mt-2 flex justify-center/);
+  assert.doesNotMatch(markup, /aria-label="复制会话 ID"/);
+  assert.doesNotMatch(markup, /aria-label="搜索当前会话"/);
 });
 
 test("conversation reading toolbar stays fixed at the top-right of the message area", () => {

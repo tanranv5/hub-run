@@ -36,6 +36,7 @@ function SearchScopeIcon(props: { scope: ConversationSearchScope }) {
 }
 
 interface ConversationHeaderProps {
+  collapsed?: boolean;
   conversationStatus: ConversationStatus;
   searchActiveIndex?: number;
   searchError?: string | null;
@@ -50,6 +51,7 @@ interface ConversationHeaderProps {
   onPreviousSearchHit?: () => void;
   onSearchQueryChange?: (value: string) => void;
   onSearchScopeChange?: (scope: ConversationSearchScope) => void;
+  onToggleCollapsed?: () => void;
   onToggleSearch?: () => void;
   session: SessionSummary;
   onToggleDesktopSidebar: () => void;
@@ -57,6 +59,7 @@ interface ConversationHeaderProps {
 
 export default function ConversationHeader(props: ConversationHeaderProps) {
   const {
+    collapsed = false,
     conversationStatus,
     session,
     onToggleDesktopSidebar,
@@ -73,6 +76,7 @@ export default function ConversationHeader(props: ConversationHeaderProps) {
     onPreviousSearchHit,
     onSearchQueryChange,
     onSearchScopeChange,
+    onToggleCollapsed,
     onToggleSearch,
   } = props;
   const [copied, setCopied] = useState(false);
@@ -89,6 +93,33 @@ export default function ConversationHeader(props: ConversationHeaderProps) {
     await navigator.clipboard.writeText(session.id);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1500);
+  }
+
+  if (collapsed) {
+    return (
+      <div
+        data-slot="conversation-header-collapsed"
+        className="flex-none border-b border-bdr px-4 py-2 md:px-6"
+      >
+        <div className="flex items-center gap-2">
+          <ConversationSessionStatus conversationStatus={conversationStatus} />
+          <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-txt">
+            {title}
+          </h2>
+          {onToggleCollapsed ? (
+            <button
+              type="button"
+              aria-label="展开标题栏"
+              data-slot="conversation-header-collapse-control"
+              onClick={onToggleCollapsed}
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-bdr bg-surface text-muted transition hover:bg-surface-hover"
+            >
+              <ChevronDown className="h-4 w-4" />
+            </button>
+          ) : null}
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -112,7 +143,7 @@ export default function ConversationHeader(props: ConversationHeaderProps) {
                 <span className="truncate">{projectLabel}</span>
                 <span className="shrink-0">{relativeTime}</span>
               </span>
-              <span className="ml-auto inline-flex shrink-0 items-center gap-2">
+                <span className="ml-auto inline-flex shrink-0 items-center gap-2">
                 <button
                   type="button"
                   aria-label="搜索当前会话"
@@ -146,6 +177,17 @@ export default function ConversationHeader(props: ConversationHeaderProps) {
                     </span>
                   </span>
                 </span>
+                {onToggleCollapsed ? (
+                  <button
+                    type="button"
+                    aria-label="隐藏标题栏"
+                    data-slot="conversation-header-collapse-control"
+                    onClick={onToggleCollapsed}
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-bdr bg-surface text-muted transition hover:bg-surface-hover"
+                  >
+                    <ChevronUp className="h-4 w-4" />
+                  </button>
+                ) : null}
                 <div className="flex-none max-w-[120px] md:max-w-none">
                   <ConversationSessionStatus
                     conversationStatus={conversationStatus}
@@ -156,7 +198,7 @@ export default function ConversationHeader(props: ConversationHeaderProps) {
             {searchOpen ? (
               <div
                 data-slot="conversation-search-bar"
-                className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-bdr bg-surface/80 px-3 py-2"
+                className="mt-2 flex flex-wrap items-center gap-2 rounded-2xl border border-bdr bg-surface/80 px-3 py-2"
               >
                 <Search className="h-4 w-4 text-muted" />
                 <input

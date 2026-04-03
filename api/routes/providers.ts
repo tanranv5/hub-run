@@ -58,6 +58,14 @@ function parseSearchPageLimit(value: string | undefined): number {
   return Math.min(100, Math.max(1, parsed));
 }
 
+function parseRecentLimit(value: string | undefined): number | null {
+  const parsed = Number.parseInt(value ?? "", 10);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+  return Math.min(100, Math.max(1, parsed));
+}
+
 function parseConversationAnchor(
   offsetValue: string | undefined,
   blockIndexValue: string | undefined,
@@ -287,6 +295,7 @@ export function createProvidersRouter(
           c.req.param("sessionId"),
           query,
           mode,
+          parseRecentLimit(c.req.query("recentLimit")),
         ),
       );
     } catch (error) {
@@ -335,6 +344,7 @@ export function createProvidersRouter(
           mode,
           afterAnchor,
           parseSearchPageLimit(c.req.query("limit")),
+          parseRecentLimit(c.req.query("recentLimit")),
         ),
       );
     } catch (error) {

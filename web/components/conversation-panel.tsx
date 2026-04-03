@@ -381,6 +381,9 @@ export default function ConversationPanel(props: ConversationPanelProps) {
   const [messageFontScale, setMessageFontScale] = useState(
     storedReadingPreference?.messageFontScale ?? DEFAULT_MESSAGE_FONT_SCALE,
   );
+  const [headerCollapsed, setHeaderCollapsed] = useState(
+    storedReadingPreference?.headerCollapsed ?? false,
+  );
   const [composerStoredHeight, setComposerStoredHeight] = useState<number | null>(
     storedReadingPreference?.composerStoredHeight ?? null,
   );
@@ -432,10 +435,11 @@ export default function ConversationPanel(props: ConversationPanelProps) {
   useEffect(() => {
     writeConversationReadingPreference(getBrowserStorage(), {
       composerStoredHeight,
+      headerCollapsed,
       messageFontScale,
       messageViewMode,
     });
-  }, [composerStoredHeight, messageFontScale, messageViewMode]);
+  }, [composerStoredHeight, headerCollapsed, messageFontScale, messageViewMode]);
 
   const isAllSearchActive = searchOpen && searchScope === "all" && searchQuery.trim().length > 0;
   const searchMode: "off" | "all-results" | "all-context" = isAllSearchActive
@@ -492,6 +496,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
   return (
     <section className="flex h-full min-h-0 flex-1 flex-col bg-transparent">
       <ConversationHeader
+        collapsed={headerCollapsed}
         conversationStatus={conversationStatus}
         searchActiveIndex={activeHitIndex}
         searchError={searchError}
@@ -514,6 +519,16 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         }}
         onSearchQueryChange={setSearchQuery}
         onSearchScopeChange={setSearchScope}
+        onToggleCollapsed={() => {
+          setHeaderCollapsed((current) => {
+            const next = !current;
+            if (next && searchOpen) {
+              setSearchOpen(false);
+              clearSearch();
+            }
+            return next;
+          });
+        }}
         onToggleDesktopSidebar={onToggleDesktopSidebar}
         onToggleSearch={() => {
           setSearchOpen((current) => {

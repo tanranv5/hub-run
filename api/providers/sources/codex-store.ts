@@ -2,6 +2,7 @@ import { mkdir, readFile, rename, stat, writeFile } from "fs/promises";
 import { join } from "path";
 import {
   locateConversationMessages,
+  searchConversationMessagePage,
   searchConversationMessages,
 } from "../../conversation-search";
 import type {
@@ -36,7 +37,6 @@ import {
   readCodexSessionMeta,
   type CodexSessionFile,
 } from "./codex-session-files";
-import { readConversationSearchPage } from "./conversation-search-page";
 import {
   readLatestCodexConversationPage,
   readPrefixCodexConversationPage,
@@ -174,15 +174,17 @@ export function createCodexSessionStore(rootPath: string) {
       sessionId: string,
       query: string,
       mode: ConversationSearchMode,
+      recentLimit?: number | null,
     ): Promise<ConversationSearchResult> => {
       const filePath = await getSessionFilePath(state, sessionsDir, sessionId);
       if (!filePath) {
-        return searchConversationMessages({ messages: [], mode, query });
+        return searchConversationMessages({ messages: [], mode, query, recentLimit });
       }
       return searchConversationMessages({
         messages: await readCodexConversation(filePath, sessionId),
         mode,
         query,
+        recentLimit,
       });
     },
     searchConversationPage: async (
@@ -191,6 +193,7 @@ export function createCodexSessionStore(rootPath: string) {
       mode: ConversationSearchMode,
       anchor: ConversationAnchor | null,
       limit: number,
+      recentLimit?: number | null,
     ): Promise<ConversationSearchPageResult> => {
       const filePath = await getSessionFilePath(state, sessionsDir, sessionId);
       if (!filePath) {
@@ -202,23 +205,15 @@ export function createCodexSessionStore(rootPath: string) {
           nextAnchor: null,
         };
       }
-      const page = await readConversationSearchPage({
+      const messages = await readCodexConversation(filePath, sessionId);
+      return searchConversationMessagePage({
         anchor,
-        filePath,
         limit,
+        messages,
         mode,
-        parseMessages: (lines) => readCodexConversationEntries(lines, sessionId),
         query,
+        recentLimit,
       });
-      const totalHits = searchConversationMessages({
-        messages: await readCodexConversation(filePath, sessionId),
-        mode,
-        query,
-      }).totalHits;
-      return {
-        ...page,
-        totalHits,
-      };
     },
     locateConversation: async (
       sessionId: string,

@@ -73,8 +73,9 @@ function HeaderActions(props: HeaderActionsProps) {
         onClick={onRefresh}
         disabled={refreshing}
         aria-busy={refreshing}
+        aria-label={refreshing ? "刷新中" : "刷新消息"}
         title={refreshing ? "刷新中..." : "刷新消息"}
-        className="inline-flex h-11 items-center gap-2 rounded-2xl border border-bdr bg-surface px-3 text-sm text-txt transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex h-8 items-center gap-2 rounded-md border border-bdr bg-surface px-3 text-sm text-txt transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
       >
         <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
         <span className="hidden sm:inline">{refreshing ? "刷新中" : "刷新消息"}</span>
@@ -83,7 +84,8 @@ function HeaderActions(props: HeaderActionsProps) {
         <button
           type="button"
           onClick={onLogout}
-          className="inline-flex h-11 items-center gap-2 rounded-2xl border border-bdr bg-surface px-3 text-sm text-txt transition hover:bg-surface-hover"
+          aria-label="退出"
+          className="inline-flex h-8 items-center gap-2 rounded-md border border-bdr bg-surface px-3 text-sm text-txt transition hover:bg-surface-hover"
         >
           <LogOut className="h-4 w-4" />
           <span className="hidden sm:inline">退出</span>

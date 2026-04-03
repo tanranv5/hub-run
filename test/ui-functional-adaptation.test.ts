@@ -98,6 +98,18 @@ test("app header renders real provider status instead of placeholder language to
     value: "打开会话面板",
     classFragment: "h-8 w-8",
   });
+  assertButtonClassContains({
+    markup,
+    attribute: "aria-label",
+    value: "刷新消息",
+    classFragment: "h-8",
+  });
+  assertButtonClassContains({
+    markup,
+    attribute: "aria-label",
+    value: "退出",
+    classFragment: "h-8",
+  });
 });
 
 test("app header shows loading state while refresh is running", () => {

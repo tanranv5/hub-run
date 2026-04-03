@@ -85,7 +85,7 @@ function createRegistry(overrides: Partial<ProviderAdapter> = {}) {
 
 test("conversation search route delegates to provider adapter", async () => {
   let captured:
-    | { mode: string; query: string; sessionId: string }
+    | { mode: string; query: string; recentLimit: number | null; sessionId: string }
     | null = null;
   const result: ConversationSearchResult = {
     query: "alpha",
@@ -110,8 +110,8 @@ test("conversation search route delegates to provider adapter", async () => {
     }),
     {
       registry: createRegistry({
-        searchConversation: async (sessionId, query, mode) => {
-          captured = { sessionId, query, mode };
+        searchConversation: async (sessionId, query, mode, recentLimit) => {
+          captured = { sessionId, query, mode, recentLimit: recentLimit ?? null };
           return result;
         },
       }),
@@ -120,7 +120,7 @@ test("conversation search route delegates to provider adapter", async () => {
 
   const cookie = await login(app);
   const response = await app.request(
-    "/api/providers/codex/sessions/session-1/messages/search?q=alpha&mode=text",
+    "/api/providers/codex/sessions/session-1/messages/search?q=alpha&mode=text&recentLimit=10",
     { headers: { cookie } },
   );
 
@@ -130,6 +130,7 @@ test("conversation search route delegates to provider adapter", async () => {
     sessionId: "session-1",
     query: "alpha",
     mode: "text",
+    recentLimit: 10,
   });
 });
 
@@ -175,6 +176,7 @@ test("conversation search page route delegates anchor cursor to provider adapter
         mode: string;
         offset: number | null;
         query: string;
+        recentLimit: number | null;
         sessionId: string;
       }
     | null = null;
@@ -201,7 +203,7 @@ test("conversation search page route delegates anchor cursor to provider adapter
     }),
     {
       registry: createRegistry({
-        searchConversationPage: async (sessionId, query, mode, anchor, limit) => {
+        searchConversationPage: async (sessionId, query, mode, anchor, limit, recentLimit) => {
           captured = {
             sessionId,
             query,
@@ -209,6 +211,7 @@ test("conversation search page route delegates anchor cursor to provider adapter
             offset: anchor?.offset ?? null,
             blockIndex: anchor?.blockIndex ?? null,
             limit,
+            recentLimit: recentLimit ?? null,
           };
           return result;
         },
@@ -218,7 +221,7 @@ test("conversation search page route delegates anchor cursor to provider adapter
 
   const cookie = await login(app);
   const response = await app.request(
-    "/api/providers/codex/sessions/session-1/messages/search-page?q=alpha&mode=compact&afterOffset=256&afterBlockIndex=1&limit=12",
+    "/api/providers/codex/sessions/session-1/messages/search-page?q=alpha&mode=compact&afterOffset=256&afterBlockIndex=1&limit=12&recentLimit=10",
     { headers: { cookie } },
   );
 
@@ -231,6 +234,7 @@ test("conversation search page route delegates anchor cursor to provider adapter
     offset: 256,
     blockIndex: 1,
     limit: 12,
+    recentLimit: 10,
   });
 });
 

@@ -236,11 +236,15 @@ export async function searchConversationMessagePage(
   mode: ConversationSearchMode,
   anchor: ConversationAnchor | null,
   limit: number,
+  recentLimit?: number | null,
 ): Promise<ConversationSearchPageResult> {
   const search = new URLSearchParams();
   search.set("q", query);
   search.set("mode", mode);
   search.set("limit", String(limit));
+  if (typeof recentLimit === "number" && Number.isFinite(recentLimit)) {
+    search.set("recentLimit", String(recentLimit));
+  }
   if (anchor) {
     search.set("afterOffset", String(anchor.offset));
     search.set("afterBlockIndex", String(anchor.blockIndex));

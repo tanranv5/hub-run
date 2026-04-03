@@ -43,10 +43,11 @@ export function searchConversationMessages(props: {
   messages: ConversationMessage[];
   mode: ConversationSearchMode;
   query: string;
+  recentLimit?: number | null;
 }): ConversationSearchResult {
   const { messages, mode } = props;
   const query = props.query.trim();
-  const filteredMessages = filterConversationMessages(messages, mode);
+  const filteredMessages = scopeConversationMessages(messages, mode, props.recentLimit);
   if (!query) {
     return buildEmptySearchResult(query, mode, filteredMessages.length);
   }
@@ -87,11 +88,13 @@ export function searchConversationMessagePage(props: {
   messages: ConversationMessage[];
   mode: ConversationSearchMode;
   query: string;
+  recentLimit?: number | null;
 }): ConversationSearchPageResult {
   const searchResult = searchConversationMessages({
     messages: props.messages,
     mode: props.mode,
     query: props.query,
+    recentLimit: props.recentLimit,
   });
   const filteredHits = props.anchor
     ? searchResult.hits.filter((hit) => isConversationAnchorAfter(hit.anchor, props.anchor))
@@ -105,6 +108,27 @@ export function searchConversationMessagePage(props: {
     hits,
     nextAnchor: hasMore ? (hits[hits.length - 1]?.anchor ?? null) : null,
   };
+}
+
+function scopeConversationMessages(
+  messages: ConversationMessage[],
+  mode: ConversationSearchMode,
+  recentLimit: number | null | undefined,
+) {
+  const filteredMessages = filterConversationMessages(messages, mode);
+  const normalizedRecentLimit = normalizeRecentLimit(recentLimit);
+  if (!normalizedRecentLimit || filteredMessages.length <= normalizedRecentLimit) {
+    return filteredMessages;
+  }
+  return filteredMessages.slice(-normalizedRecentLimit);
+}
+
+function normalizeRecentLimit(value: number | null | undefined): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+  const limit = Math.floor(value);
+  return limit > 0 ? limit : null;
 }
 
 export function readConversationContextResult(props: {

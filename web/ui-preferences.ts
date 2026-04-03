@@ -12,6 +12,7 @@ export interface ProviderControlPreference {
 
 export interface ConversationReadingPreference {
   composerStoredHeight: number | null;
+  headerCollapsed: boolean;
   messageFontScale: number;
   messageViewMode: ConversationSearchMode;
 }
@@ -150,6 +151,7 @@ export function readConversationReadingPreference(
       typeof value.composerStoredHeight === "number" && Number.isFinite(value.composerStoredHeight)
         ? value.composerStoredHeight
         : null,
+    headerCollapsed: value.headerCollapsed === true,
     messageFontScale: value.messageFontScale,
     messageViewMode: value.messageViewMode,
   };

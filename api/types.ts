@@ -308,6 +308,7 @@ export interface ProviderAdapter {
     sessionId: string,
     query: string,
     mode: ConversationSearchMode,
+    recentLimit?: number | null,
   ): Promise<ConversationSearchResult>;
   searchConversationPage?(
     sessionId: string,
@@ -315,6 +316,7 @@ export interface ProviderAdapter {
     mode: ConversationSearchMode,
     anchor: ConversationAnchor | null,
     limit: number,
+    recentLimit?: number | null,
   ): Promise<ConversationSearchPageResult>;
   locateConversation?(
     sessionId: string,

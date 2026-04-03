@@ -100,12 +100,14 @@ test("conversation reading preference round-trips mode, font scale, and composer
 
   writeConversationReadingPreference(storage, {
     composerStoredHeight: 188,
+    headerCollapsed: true,
     messageFontScale: 3,
     messageViewMode: "compact",
   });
 
   assert.deepEqual(readConversationReadingPreference(storage), {
     composerStoredHeight: 188,
+    headerCollapsed: true,
     messageFontScale: 3,
     messageViewMode: "compact",
   });

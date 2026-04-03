@@ -23,6 +23,7 @@ export type ConversationSearchScope = "current" | "all";
 const SEARCH_CONTEXT_WINDOW_SIZE = 11;
 const SEARCH_ERROR_MESSAGE = "搜索失败，请重试";
 const SEARCH_CONTEXT_ERROR_MESSAGE = "读取搜索上下文失败";
+export const RECENT_SEARCH_MESSAGE_LIMIT = 10;
 export const ALL_SEARCH_RESULT_LIMIT = 100;
 const SEARCH_PAGE_LIMIT_BY_FONT_SCALE: Record<number, number> = {
   1: 20,
@@ -142,11 +143,13 @@ function buildCurrentSearchResult(
   visibleMessages: ConversationMessage[],
   query: string,
   mode: ConversationSearchMode,
+  recentLimit: number,
 ): ConversationSearchResult {
   return searchVisibleConversationMessages({
     messages: visibleMessages,
     mode,
     query,
+    recentLimit,
   });
 }
 
@@ -221,7 +224,12 @@ export function useConversationPanelSearch(props: {
       setError(null);
       return;
     }
-    const nextResult = buildCurrentSearchResult(visibleMessages, normalizedQuery, mode);
+    const nextResult = buildCurrentSearchResult(
+      visibleMessages,
+      normalizedQuery,
+      mode,
+      RECENT_SEARCH_MESSAGE_LIMIT,
+    );
     const nextIndex = resolvePreferredSearchHitIndex(nextResult, activeCurrentHitRef.current);
     setCurrentState({
       activeHitIndex: nextIndex,
@@ -262,6 +270,7 @@ export function useConversationPanelSearch(props: {
       mode,
       null,
       ALL_SEARCH_RESULT_LIMIT,
+      RECENT_SEARCH_MESSAGE_LIMIT,
     )
       .then((page) => {
         if (requestVersion !== requestVersionRef.current) {
