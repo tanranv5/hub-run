@@ -129,6 +129,23 @@ test("preferred session is merged back into the latest window when it is missing
   );
 });
 
+test("preferred session does not override fresher live metadata when the same session already exists", () => {
+  const stalePreferred = {
+    ...SESSION,
+    display: "新会话",
+    timestamp: SESSION.timestamp - 500,
+  };
+  const liveSession = {
+    ...SESSION,
+    display: "真实标题",
+    timestamp: SESSION.timestamp + 100,
+  };
+
+  const merged = mergePreferredSession([liveSession], stalePreferred);
+
+  assert.deepEqual(merged, [liveSession]);
+});
+
 test("clearing a deleted selected session removes provider-wide and project-specific cache", () => {
   const storage = createStorage();
   const otherProjectSession = {

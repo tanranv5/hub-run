@@ -120,6 +120,10 @@ export function mergePreferredSession(
     return sessions;
   }
 
+  if (sessions.some((session) => session.id === preferredSession.id)) {
+    return sessions;
+  }
+
   const entries = new Map(sessions.map((session) => [session.id, session]));
   entries.set(preferredSession.id, preferredSession);
   return [...entries.values()].sort((left, right) => right.timestamp - left.timestamp);
