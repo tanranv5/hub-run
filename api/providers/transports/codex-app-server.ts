@@ -1,6 +1,7 @@
 import type {
   ProviderModelOption,
   ProviderReasoningEffort,
+  SendImageInput,
   ProviderThreadState,
   ProviderUserInputRequest,
   ProviderUserInputResponsePayload,
@@ -21,6 +22,7 @@ import {
 interface CodexSendInput {
   threadId: string;
   text: string;
+  images?: SendImageInput[];
   cwd?: string;
   model?: string | null;
   effort?: ProviderReasoningEffort | null;
@@ -92,19 +94,38 @@ export async function createCodexThread(input: CodexCreateThreadInput): Promise<
   return extractThreadId(await getClient().request("thread/start", params));
 }
 
+export function buildCodexTurnInput(input: {
+  text?: string;
+  images?: SendImageInput[];
+}): Array<Record<string, unknown>> {
+  const items: Array<Record<string, unknown>> = [];
+  const text = input.text?.trim() ?? "";
+  if (text) {
+    items.push({ type: "text", text, text_elements: [] });
+  }
+  for (const image of input.images ?? []) {
+    const url = image.url.trim();
+    if (!url) {
+      continue;
+    }
+    items.push({ type: "image", url });
+  }
+  return items;
+}
+
 export async function sendCodexMessage(input: CodexSendInput): Promise<{ turnId: string | null }> {
   const threadId = input.threadId.trim();
-  const text = input.text.trim();
   if (!threadId) {
     throw new Error("threadId is required");
   }
-  if (!text) {
-    throw new Error("text is required");
+  const turnInput = buildCodexTurnInput(input);
+  if (turnInput.length === 0) {
+    throw new Error("text or images is required");
   }
 
   const params: Record<string, unknown> = {
     threadId,
-    input: [{ type: "text", text }],
+    input: turnInput,
     attachments: [],
   };
   if (input.cwd?.trim()) {

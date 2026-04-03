@@ -273,9 +273,15 @@ export interface ProviderUserInputResponsePayload {
   answers: Record<string, { answers: string[] }>;
 }
 
+export interface SendImageInput {
+  url: string;
+  name?: string;
+}
+
 export interface CreateSessionInput {
   cwd: string;
   text?: string;
+  images?: SendImageInput[];
   model?: string | null;
   effort?: ProviderReasoningEffort | null;
 }
@@ -288,6 +294,7 @@ export interface CreateSessionResult {
 
 export interface SendMessageInput {
   text: string;
+  images?: SendImageInput[];
   cwd?: string;
   model?: string | null;
   effort?: ProviderReasoningEffort | null;

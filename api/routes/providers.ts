@@ -9,6 +9,7 @@ import type {
   ProviderAdapter,
   ProviderId,
   ProviderReasoningEffort,
+  SendImageInput,
 } from "../types";
 import { getProviderSummary, listProviderSummaries } from "../providers/registry";
 import { resolveProviderRouteError } from "./provider-route-errors";
@@ -94,6 +95,37 @@ function parseOptionalString(value: unknown): string | null | undefined {
   }
 
   return undefined;
+}
+
+function parseSendImages(
+  value: unknown,
+): SendImageInput[] | null | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  const images: SendImageInput[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object") {
+      return null;
+    }
+    const url = parseOptionalString((item as { url?: unknown }).url);
+    if (!url) {
+      return null;
+    }
+    const name = parseOptionalString((item as { name?: unknown }).name);
+    if ((item as { name?: unknown }).name !== undefined && name === undefined) {
+      return null;
+    }
+    images.push(name ? { name, url } : { url });
+  }
+  return images;
+}
+
+function hasSendContent(text: string | undefined, images: SendImageInput[] | undefined): boolean {
+  return Boolean(text?.trim()) || (images?.length ?? 0) > 0;
 }
 
 function filterSessionsByProject(
@@ -202,26 +234,30 @@ export function createProvidersRouter(
     }
 
     const body = (await c.req.json().catch(() => null)) as
-      | { cwd?: unknown; text?: unknown; model?: unknown; effort?: unknown }
+      | { cwd?: unknown; text?: unknown; images?: unknown; model?: unknown; effort?: unknown }
       | null;
     const cwd = typeof body?.cwd === "string" ? body.cwd.trim() : "";
     if (!cwd) {
       return c.json({ error: { code: "INTERNAL_ERROR", message: "cwd is required" } }, 400);
     }
 
-    const text = parseOptionalString(body?.text);
-    if (
-      body?.text !== undefined &&
-      (text === undefined || text === null || !text)
-    ) {
+    if (body?.text !== undefined && typeof body.text !== "string") {
       return c.json(
-        { error: { code: "INTERNAL_ERROR", message: "text must be a non-empty string" } },
+        { error: { code: "INTERNAL_ERROR", message: "text must be a string" } },
         400,
       );
     }
-    if (!summary.capabilities.emptyCreateSession && text === undefined) {
+    const text = typeof body?.text === "string" ? body.text.trim() : undefined;
+    const images = parseSendImages(body?.images);
+    if (images === null) {
       return c.json(
-        { error: { code: "INTERNAL_ERROR", message: "text is required" } },
+        { error: { code: "INTERNAL_ERROR", message: "images must be an array of image urls" } },
+        400,
+      );
+    }
+    if (!summary.capabilities.emptyCreateSession && !hasSendContent(text, images)) {
+      return c.json(
+        { error: { code: "INTERNAL_ERROR", message: "text or images is required" } },
         400,
       );
     }
@@ -239,7 +275,8 @@ export function createProvidersRouter(
     try {
       const result = await adapter.createSession({
         cwd,
-        ...(text ? { text } : {}),
+        ...(text !== undefined ? { text } : {}),
+        ...(images !== undefined ? { images } : {}),
         ...(model !== undefined ? { model } : {}),
         ...(effort !== undefined ? { effort } : {}),
       });
@@ -448,12 +485,25 @@ export function createProvidersRouter(
     }
 
     const body = (await c.req.json().catch(() => null)) as
-      | { text?: unknown; model?: unknown; effort?: unknown }
+      | { text?: unknown; images?: unknown; model?: unknown; effort?: unknown }
       | null;
-    const text = typeof body?.text === "string" ? body.text.trim() : "";
-    if (!text) {
+    if (body?.text !== undefined && typeof body.text !== "string") {
       return c.json(
-        { error: { code: "INTERNAL_ERROR", message: "text is required" } },
+        { error: { code: "INTERNAL_ERROR", message: "text must be a string" } },
+        400,
+      );
+    }
+    const text = typeof body?.text === "string" ? body.text.trim() : "";
+    const images = parseSendImages(body?.images);
+    if (images === null) {
+      return c.json(
+        { error: { code: "INTERNAL_ERROR", message: "images must be an array of image urls" } },
+        400,
+      );
+    }
+    if (!hasSendContent(text, images)) {
+      return c.json(
+        { error: { code: "INTERNAL_ERROR", message: "text or images is required" } },
         400,
       );
     }
@@ -477,6 +527,7 @@ export function createProvidersRouter(
     try {
       const result = await adapter.sendMessage(c.req.param("sessionId"), {
         text,
+        ...(images !== undefined ? { images } : {}),
         ...(model !== undefined ? { model } : {}),
         ...(effort !== undefined ? { effort } : {}),
       });

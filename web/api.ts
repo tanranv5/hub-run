@@ -6,6 +6,7 @@ import type {
   ConversationSearchPageResult,
   ConversationSearchResult,
   ConversationSearchMode,
+  CreateSessionInput,
   CreateSessionResult,
   ProviderModelOption,
   ProviderId,
@@ -141,12 +142,7 @@ export async function getProviderModels(
 
 export async function createProviderSession(
   providerId: ProviderId,
-  input: {
-    cwd: string;
-    text?: string;
-    model?: string | null;
-    effort?: SendMessageInput["effort"];
-  },
+  input: CreateSessionInput,
 ): Promise<CreateSessionResult> {
   const response = await fetch(`/api/providers/${providerId}/sessions`, {
     method: "POST",

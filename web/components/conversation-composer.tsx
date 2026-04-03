@@ -1,8 +1,10 @@
-import { Mic, Send, Square } from "lucide-react";
+import { ImagePlus, Mic, Send, Square, X } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { ChangeEvent } from "react";
 import type {
   ProviderModelOption,
   ProviderReasoningEffort,
+  SendImageInput,
 } from "../../api/types";
 import { shouldSubmitOnEnter } from "../conversation-composer-helpers";
 import {
@@ -26,8 +28,10 @@ interface ConversationComposerProps {
   conversationStatus: ConversationStatus;
   draft: string;
   effortOptions: ProviderReasoningEffort[];
+  imageUploadEnabled?: boolean;
   interrupting?: boolean;
   modelOptions: ProviderModelOption[];
+  pendingImages?: SendImageInput[];
   refreshing?: boolean;
   selectedEffort: ProviderReasoningEffort | null;
   selectedModelId: string | null;
@@ -36,6 +40,7 @@ interface ConversationComposerProps {
   voicePhase?: VoiceInputPhase;
   onDraftChange: (value: string) => void;
   onExpandFromBrowse?: () => void;
+  onPendingImagesChange?: (images: SendImageInput[]) => void;
   onStoredHeightChange?: (height: number) => void;
   onSelectEffort: (value: ProviderReasoningEffort | null) => void;
   onSelectModel: (value: string | null) => void;
@@ -126,8 +131,10 @@ export default function ConversationComposer(props: ConversationComposerProps) {
     conversationStatus,
     draft,
     effortOptions,
+    imageUploadEnabled = false,
     interrupting = false,
     modelOptions,
+    pendingImages = [],
     refreshing = false,
     selectedEffort,
     selectedModelId,
@@ -136,6 +143,7 @@ export default function ConversationComposer(props: ConversationComposerProps) {
     voicePhase = "idle",
     onDraftChange,
     onExpandFromBrowse,
+    onPendingImagesChange,
     onStoredHeightChange,
     onInterrupt,
     onSelectEffort,
@@ -144,6 +152,7 @@ export default function ConversationComposer(props: ConversationComposerProps) {
     onVoiceClick,
   } = props;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const resizeCleanupRef = useRef<(() => void) | null>(null);
   const buttonLabel = getStatusButtonLabel(conversationStatus, sending);
   const composerDisabled = refreshing;
@@ -156,6 +165,7 @@ export default function ConversationComposer(props: ConversationComposerProps) {
     contentHeight,
     storedHeight,
   });
+  const canSend = Boolean(draft.trim()) || pendingImages.length > 0;
 
   const measureContentHeight = useCallback(() => {
     const el = textareaRef.current;
@@ -218,6 +228,17 @@ export default function ConversationComposer(props: ConversationComposerProps) {
     window.addEventListener("mouseup", cleanup);
   }, [measureContentHeight, onExpandFromBrowse, onStoredHeightChange, storedHeight]);
 
+  const handleImageSelection = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !imageUploadEnabled || !onPendingImagesChange) {
+      return;
+    }
+    const url = await readFileAsDataUrl(file);
+    onExpandFromBrowse?.();
+    onPendingImagesChange([{ name: file.name, url }]);
+  }, [imageUploadEnabled, onExpandFromBrowse, onPendingImagesChange]);
+
   return (
     <div className="flex-none p-3 md:p-5">
         <section className="relative rounded-2xl border border-bdr bg-panel/60 dark:bg-panel-2 px-3 pb-3 pt-3 shadow-sm shadow-black/5 backdrop-blur-sm transition-all focus-within:border-accent/40 focus-within:ring-4 focus-within:ring-accent/5">
@@ -233,6 +254,21 @@ export default function ConversationComposer(props: ConversationComposerProps) {
             onSelectEffort={onSelectEffort}
             onSelectModel={onSelectModel}
           />
+        {imageUploadEnabled ? (
+          <>
+            <input
+              ref={fileInputRef}
+              hidden
+              accept="image/*"
+              type="file"
+              onChange={handleImageSelection}
+            />
+            <ComposerImagePreview
+              image={pendingImages[0] ?? null}
+              onRemove={() => onPendingImagesChange?.([])}
+            />
+          </>
+        ) : null}
         <textarea
           ref={textareaRef}
           disabled={composerDisabled}
@@ -279,8 +315,10 @@ export default function ConversationComposer(props: ConversationComposerProps) {
         <ComposerActions
           buttonLabel={buttonLabel}
           canInterrupt={canInterrupt}
-          draft={draft}
+          canSend={canSend}
+          imageUploadEnabled={imageUploadEnabled}
           interrupting={interrupting}
+          onChooseImage={() => fileInputRef.current?.click()}
           refreshing={composerDisabled}
           onInterrupt={onInterrupt}
           sending={sending}
@@ -345,9 +383,11 @@ function ComposerControls(props: {
 
 function ComposerActions(props: {
   buttonLabel: string | null;
+  canSend: boolean;
   canInterrupt: boolean;
-  draft: string;
+  imageUploadEnabled: boolean;
   interrupting: boolean;
+  onChooseImage: () => void;
   refreshing?: boolean;
   onInterrupt?: () => void;
   sending: boolean;
@@ -357,9 +397,11 @@ function ComposerActions(props: {
 }) {
   const {
     buttonLabel,
+    canSend,
     canInterrupt,
-    draft,
+    imageUploadEnabled,
     interrupting,
+    onChooseImage,
     refreshing = false,
     onInterrupt,
     sending,
@@ -380,6 +422,18 @@ function ComposerActions(props: {
       data-slot="composer-actions"
       className="absolute bottom-3 right-3 z-10 flex items-center justify-end gap-2"
     >
+      {imageUploadEnabled ? (
+        <button
+          type="button"
+          aria-label="选择图片"
+          title="选择图片"
+          onClick={onChooseImage}
+          disabled={refreshing || sending}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-bdr bg-surface text-txt transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <ImagePlus className="h-4 w-4" />
+        </button>
+      ) : null}
       <button
         type="button"
         onClick={onVoiceClick}
@@ -408,7 +462,7 @@ function ComposerActions(props: {
         <button
           type="button"
           onClick={onSend}
-          disabled={refreshing || sending || voicePhase !== "idle" || !draft.trim()}
+          disabled={refreshing || sending || voicePhase !== "idle" || !canSend}
           className={sendButtonClassName}
         >
           {buttonLabel ?? <Send className="h-4 w-4" />}
@@ -442,4 +496,55 @@ function getVoiceButtonTitle(voicePhase: VoiceInputPhase) {
     return "正在整理语音";
   }
   return "开始语音输入";
+}
+
+function ComposerImagePreview(props: {
+  image: SendImageInput | null;
+  onRemove: () => void;
+}) {
+  const { image, onRemove } = props;
+  if (!image) {
+    return null;
+  }
+  return (
+    <div
+      data-slot="composer-image-preview"
+      className="mb-2 flex items-start gap-3 rounded-2xl border border-bdr bg-surface/70 p-2"
+    >
+      <img
+        alt={image.name?.trim() || "待发送图片"}
+        className="h-16 w-16 rounded-xl border border-bdr bg-surface object-cover"
+        src={image.url}
+      />
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-medium text-txt">
+          {image.name?.trim() || "未命名图片"}
+        </div>
+        <div className="mt-1 text-xs text-muted">发送时会作为图片消息提交给 Codex。</div>
+      </div>
+      <button
+        type="button"
+        aria-label="移除图片"
+        onClick={onRemove}
+        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-bdr bg-surface text-txt transition hover:bg-surface-hover"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error ?? new Error("failed to read image"));
+    reader.onload = () => {
+      if (typeof reader.result !== "string") {
+        reject(new Error("failed to read image"));
+        return;
+      }
+      resolve(reader.result);
+    };
+    reader.readAsDataURL(file);
+  });
 }

@@ -3,6 +3,8 @@ import type { MutableRefObject } from "react";
 import type {
   ConversationLocateResult,
   ProviderUserInputRequest,
+  SendImageInput,
+  SendMessageInput,
   SessionSummary,
 } from "../api/types";
 import { interruptProviderSession } from "./api";
@@ -55,7 +57,7 @@ export function useConversationPanelState(props: {
   providerId: "codex" | "claude" | null;
   refreshVersion: number;
   sessionCacheRef: MutableRefObject<Map<string, SessionPanelCacheEntry>>;
-  sendMessage: (text: string) => Promise<SendConversationResult>;
+  sendMessage: (input: SendMessageInput) => Promise<SendConversationResult>;
   session: SessionSummary | null;
   streamAvailable: boolean;
   onMessageSent: (sessionId: string, initialDisplay?: string | null) => Promise<void>;
@@ -71,6 +73,7 @@ export function useConversationPanelState(props: {
   } = props;
   const [state, setState] = useState<PanelState>(INITIAL_PANEL_STATE);
   const [draft, setDraft] = useState("");
+  const [images, setImages] = useState<SendImageInput[]>([]);
   const draftRef = useRef(draft);
   const generationRef = useRef(0);
   const previousSessionRef = useRef<SessionIdentity | null>(null);
@@ -103,6 +106,7 @@ export function useConversationPanelState(props: {
   });
 
   useLayoutEffect(() => {
+    setImages([]);
     bootstrapConversationPanel({
       generationRef,
       previousSessionRef,
@@ -303,12 +307,14 @@ export function useConversationPanelState(props: {
     };
     await sendConversation({
       draft,
+      images,
       onMessageSent,
       onSendMessage,
       providerId,
       session,
       streamAvailable,
       setDraft,
+      setImages,
       setState,
       shouldAbort: () => generation !== generationRef.current,
       updateDetachedSession,
@@ -362,6 +368,7 @@ export function useConversationPanelState(props: {
     handleInterrupt,
     handleLoadOlder,
     handleLoadOlderToStart,
+    images,
     handleRespondUserInput,
     handleSend,
     handleViewLatest: () => {
@@ -393,6 +400,7 @@ export function useConversationPanelState(props: {
       });
     },
     setDraft,
+    setImages,
     state,
   };
 }

@@ -1,4 +1,4 @@
-import type { ConversationMessage } from "../api/types";
+import type { ConversationMessage, SendImageInput } from "../api/types";
 
 const OPTIMISTIC_PREFIX = "optimistic-user:";
 const IMMEDIATE_ASSISTANT_PREFIX = "immediate-assistant:";
@@ -9,16 +9,15 @@ export function appendOptimisticUserMessage(
   text: string,
   now: number = Date.now(),
 ): ConversationMessage[] {
-  return [
-    ...messages,
-    {
-      id: `${OPTIMISTIC_PREFIX}${now}`,
-      role: "user",
-      kind: "text",
-      text,
-      timestamp: new Date(now).toISOString(),
-    },
-  ];
+  return [...messages, buildOptimisticTextMessage(text, now)];
+}
+
+export function appendOptimisticUserInputMessages(
+  messages: ConversationMessage[],
+  input: { text?: string; images?: SendImageInput[] },
+  now: number = Date.now(),
+): ConversationMessage[] {
+  return [...messages, ...buildOptimisticUserMessages(input, now)];
 }
 
 export function hasConversationChanged(
@@ -94,6 +93,45 @@ export function stripRedundantLocalTerminalStatusMessages(
 
 function isStatusMessage(message: ConversationMessage): boolean {
   return message.role === "system" && message.kind === "text" && message.title === "status";
+}
+
+function buildOptimisticUserMessages(
+  input: { text?: string; images?: SendImageInput[] },
+  now: number,
+): ConversationMessage[] {
+  const messages: ConversationMessage[] = [];
+  const text = input.text?.trim() ?? "";
+  if (text) {
+    messages.push(buildOptimisticTextMessage(text, now));
+  }
+  input.images?.forEach((image, index) => {
+    const url = image.url.trim();
+    if (!url) {
+      return;
+    }
+    messages.push({
+      id: `${OPTIMISTIC_PREFIX}${now}:image:${index}`,
+      role: "user",
+      kind: "image",
+      text: image.name?.trim() ?? "",
+      timestamp: new Date(now).toISOString(),
+      block: {
+        type: "image",
+        imageUrl: url,
+      },
+    });
+  });
+  return messages;
+}
+
+function buildOptimisticTextMessage(text: string, now: number): ConversationMessage {
+  return {
+    id: `${OPTIMISTIC_PREFIX}${now}`,
+    role: "user",
+    kind: "text",
+    text,
+    timestamp: new Date(now).toISOString(),
+  };
 }
 
 function createConversationSignature(messages: ConversationMessage[]): string {

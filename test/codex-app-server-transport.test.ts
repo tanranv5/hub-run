@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { resolveInterruptTurnId } from "../api/providers/transports/codex-app-server";
+import {
+  buildCodexTurnInput,
+  resolveInterruptTurnId,
+} from "../api/providers/transports/codex-app-server";
 
 test("resolveInterruptTurnId prefers active turn ids", () => {
   assert.equal(
@@ -53,5 +56,21 @@ test("resolveInterruptTurnId stays empty for settled non-stalled sessions", () =
       requestedTurnStatus: "completed",
     }),
     null,
+  );
+});
+
+test("buildCodexTurnInput combines optional text and images into app-server user input items", () => {
+  assert.deepEqual(
+    buildCodexTurnInput({
+      images: [{
+        name: "error.png",
+        url: "data:image/png;base64,AAAA",
+      }],
+      text: "帮我看下这张图",
+    }),
+    [
+      { type: "text", text: "帮我看下这张图", text_elements: [] },
+      { type: "image", url: "data:image/png;base64,AAAA" },
+    ],
   );
 });

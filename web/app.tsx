@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ProviderSummary } from "../api/types";
+import type { ProviderSummary, SendMessageInput } from "../api/types";
 import { createProviderSession, deleteProviderSession, sendConversationMessage } from "./api";
 import { clearStoredSelectedSession, getStoredControlPreference, getStoredSelectedSession, persistProviderControls, persistSelectedSession, resolveContextDrivenControls, resolveUserSelectedControls } from "./app-preferences";
 import { INITIAL_BROWSER, loadProviderBrowser } from "./browser-state";
@@ -243,12 +243,12 @@ export default function App() {
     }
   }
 
-  async function handleSendMessage(text: string): Promise<SendConversationResult> {
+  async function handleSendMessage(input: SendMessageInput): Promise<SendConversationResult> {
     if (!selectedProvider || !selectedSession) {
       throw new Error("provider or session is missing");
     }
-    const input = {
-      text,
+    const payload = {
+      ...input,
       ...providerModelPayload,
     };
 
@@ -259,8 +259,7 @@ export default function App() {
       }
       const created = await createProviderSession(selectedProvider.id, {
         cwd,
-        text,
-        ...providerModelPayload,
+        ...payload,
       });
       return {
         sessionId: created.sessionId,
@@ -269,7 +268,7 @@ export default function App() {
       };
     }
 
-    const sent = await sendConversationMessage(selectedProvider.id, selectedSession.id, { ...input });
+    const sent = await sendConversationMessage(selectedProvider.id, selectedSession.id, payload);
     return {
       sessionId: selectedSession.id,
       turnId: sent.turnId,

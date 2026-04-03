@@ -2,12 +2,14 @@ import type { Dispatch, SetStateAction } from "react";
 import type {
   ConversationMessage,
   ProviderId,
+  SendImageInput,
+  SendMessageInput,
   SessionSummary,
 } from "../api/types";
 import { extractMeaningfulDisplay } from "../api/providers/display-text";
 import {
   appendImmediateAssistantMessage,
-  appendOptimisticUserMessage,
+  appendOptimisticUserInputMessages,
 } from "./conversation-panel-state-helpers";
 import {
   acceptPanelSendLifecycle,
@@ -31,18 +33,21 @@ const POST_SEND_REFRESH_INTERVAL_MS = 1_000;
 
 export async function sendConversation(props: {
   draft: string;
+  images?: SendImageInput[];
   onMessageSent: (sessionId: string, initialDisplay?: string | null) => Promise<void>;
-  onSendMessage: (text: string) => Promise<SendConversationResult>;
+  onSendMessage: (input: SendMessageInput) => Promise<SendConversationResult>;
   providerId: ProviderId;
   session: SessionSummary;
   streamAvailable: boolean;
   setDraft: Dispatch<SetStateAction<string>>;
+  setImages?: (images: SendImageInput[]) => void;
   setState: Dispatch<SetStateAction<PanelState>>;
   shouldAbort: () => boolean;
   updateDetachedSession?: (update: DetachedSessionUpdate) => void;
 }) {
   const text = props.draft.trim();
-  if (!text) {
+  const images = normalizeSendImages(props.images);
+  if (!text && images.length === 0) {
     return;
   }
 
@@ -50,14 +55,18 @@ export async function sendConversation(props: {
     props.setState,
     props.providerId,
     props.session.id,
-    text,
+    { images, text },
     Date.now(),
   );
   clearSubmittedDraft(props.setDraft);
+  clearSubmittedImages(props.setImages);
 
   let result: SendConversationResult;
   try {
-    result = await props.onSendMessage(text);
+    result = await props.onSendMessage({
+      text,
+      ...(images.length > 0 ? { images } : {}),
+    });
   } catch (cause) {
     if (props.shouldAbort()) {
       restoreDetachedFailedSend(props.updateDetachedSession, baselineMessages, text, cause);
@@ -81,7 +90,15 @@ export async function sendConversation(props: {
         return;
       }
     }
-    restoreFailedSend(props.setDraft, props.setState, baselineMessages, text, cause);
+    restoreFailedSend(
+      props.setDraft,
+      props.setImages,
+      props.setState,
+      baselineMessages,
+      text,
+      images,
+      cause,
+    );
     return;
   }
 
@@ -92,7 +109,7 @@ export async function sendConversation(props: {
 
   applyAcceptedSendResult(props, result);
   try {
-    if (await redirectDraftSessionIfNeeded(props, result, baselineMessages, text)) {
+    if (await redirectDraftSessionIfNeeded(props, result, baselineMessages, { images, text })) {
       return;
     }
     await finishSendResult(props, result, baselineMessages);
@@ -129,15 +146,15 @@ async function redirectDraftSessionIfNeeded(
   >,
   result: SendConversationResult,
   baselineMessages: ConversationMessage[],
-  text: string,
+  input: { text: string; images: SendImageInput[] },
 ) {
   if (!isDraftSession(props.session) || result.sessionId === props.session.id) {
     return false;
   }
-  persistDraftAcceptedSession(props, result, baselineMessages, text);
+  persistDraftAcceptedSession(props, result, baselineMessages, input);
   await props.onMessageSent(
     result.sessionId,
-    extractMeaningfulDisplay(text) ?? text.trim(),
+    resolveSubmittedDisplay(input),
   );
   return true;
 }
@@ -149,16 +166,16 @@ function persistDraftAcceptedSession(
   >,
   result: SendConversationResult,
   baselineMessages: ConversationMessage[],
-  text: string,
+  input: { text: string; images: SendImageInput[] },
 ) {
   if (!props.updateDetachedSession) {
     return;
   }
 
   const acceptedAt = Date.now();
-  const pendingMessages = appendOptimisticUserMessage(
+  const pendingMessages = appendOptimisticUserInputMessages(
     baselineMessages,
-    text,
+    input,
     acceptedAt,
   );
   const submittedState = beginPanelSendLifecycle(
@@ -328,7 +345,7 @@ function setPendingUserMessage(
   setState: Dispatch<SetStateAction<PanelState>>,
   providerId: ProviderId,
   sessionId: string,
-  text: string,
+  input: { text: string; images: SendImageInput[] },
   now: number,
 ): ConversationMessage[] {
   let baselineMessages: ConversationMessage[] = [];
@@ -337,7 +354,7 @@ function setPendingUserMessage(
     return beginPanelSendLifecycle(
       {
         ...current,
-        messages: appendOptimisticUserMessage(current.messages, text),
+        messages: appendOptimisticUserInputMessages(current.messages, input, now),
         error: null,
       },
       providerId,
@@ -352,14 +369,21 @@ function clearSubmittedDraft(setDraft: Dispatch<SetStateAction<string>>) {
   setDraft("");
 }
 
+function clearSubmittedImages(setImages: ((images: SendImageInput[]) => void) | undefined) {
+  setImages?.([]);
+}
+
 function restoreFailedSend(
   setDraft: Dispatch<SetStateAction<string>>,
+  setImages: ((images: SendImageInput[]) => void) | undefined,
   setState: Dispatch<SetStateAction<PanelState>>,
   baselineMessages: ConversationMessage[],
   text: string,
+  images: SendImageInput[],
   cause: unknown,
 ) {
   setDraft(text);
+  setImages?.(images);
   setState(buildFailedSendState(baselineMessages, cause));
 }
 
@@ -450,4 +474,24 @@ async function reconcileCodexSendFailure(
     // reconciliation failed — fall through to normal failure handling
   }
   return null;
+}
+
+function normalizeSendImages(images: SendImageInput[] | undefined): SendImageInput[] {
+  return (images ?? []).flatMap((image) => {
+    const url = image.url.trim();
+    if (!url) {
+      return [];
+    }
+    const name = image.name?.trim();
+    return [name ? { name, url } : { url }];
+  });
+}
+
+function resolveSubmittedDisplay(input: { text: string; images: SendImageInput[] }): string {
+  const textDisplay = extractMeaningfulDisplay(input.text) ?? input.text.trim();
+  if (textDisplay) {
+    return textDisplay;
+  }
+  const imageName = input.images[0]?.name?.trim();
+  return imageName || "图片";
 }

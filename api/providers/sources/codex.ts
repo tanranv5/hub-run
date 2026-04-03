@@ -15,12 +15,9 @@ import {
 import { listStaticCodexModels } from "../transports/codex-models";
 import { createCodexSessionStore } from "./codex-store";
 
-function requireCreateText(input: CreateSessionInput): string {
+function hasCodexUserInput(input: Pick<CreateSessionInput, "images" | "text">): boolean {
   const text = input.text?.trim();
-  if (!text) {
-    throw new Error("codex create requires text");
-  }
-  return text;
+  return Boolean(text) || (input.images?.length ?? 0) > 0;
 }
 
 export function createCodexProvider(rootPath: string) {
@@ -51,7 +48,9 @@ export function createCodexProvider(rootPath: string) {
     getSessionFileMtime: store.getSessionFileMtime,
     deleteSession: store.deleteSession,
     createSession: async (input: CreateSessionInput) => {
-      const text = requireCreateText(input);
+      if (!hasCodexUserInput(input)) {
+        throw new Error("codex create requires text or images");
+      }
       const threadId = await createCodexThread({
         cwd: input.cwd,
         model: input.model ?? null,
@@ -59,7 +58,8 @@ export function createCodexProvider(rootPath: string) {
       });
       const sendResult = await sendCodexMessage({
         threadId,
-        text,
+        text: input.text ?? "",
+        images: input.images,
         cwd: input.cwd,
         model: input.model ?? null,
         effort: input.effort ?? null,
@@ -77,6 +77,7 @@ export function createCodexProvider(rootPath: string) {
       const result = await sendCodexMessage({
         threadId: sessionId,
         text: input.text,
+        images: input.images,
         cwd,
         model: input.model ?? null,
         effort: input.effort ?? null,

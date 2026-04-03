@@ -1,6 +1,7 @@
 import type {
   ProviderReasoningEffort,
   ProviderSummary,
+  SendMessageInput,
   SessionSummary,
 } from "../../api/types";
 import type { MutableRefObject } from "react";
@@ -44,7 +45,7 @@ interface AppScreenProps {
   providers: ProviderSummary[];
   sessionCacheRef: MutableRefObject<Map<string, SessionPanelCacheEntry>>;
   selectedSession: SessionSummary | null;
-  sendMessage: (text: string) => Promise<SendConversationResult>;
+  sendMessage: (input: SendMessageInput) => Promise<SendConversationResult>;
   sidebarOpen: boolean;
 }
 

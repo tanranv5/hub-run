@@ -111,6 +111,46 @@ test("failed optimistic send restores the composer draft after rolling back the 
   assert.match(stateStore.read().error ?? "", /network exploded/);
 });
 
+test("image-only send appends an optimistic image message and clears pending images immediately", async () => {
+  const draftStore = createStringStore("");
+  const stateStore = createPanelStateStore(INITIAL_PANEL_STATE);
+  const imageStore = {
+    value: [{ name: "error.png", url: "data:image/png;base64,AAAA" }],
+    setValue(next: { name?: string; url: string }[]) {
+      imageStore.value = next;
+    },
+  };
+  const deferred = createDeferred<SendConversationResult>();
+
+  const pending = sendConversation({
+    draft: draftStore.read(),
+    images: imageStore.value,
+    onMessageSent: async () => {},
+    onSendMessage: async () => deferred.promise,
+    providerId: "codex",
+    session: SESSION,
+    streamAvailable: true,
+    setDraft: draftStore.setValue,
+    setImages: imageStore.setValue,
+    setState: stateStore.setValue,
+    shouldAbort: () => false,
+  });
+
+  await Promise.resolve();
+
+  assert.deepEqual(imageStore.value, []);
+  assert.equal(stateStore.read().messages.length, 1);
+  assert.equal(stateStore.read().messages[0]?.kind, "image");
+  assert.equal(stateStore.read().messages[0]?.block?.type, "image");
+
+  deferred.resolve({
+    sessionId: SESSION.id,
+    turnId: "turn-image",
+    outputText: null,
+  });
+  await pending;
+});
+
 test("accepted send does not roll back when sidebar refresh fails afterwards", async () => {
   const text = "这条消息其实已经发出去了";
   const draftStore = createStringStore(text);

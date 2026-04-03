@@ -110,6 +110,7 @@ test("send route requires text", async () => {
 test("send route delegates to provider adapter", async () => {
   let captured:
     | {
+        images: Array<{ name?: string; url: string }> | undefined;
         sessionId: string;
         text: string;
         model: string | null | undefined;
@@ -125,6 +126,7 @@ test("send route delegates to provider adapter", async () => {
     {
       registry: createSendRegistry(async (sessionId, input) => {
         captured = {
+          images: input.images,
           sessionId,
           text: input.text,
           model: input.model,
@@ -164,10 +166,71 @@ test("send route delegates to provider adapter", async () => {
     outputText: "done",
   });
   assert.deepEqual(captured, {
+    images: undefined,
     sessionId: "session-1",
     text: "继续排查",
     model: "gpt-5-codex",
     effort: "high",
+  });
+});
+
+test("send route accepts image-only payload and delegates image urls to provider adapter", async () => {
+  let captured:
+    | {
+        images: Array<{ name?: string; url: string }> | undefined;
+        sessionId: string;
+        text: string;
+      }
+    | null = null;
+  const app = createApp(
+    buildRuntimeConfig({
+      host: "127.0.0.1",
+      port: 12001,
+      password: "secret-123",
+    }),
+    {
+      registry: createSendRegistry(async (sessionId, input) => {
+        captured = {
+          images: input.images,
+          sessionId,
+          text: input.text,
+        };
+        return {
+          turnId: "turn-image",
+          outputText: null,
+        };
+      }),
+    },
+  );
+
+  const cookie = await login(app);
+  const response = await app.request(
+    "/api/providers/codex/sessions/session-1/messages",
+    {
+      method: "POST",
+      headers: {
+        cookie,
+        origin: "http://127.0.0.1:12001",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        text: "",
+        images: [{
+          name: "error.png",
+          url: "data:image/png;base64,AAAA",
+        }],
+      }),
+    },
+  );
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(captured, {
+    images: [{
+      name: "error.png",
+      url: "data:image/png;base64,AAAA",
+    }],
+    sessionId: "session-1",
+    text: "",
   });
 });
 
@@ -326,6 +389,7 @@ test("create session route delegates to provider adapter", async () => {
   let captured:
     | {
         cwd: string;
+        images: Array<{ name?: string; url: string }> | undefined;
         text: string | null | undefined;
         model: string | null | undefined;
         effort: string | null | undefined;
@@ -354,6 +418,7 @@ test("create session route delegates to provider adapter", async () => {
             };
             captured = {
               cwd: input.cwd,
+              images: input.images,
               text: createInput.text,
               model: input.model,
               effort: input.effort,
@@ -393,9 +458,79 @@ test("create session route delegates to provider adapter", async () => {
   });
   assert.deepEqual(captured, {
     cwd: "/Users/tanran/aiCode/cw/hub-run",
+    images: undefined,
     text: "首条消息",
     model: "gpt-5-codex",
     effort: "high",
+  });
+});
+
+test("create session route accepts image-only payload and delegates images to provider adapter", async () => {
+  let captured:
+    | {
+        cwd: string;
+        images: Array<{ name?: string; url: string }> | undefined;
+        text: string | null | undefined;
+      }
+    | null = null;
+  const app = createApp(
+    buildRuntimeConfig({
+      host: "127.0.0.1",
+      port: 12001,
+      password: "secret-123",
+    }),
+    {
+      registry: {
+        ...createSendRegistry(async () => ({
+          turnId: null,
+          outputText: null,
+        })),
+        codex: {
+          ...createSendRegistry(async () => ({
+            turnId: null,
+            outputText: null,
+          })).codex,
+          createSession: async (input) => {
+            captured = {
+              cwd: input.cwd,
+              images: input.images,
+              text: input.text,
+            };
+            return {
+              sessionId: "session-with-image",
+              turnId: "turn-image",
+            };
+          },
+        } as ProviderAdapter,
+      },
+    },
+  );
+
+  const cookie = await login(app);
+  const response = await app.request("/api/providers/codex/sessions", {
+    method: "POST",
+    headers: {
+      cookie,
+      origin: "http://127.0.0.1:12001",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      cwd: "/Users/tanran/aiCode/cw/hub-run",
+      images: [{
+        name: "error.png",
+        url: "data:image/png;base64,AAAA",
+      }],
+    }),
+  });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(captured, {
+    cwd: "/Users/tanran/aiCode/cw/hub-run",
+    images: [{
+      name: "error.png",
+      url: "data:image/png;base64,AAAA",
+    }],
+    text: undefined,
   });
 });
 
@@ -450,7 +585,7 @@ test("create session route returns outputText when the provider returns an immed
   });
 });
 
-test("create session route requires text when provider does not allow empty create", async () => {
+test("create session route requires text or images when provider does not allow empty create", async () => {
   let called = false;
   const app = createApp(
     buildRuntimeConfig({
@@ -496,7 +631,7 @@ test("create session route requires text when provider does not allow empty crea
 
   assert.equal(response.status, 400);
   assert.equal(called, false);
-  assert.match(await response.text(), /text is required/i);
+  assert.match(await response.text(), /text or images is required/i);
 });
 
 test("create session route maps provider validation errors to 400 instead of a generic 500", async () => {

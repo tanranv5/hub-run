@@ -109,6 +109,48 @@ test("composer shows existing draft plus live voice text inside the textarea whi
   assert.doesNotMatch(markup, /data-slot="voice-transcript"/);
 });
 
+test("composer shows a selected image preview and image picker for codex", () => {
+  const markup = renderToStaticMarkup(
+    React.createElement(ConversationComposer, {
+      conversationStatus: IDLE_STATUS,
+      draft: "",
+      effortOptions: ["medium", "high"],
+      imageUploadEnabled: true,
+      modelOptions: [
+        {
+          id: "gpt-5.4",
+          displayName: "GPT-5.4",
+          description: "",
+          isDefault: true,
+          hidden: false,
+          defaultReasoningEffort: "high",
+          supportedReasoningEfforts: ["medium", "high"],
+        },
+      ],
+      pendingImages: [{
+        name: "error.png",
+        url: "data:image/png;base64,AAAA",
+      }],
+      selectedEffort: "high",
+      selectedModelId: "gpt-5.4",
+      sending: false,
+      voicePhase: "idle",
+      onDraftChange: () => {},
+      onPendingImagesChange: () => {},
+      onSelectEffort: () => {},
+      onSelectModel: () => {},
+      onSend: () => {},
+      onVoiceClick: () => {},
+    }),
+  );
+
+  assert.match(markup, /data-slot="composer-image-preview"/);
+  assert.match(markup, /error\.png/);
+  assert.match(markup, /data:image\/png;base64,AAAA/);
+  assert.match(markup, /aria-label="选择图片"/);
+  assert.match(markup, /aria-label="移除图片"/);
+});
+
 test("composer exposes a resize handle and collapses to one line while browsing history", () => {
   const markup = renderToStaticMarkup(
     React.createElement(ConversationComposer, {

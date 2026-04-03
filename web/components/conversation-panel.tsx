@@ -6,6 +6,8 @@ import type {
   ConversationSearchMode,
   ProviderModelOption,
   ProviderReasoningEffort,
+  SendImageInput,
+  SendMessageInput,
   ProviderSummary,
   ProviderThreadState,
   ProviderUserInputRequest,
@@ -95,7 +97,7 @@ interface ConversationPanelProps {
   onSelectEffort: (value: ProviderReasoningEffort | null) => void;
   onSelectModel: (value: string | null) => void;
   onToggleDesktopSidebar: () => void;
-  sendMessage: (text: string) => Promise<SendConversationResult>;
+  sendMessage: (input: SendMessageInput) => Promise<SendConversationResult>;
 }
 
 interface ConversationBodyProps {
@@ -110,6 +112,7 @@ interface ConversationBodyProps {
   effortOptions: ProviderReasoningEffort[];
   error: string | null;
   hasOlderMessages: boolean;
+  imageUploadEnabled?: boolean;
   loading: boolean;
   loadingOlder: boolean;
   hasBufferedLatest: boolean;
@@ -121,6 +124,7 @@ interface ConversationBodyProps {
   messageViewMode: ConversationSearchMode;
   modelOptions: ProviderModelOption[];
   olderLoadCount: number;
+  pendingImages: SendImageInput[];
   pendingUserInputRequests: ProviderUserInputRequest[];
   providerSendAvailable: boolean;
   refreshing?: boolean;
@@ -137,6 +141,7 @@ interface ConversationBodyProps {
   onReturnToSearchResults?: () => void;
   summary: ConversationMessage | null;
   onDraftChange: (value: string) => void;
+  onPendingImagesChange: (images: SendImageInput[]) => void;
   onInterrupt: () => void;
   onLoadOlder: () => void;
   onLoadOlderToStart: () => void;
@@ -189,6 +194,7 @@ export const ConversationBody = memo(function ConversationBody(props: Conversati
     effortOptions,
     error,
     hasOlderMessages,
+    imageUploadEnabled = false,
     hasBufferedLatest,
     highlightQuery = "",
     loading,
@@ -200,9 +206,11 @@ export const ConversationBody = memo(function ConversationBody(props: Conversati
     messages,
     modelOptions,
     olderLoadCount,
+    pendingImages,
     onBrowseMessages,
     onComposerExpand,
     onComposerStoredHeightChange,
+    onPendingImagesChange,
     pendingUserInputRequests,
     onDraftChange,
     onInterrupt,
@@ -306,8 +314,10 @@ export const ConversationBody = memo(function ConversationBody(props: Conversati
           conversationStatus={conversationStatus}
           draft={draft}
           effortOptions={effortOptions}
+          imageUploadEnabled={imageUploadEnabled}
           interrupting={interrupting}
           modelOptions={modelOptions}
+          pendingImages={pendingImages}
           refreshing={refreshing}
           selectedEffort={selectedEffort}
           selectedModelId={selectedModelId}
@@ -317,6 +327,7 @@ export const ConversationBody = memo(function ConversationBody(props: Conversati
           onDraftChange={onDraftChange}
           onExpandFromBrowse={onComposerExpand}
           onInterrupt={onInterrupt}
+          onPendingImagesChange={onPendingImagesChange}
           onSelectEffort={onSelectEffort}
           onSelectModel={onSelectModel}
           onSend={onSend}
@@ -357,11 +368,13 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     handleInterrupt,
     handleLoadOlder,
     handleLoadOlderToStart,
+    images,
     handleRespondUserInput,
     handleSend,
     handleShowLocatedWindow,
     handleViewLatest,
     setDraft,
+    setImages,
     state,
   } =
     useConversationPanelState({
@@ -555,6 +568,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         error={voiceError ?? state.error}
         hasOlderMessages={hasOlderMessages}
         hasBufferedLatest={Boolean(state.bufferedConversationWindow)}
+        imageUploadEnabled={provider.id === "codex" && provider.status.sendAvailable}
         loading={state.loading}
         loadingOlder={state.loadingOlder}
         messageFontScale={messageFontScale}
@@ -563,6 +577,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         messages={visibleMessages}
         modelOptions={modelOptions}
         olderLoadCount={state.olderLoadCount}
+        pendingImages={images}
         onBrowseMessages={() => {
           setComposerBrowseCollapsed(true);
         }}
@@ -616,6 +631,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         }}
         onComposerStoredHeightChange={setComposerStoredHeight}
         onMessageWindowFrozenChange={handleMessageWindowFrozenChange}
+        onPendingImagesChange={setImages}
         onRespondUserInput={(request, questionId, optionLabel) => {
           handleRespondUserInput(request, questionId, optionLabel).catch(console.error);
         }}
