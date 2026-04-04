@@ -6,7 +6,10 @@ import type {
   ProviderReasoningEffort,
   SendImageInput,
 } from "../../api/types";
-import { shouldSubmitOnEnter } from "../conversation-composer-helpers";
+import {
+  findPastedImageFile,
+  shouldSubmitOnEnter,
+} from "../conversation-composer-helpers";
 import {
   getStatusButtonLabel,
   getStatusPlaceholder,
@@ -231,12 +234,12 @@ export default function ConversationComposer(props: ConversationComposerProps) {
   const handleImageSelection = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = "";
-    if (!file || !imageUploadEnabled || !onPendingImagesChange) {
-      return;
-    }
-    const url = await readFileAsDataUrl(file);
-    onExpandFromBrowse?.();
-    onPendingImagesChange([{ name: file.name, url }]);
+    await replacePendingImageFromFile({
+      file,
+      imageUploadEnabled,
+      onExpandFromBrowse,
+      onPendingImagesChange,
+    });
   }, [imageUploadEnabled, onExpandFromBrowse, onPendingImagesChange]);
 
   return (
@@ -278,6 +281,19 @@ export default function ConversationComposer(props: ConversationComposerProps) {
             onDraftChange(event.target.value);
           }}
           onFocus={() => onExpandFromBrowse?.()}
+          onPaste={(event) => {
+            const file = findPastedImageFile(event.clipboardData?.items);
+            if (!file || !imageUploadEnabled || !onPendingImagesChange) {
+              return;
+            }
+            event.preventDefault();
+            void replacePendingImageFromFile({
+              file,
+              imageUploadEnabled,
+              onExpandFromBrowse,
+              onPendingImagesChange,
+            });
+          }}
           onKeyDown={(event) => {
             if (
               shouldSubmitOnEnter({
@@ -547,4 +563,19 @@ function readFileAsDataUrl(file: File): Promise<string> {
     };
     reader.readAsDataURL(file);
   });
+}
+
+async function replacePendingImageFromFile(input: {
+  file: File | null | undefined;
+  imageUploadEnabled: boolean;
+  onExpandFromBrowse?: () => void;
+  onPendingImagesChange?: (images: SendImageInput[]) => void;
+}) {
+  const { file, imageUploadEnabled, onExpandFromBrowse, onPendingImagesChange } = input;
+  if (!file || !imageUploadEnabled || !onPendingImagesChange) {
+    return;
+  }
+  const url = await readFileAsDataUrl(file);
+  onExpandFromBrowse?.();
+  onPendingImagesChange([{ name: file.name, url }]);
 }
