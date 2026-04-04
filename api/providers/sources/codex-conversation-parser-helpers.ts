@@ -180,6 +180,17 @@ export function readEventStatusText(
   payloadType: string,
   payload: Record<string, unknown>,
 ): { kind: ConversationKind; title: string; text: string } | null {
+  if (payloadType === "error") {
+    const message = readString(payload.message)?.trim() ?? "";
+    const errorInfo = readString(payload.codex_error_info)?.trim() ?? "";
+    const text = message ? `执行失败：${message}` : "执行失败。";
+    return {
+      kind: "text",
+      title: "error",
+      text: errorInfo ? `${text}（${errorInfo}）` : text,
+    };
+  }
+
   if (payloadType === "task_complete") {
     const turnId = typeof payload.turn_id === "string" ? payload.turn_id : "";
     return {

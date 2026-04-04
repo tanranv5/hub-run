@@ -469,6 +469,50 @@ test("codex conversation parser renders task_complete as a terminal status messa
   }
 });
 
+test("codex conversation parser surfaces error events as refresh-stable system messages", async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), "hub-run-codex-error-event-"));
+  const filePath = join(tempDir, "session.jsonl");
+  const lines = [
+    JSON.stringify({
+      type: "session_meta",
+      payload: { id: "session-error-1", cwd: "/workspace/demo" },
+    }),
+    JSON.stringify({
+      type: "response_item",
+      timestamp: "2026-04-03T09:31:13.613Z",
+      payload: {
+        type: "message",
+        role: "user",
+        content: [{ type: "input_text", text: "图片上有什么" }],
+      },
+    }),
+    JSON.stringify({
+      type: "event_msg",
+      timestamp: "2026-04-03T09:33:14.558Z",
+      payload: {
+        type: "error",
+        message: "Invalid image in your last message. Please remove it and try again.",
+        codex_error_info: "bad_request",
+      },
+    }),
+  ];
+
+  await writeFile(filePath, `${lines.join("\n")}\n`, "utf-8");
+
+  try {
+    const messages = await readCodexConversation(filePath, "session-error-1");
+    assert.equal(messages.length, 2);
+    assert.equal(messages[1]?.role, "system");
+    assert.equal(messages[1]?.title, "error");
+    assert.equal(
+      messages[1]?.text,
+      "执行失败：Invalid image in your last message. Please remove it and try again.（bad_request）",
+    );
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
 test("codex conversation parser keeps stable ids and anchors across full and tail parses", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "hub-run-codex-anchor-"));
   const filePath = join(tempDir, "session.jsonl");

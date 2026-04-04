@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   findConversationSearchRanges,
   readConversationVisibleText,
@@ -571,6 +572,7 @@ function ConversationImageBubble(props: {
   const searchRing = searchState === "active"
     ? scale.searchActiveRing
     : (searchState === "match" ? scale.searchMatchRing : "");
+  const [imageBroken, setImageBroken] = useImageBrokenState(imageUrl);
   return (
     <article className={`group ${layoutTone(message)}`}>
       <div
@@ -583,16 +585,15 @@ function ConversationImageBubble(props: {
           <span className="text-muted/50">/</span>
           <span>{message.kind}</span>
         </div>
-        {imageUrl ? (
+        {imageUrl && !imageBroken ? (
           <img
             alt={imageAlt}
             className="mt-3 max-h-[28rem] w-auto max-w-full rounded-2xl border border-bdr bg-surface object-contain"
+            onError={() => setImageBroken(true)}
             src={imageUrl}
           />
         ) : (
-          <div className="mt-3 rounded-2xl border border-dashed border-bdr bg-surface px-4 py-3 text-sm text-muted">
-            本地图片：{imagePath ?? "(unknown image)"}
-          </div>
+          <ConversationImageFallback imageBroken={imageBroken} imagePath={imagePath} />
         )}
         {imagePath && !imageUrl ? null : imagePath ? (
           <div className="mt-2 text-xs text-muted break-all">{imagePath}</div>
@@ -600,6 +601,29 @@ function ConversationImageBubble(props: {
         <ConversationTimestamp timestamp={message.timestamp} />
       </div>
     </article>
+  );
+}
+
+function useImageBrokenState(imageUrl?: string) {
+  const [imageBroken, setImageBroken] = useState(false);
+  useEffect(() => {
+    setImageBroken(false);
+  }, [imageUrl]);
+  return [imageBroken, setImageBroken] as const;
+}
+
+function ConversationImageFallback(props: {
+  imageBroken: boolean;
+  imagePath?: string;
+}) {
+  const { imageBroken, imagePath } = props;
+  const text = imagePath
+    ? `本地图片：${imagePath}`
+    : (imageBroken ? "图片无法显示：原始图片数据无法解码。" : "图片不可用。");
+  return (
+    <div className="mt-3 rounded-2xl border border-dashed border-bdr bg-surface px-4 py-3 text-sm text-muted">
+      {text}
+    </div>
   );
 }
 
