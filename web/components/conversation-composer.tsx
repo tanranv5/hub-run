@@ -18,8 +18,8 @@ import {
 import ConversationContextBadge from "./conversation-context-badge";
 import type { VoiceInputPhase } from "../use-voice-input";
 
-export const COMPOSER_DEFAULT_HEIGHT_PX = 112;
-export const COMPOSER_MIN_HEIGHT_PX = 72;
+export const COMPOSER_DEFAULT_HEIGHT_PX = 96;
+export const COMPOSER_MIN_HEIGHT_PX = 56;
 export const COMPOSER_MAX_HEIGHT_PX = 320;
 export const COMPOSER_COLLAPSED_HEIGHT_PX = 44;
 
@@ -163,6 +163,7 @@ export default function ConversationComposer(props: ConversationComposerProps) {
     ? "刷新中，暂时不可编辑"
     : getVoiceAwarePlaceholder(conversationStatus, voicePhase);
   const [contentHeight, setContentHeight] = useState(COMPOSER_DEFAULT_HEIGHT_PX);
+  const [imageLoading, setImageLoading] = useState(false);
   const resolvedHeight = resolveComposerTextareaHeight({
     browseCollapsed,
     contentHeight,
@@ -234,17 +235,22 @@ export default function ConversationComposer(props: ConversationComposerProps) {
   const handleImageSelection = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = "";
-    await replacePendingImageFromFile({
-      file,
-      imageUploadEnabled,
-      onExpandFromBrowse,
-      onPendingImagesChange,
-    });
+    setImageLoading(true);
+    try {
+      await replacePendingImageFromFile({
+        file,
+        imageUploadEnabled,
+        onExpandFromBrowse,
+        onPendingImagesChange,
+      });
+    } finally {
+      setImageLoading(false);
+    }
   }, [imageUploadEnabled, onExpandFromBrowse, onPendingImagesChange]);
 
   return (
-    <div className="flex-none p-3 md:p-5">
-        <section className="relative rounded-2xl border border-bdr bg-panel/60 dark:bg-panel-2 px-3 pb-3 pt-3 shadow-sm shadow-black/5 backdrop-blur-sm transition-all focus-within:border-accent/40 focus-within:ring-4 focus-within:ring-accent/5">
+    <div className="flex-none p-2 md:p-5">
+        <section className="relative rounded-2xl border border-bdr bg-panel/60 dark:bg-panel-2 px-2.5 pb-2.5 pt-2.5 shadow-sm shadow-black/5 backdrop-blur-sm transition-all focus-within:border-accent/40 focus-within:ring-4 focus-within:ring-accent/5 md:px-3 md:pb-3 md:pt-3">
           {contextLabel ? (
             <ConversationContextBadge details={contextDetails} label={contextLabel} />
           ) : null}
@@ -268,6 +274,7 @@ export default function ConversationComposer(props: ConversationComposerProps) {
             />
             <ComposerImagePreview
               image={pendingImages[0] ?? null}
+              loading={imageLoading}
               onRemove={() => onPendingImagesChange?.([])}
             />
           </>
@@ -287,12 +294,13 @@ export default function ConversationComposer(props: ConversationComposerProps) {
               return;
             }
             event.preventDefault();
+            setImageLoading(true);
             void replacePendingImageFromFile({
               file,
               imageUploadEnabled,
               onExpandFromBrowse,
               onPendingImagesChange,
-            });
+            }).finally(() => setImageLoading(false));
           }}
           onKeyDown={(event) => {
             if (
@@ -309,7 +317,7 @@ export default function ConversationComposer(props: ConversationComposerProps) {
           rows={2}
           aria-label="发送消息"
           placeholder={composerPlaceholder}
-          className="w-full resize-none bg-transparent px-1 pb-14 pt-1 text-[13px] leading-5 text-txt outline-none placeholder:text-muted disabled:cursor-not-allowed disabled:opacity-60 md:pr-[27rem] md:text-sm md:leading-6"
+          className="w-full resize-none bg-transparent px-1 pb-12 pt-1 text-[13px] leading-5 text-txt outline-none placeholder:text-muted disabled:cursor-not-allowed disabled:opacity-60 md:pb-14 md:pr-[27rem] md:text-sm md:leading-6"
           style={{
             height: `${resolvedHeight}px`,
             maxHeight: `${COMPOSER_MAX_HEIGHT_PX}px`,
@@ -324,9 +332,9 @@ export default function ConversationComposer(props: ConversationComposerProps) {
             event.preventDefault();
             beginManualResize(event.clientY);
           }}
-          className="group absolute inset-x-3 top-0 z-10 h-5 -translate-y-1/2 touch-none cursor-row-resize rounded-full bg-transparent"
+          className="group absolute inset-x-2.5 top-0 z-10 h-5 -translate-y-1/2 touch-none cursor-row-resize rounded-full bg-transparent md:inset-x-3"
         >
-          <span className="pointer-events-none absolute inset-x-[36%] top-1/2 h-1 -translate-y-1/2 rounded-full bg-bdr/70 transition group-hover:bg-bdr" />
+          <span className="pointer-events-none absolute inset-x-[36%] top-1/2 h-1 -translate-y-1/2 rounded-full bg-bdr/70 transition group-hover:bg-bdr group-active:bg-accent group-active:h-1.5" />
         </button>
         <ComposerActions
           buttonLabel={buttonLabel}
@@ -369,7 +377,7 @@ function ComposerControls(props: {
   return (
     <div
       data-slot="composer-controls"
-      className="mb-2 grid grid-cols-[minmax(0,1fr)_minmax(6.25rem,0.8fr)] items-center gap-2 md:absolute md:right-3 md:top-3 md:z-10 md:mb-0 md:flex"
+      className="mb-1 flex flex-wrap items-center gap-2 md:absolute md:right-3 md:top-3 md:z-10 md:mb-0 md:flex-nowrap"
     >
       <ComposerSelect
         label="模型"
@@ -429,14 +437,15 @@ function ComposerActions(props: {
     refreshing || voicePhase === "starting" || voicePhase === "stopping";
   const voiceRecording = voicePhase === "recording";
   const voiceTitle = getVoiceButtonTitle(voicePhase);
+  const interruptLabel = interrupting ? "正在中断当前回合..." : "中断当前回合";
   const sendButtonClassName = buttonLabel
-    ? "inline-flex h-9 min-w-9 items-center justify-center rounded-full bg-accent px-3 text-sm font-medium text-bg transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
-    : "inline-flex h-8 w-8 items-center justify-center rounded-md bg-accent text-bg transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50";
+    ? "inline-flex h-8 min-w-8 items-center justify-center rounded-full bg-accent px-2.5 text-xs font-medium text-bg transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50 md:h-9 md:min-w-9 md:px-3 md:text-sm"
+    : "inline-flex h-7 w-7 items-center justify-center rounded-md bg-accent text-bg transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50 md:h-8 md:w-8";
 
   return (
     <div
       data-slot="composer-actions"
-      className="absolute bottom-3 right-3 z-10 flex items-center justify-end gap-2"
+      className="absolute bottom-2.5 right-2.5 z-10 flex items-center justify-end gap-1.5 md:bottom-3 md:right-3 md:gap-2"
     >
       {imageUploadEnabled ? (
         <button
@@ -445,9 +454,9 @@ function ComposerActions(props: {
           title="选择图片"
           onClick={onChooseImage}
           disabled={refreshing || sending}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-bdr bg-surface text-txt transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-bdr bg-surface text-txt transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60 md:h-8 md:w-8"
         >
-          <ImagePlus className="h-4 w-4" />
+          <ImagePlus className="h-3.5 w-3.5 md:h-4 md:w-4" />
         </button>
       ) : null}
       <button
@@ -455,33 +464,42 @@ function ComposerActions(props: {
         onClick={onVoiceClick}
         title={voiceTitle}
         disabled={voiceBusy}
-        className={`inline-flex h-8 w-8 items-center justify-center rounded-md border transition disabled:cursor-not-allowed disabled:opacity-60 ${
+        className={`inline-flex h-7 w-7 items-center justify-center rounded-md border transition disabled:cursor-not-allowed disabled:opacity-60 md:h-8 md:w-8 ${
           voiceRecording
             ? "border-rose-400/30 bg-rose-500/12 text-rose-700 dark:text-rose-100 hover:bg-rose-500/18"
             : "border-bdr bg-surface text-txt hover:bg-surface-hover"
         }`}
       >
-        {voiceRecording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+        {voiceRecording ? <Square className="h-3.5 w-3.5 md:h-4 md:w-4" /> : <Mic className="h-3.5 w-3.5 md:h-4 md:w-4" />}
         <span className="sr-only">{voiceTitle}</span>
       </button>
       {canInterrupt ? (
         <button
-        type="button"
-        onClick={() => onInterrupt?.()}
-        disabled={refreshing || interrupting}
-          className="flex h-9 min-w-9 items-center justify-center rounded-full border border-rose-400/20 bg-rose-500/10 px-3 text-sm font-medium text-rose-700 dark:text-rose-100 transition hover:bg-rose-500/15 disabled:cursor-not-allowed disabled:opacity-60"
+          type="button"
+          aria-label={interruptLabel}
+          onClick={() => onInterrupt?.()}
+          disabled={refreshing || interrupting}
+          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-rose-400/20 bg-rose-500/10 text-rose-700 dark:text-rose-100 transition hover:bg-rose-500/15 disabled:cursor-not-allowed disabled:opacity-60 md:h-9 md:w-9"
         >
-          <Square className="mr-1 h-4 w-4" />
-          <span>{interrupting ? "中断中" : "中断"}</span>
+          <Square className="h-4 w-4" />
+          <span className="sr-only">{interruptLabel}</span>
         </button>
       ) : (
         <button
           type="button"
           onClick={onSend}
           disabled={refreshing || sending || voicePhase !== "idle" || !canSend}
+          title="发送消息 (Enter)"
           className={sendButtonClassName}
         >
-          {buttonLabel ?? <Send className="h-4 w-4" />}
+          {sending ? (
+            <>
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              {buttonLabel ? <span className="ml-1">{buttonLabel}</span> : null}
+            </>
+          ) : (
+            buttonLabel ?? <Send className="h-4 w-4" />
+          )}
         </button>
       )}
     </div>
@@ -516,9 +534,23 @@ function getVoiceButtonTitle(voicePhase: VoiceInputPhase) {
 
 function ComposerImagePreview(props: {
   image: SendImageInput | null;
+  loading?: boolean;
   onRemove: () => void;
 }) {
-  const { image, onRemove } = props;
+  const { image, loading = false, onRemove } = props;
+  if (loading && !image) {
+    return (
+      <div
+        data-slot="composer-image-preview"
+        className="mb-2 flex items-center gap-3 rounded-2xl border border-bdr bg-surface/70 p-2"
+      >
+        <div className="flex h-16 w-16 items-center justify-center rounded-xl border border-bdr bg-surface">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-bdr border-t-accent" />
+        </div>
+        <span className="text-xs text-muted">正在读取图片...</span>
+      </div>
+    );
+  }
   if (!image) {
     return null;
   }

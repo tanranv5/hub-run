@@ -80,10 +80,13 @@ function SessionRow(props: {
         type="button"
         disabled={disabled || deleting}
         onClick={() => onSelectSession(session.id)}
-        className={`group block h-[72px] w-full rounded-lg px-3 py-3 text-left transition ${
+        className={`group relative block h-[72px] w-full rounded-lg px-3 py-3 text-left transition ${
           active ? "bg-surface-hover" : "bg-transparent hover:bg-surface"
         }`}
       >
+        {active ? (
+          <span className="absolute left-0 inset-y-2 w-[3px] rounded-full bg-accent" />
+        ) : null}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">

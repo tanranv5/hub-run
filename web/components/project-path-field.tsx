@@ -1,5 +1,6 @@
 import { ChevronDown } from "lucide-react";
-import { useState, type FocusEvent } from "react";
+import { useEffect, useRef, useState, type FocusEvent } from "react";
+import { checkPathExists } from "../api";
 
 interface ProjectPathFieldProps {
   disabled?: boolean;
@@ -9,6 +10,13 @@ interface ProjectPathFieldProps {
   onChange: (value: string) => void;
   onSelectProject: (value: string | null) => void;
 }
+
+export type PathValidationStatus =
+  | "idle"
+  | "checking"
+  | "valid"
+  | "not-found"
+  | "not-directory";
 
 function getProjectName(projectPath: string): string {
   const parts = projectPath.split("/").filter(Boolean);
@@ -25,6 +33,44 @@ export default function ProjectPathField(props: ProjectPathFieldProps) {
     onSelectProject,
   } = props;
   const [open, setOpen] = useState(false);
+  const [pathStatus, setPathStatus] = useState<PathValidationStatus>("idle");
+  const validationRef = useRef(0);
+
+  useEffect(() => {
+    validationRef.current += 1;
+    setPathStatus("idle");
+  }, [value]);
+
+  async function validatePath() {
+    const trimmed = value.trim();
+    if (!trimmed || selectedProject) {
+      setPathStatus("idle");
+      return;
+    }
+    // Skip if it matches a known project
+    if (projects.includes(trimmed)) {
+      setPathStatus("idle");
+      return;
+    }
+    validationRef.current += 1;
+    const version = validationRef.current;
+    setPathStatus("checking");
+    try {
+      const result = await checkPathExists(trimmed);
+      if (version !== validationRef.current) return;
+      if (!result.exists) {
+        setPathStatus("not-found");
+      } else if (!result.isDirectory) {
+        setPathStatus("not-directory");
+      } else {
+        setPathStatus("valid");
+      }
+    } catch {
+      if (version === validationRef.current) {
+        setPathStatus("idle");
+      }
+    }
+  }
 
   function handleBlur(event: FocusEvent<HTMLDivElement>) {
     const nextTarget = event.relatedTarget;
@@ -32,6 +78,7 @@ export default function ProjectPathField(props: ProjectPathFieldProps) {
       return;
     }
     setOpen(false);
+    void validatePath();
   }
 
   return (
@@ -59,6 +106,7 @@ export default function ProjectPathField(props: ProjectPathFieldProps) {
           <ChevronDown className={`h-4 w-4 transition ${open ? "rotate-180" : ""}`} />
         </button>
       </div>
+      <PathValidationHint status={pathStatus} path={value.trim()} />
       {open ? (
         <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-20 max-h-80 overflow-y-auto rounded-xl border border-bdr bg-panel-2 shadow-[0_16px_40px_rgba(0,0,0,0.1)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.45)]">
           <button
@@ -92,5 +140,34 @@ export default function ProjectPathField(props: ProjectPathFieldProps) {
         </div>
       ) : null}
     </div>
+  );
+}
+
+function PathValidationHint(props: {
+  status: PathValidationStatus;
+  path: string;
+}) {
+  const { status, path } = props;
+  if (status === "idle" || status === "valid" || !path) {
+    return null;
+  }
+  if (status === "checking") {
+    return (
+      <p className="mt-1 text-[11px] text-muted">
+        正在检查路径...
+      </p>
+    );
+  }
+  if (status === "not-directory") {
+    return (
+      <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">
+        该路径存在但不是目录，请输入目录路径
+      </p>
+    );
+  }
+  return (
+    <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">
+      路径不存在，创建会话时将自动新建该目录
+    </p>
   );
 }

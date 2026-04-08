@@ -46,6 +46,7 @@ const OTHER_PROJECT_SESSION: SessionSummary = {
 
 const BASE_BROWSER: BrowserState = {
   sessions: [SESSION_2, SESSION_1],
+  deletedSessionIds: new Set(),
   nextBefore: "2",
   totalSessionCount: 2,
   selectedSessionId: SESSION_2.id,
@@ -189,6 +190,36 @@ test("sessions stream subscription state only tracks loaded size and draft prese
       ...BASE_BROWSER,
       sessions: [SESSION_3, SESSION_1],
     }),
+  );
+});
+
+test("sessions stream loaded size stays on the server window even when UI injects a preferred old session", () => {
+  assert.deepEqual(
+    readSessionsStreamState({
+      ...BASE_BROWSER,
+      sessions: [SESSION_3, SESSION_2, SESSION_1],
+      nextBefore: "2",
+      totalSessionCount: 27,
+    }),
+    {
+      loaded: 2,
+      hasDraftSession: false,
+    },
+  );
+});
+
+test("sessions stream loaded size falls back to total count when all sessions are already loaded", () => {
+  assert.deepEqual(
+    readSessionsStreamState({
+      ...BASE_BROWSER,
+      sessions: [SESSION_3, SESSION_2, SESSION_1],
+      nextBefore: null,
+      totalSessionCount: 3,
+    }),
+    {
+      loaded: 3,
+      hasDraftSession: false,
+    },
   );
 });
 

@@ -77,7 +77,18 @@ export async function loadProviderControls(
     provider.capabilities.modelSelection ? getProviderModels(provider.id) : Promise.resolve([]),
   ]);
 
-  const visibleModels = getVisibleModels(models);
+  return resolveProviderControlsFromData(projects, models, cachedPreference);
+}
+
+export function resolveProviderControlsFromData(
+  projects: string[],
+  rawModels: ProviderModelOption[],
+  cachedPreference: {
+    modelId: string | null;
+    effort: ProviderReasoningEffort | null;
+  } | null = null,
+): ProviderControlsState {
+  const visibleModels = getVisibleModels(rawModels);
   const selectedModelId = resolveSelectedModelId(
     visibleModels,
     null,
@@ -98,7 +109,7 @@ export async function loadProviderControls(
     loading: false,
     creatingSession: false,
     error: null,
-  } satisfies ProviderControlsState;
+  };
 }
 
 export function createLoadingProviderControls(

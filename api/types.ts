@@ -310,6 +310,7 @@ export interface ProviderAdapter {
     sessionId: string,
     before: string | null,
     limit: number,
+    mode?: ConversationSearchMode,
   ): Promise<ConversationPage>;
   searchConversation?(
     sessionId: string,

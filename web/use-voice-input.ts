@@ -35,7 +35,7 @@ interface EventStreamState {
   close(): void;
   getError(): string | null;
   getLatestText(): string;
-  waitForTerminal(): Promise<void>;
+  waitForStopReady(): Promise<void>;
 }
 
 interface MicrophoneCapture {
@@ -45,45 +45,77 @@ interface MicrophoneCapture {
 export function useVoiceInput(props: {
   draft: string;
   onError: (message: string | null) => void;
+  sessionKey?: string | null;
   setDraft: (value: string) => void;
 }) {
-  const { draft, onError, setDraft } = props;
+  const { draft, onError, sessionKey = null, setDraft } = props;
   const controllerRef = useRef<VoiceInputController | null>(null);
   const originalDraftRef = useRef("");
+  const sessionKeyRef = useRef<string | null>(sessionKey);
+  const sessionVersionRef = useRef(0);
   const stoppedRef = useRef(false);
   const [phase, setPhase] = useState<VoiceInputPhase>("idle");
 
   useEffect(() => {
     return () => {
-      stoppedRef.current = true;
-      void controllerRef.current?.cancel();
-      controllerRef.current = null;
+      sessionVersionRef.current += 1;
+      void resetVoiceInputSessionState({
+        controllerRef,
+        onError,
+        originalDraftRef,
+        setPhase,
+        stoppedRef,
+      });
     };
-  }, []);
+  }, [onError]);
+
+  useEffect(() => {
+    if (sessionKeyRef.current === sessionKey) {
+      return;
+    }
+    sessionKeyRef.current = sessionKey;
+    sessionVersionRef.current += 1;
+    void resetVoiceInputSessionState({
+      controllerRef,
+      onError,
+      originalDraftRef,
+      setPhase,
+      stoppedRef,
+    });
+  }, [onError, sessionKey]);
 
   async function handleVoiceClick() {
+    const sessionVersion = sessionVersionRef.current;
     if (phase === "starting" || phase === "stopping") {
       return;
     }
     if (phase === "recording") {
       await stopVoiceInput(
-        controllerRef,
-        originalDraftRef,
-        stoppedRef,
-        onError,
-        setDraft,
-        setPhase,
+        {
+          controllerRef,
+          onError,
+          originalDraftRef,
+          sessionVersion,
+          sessionVersionRef,
+          setDraft,
+          setPhase,
+          stoppedRef,
+        },
       );
       return;
     }
     await startVoiceInput(
-      draft,
-      controllerRef,
-      originalDraftRef,
-      stoppedRef,
-      onError,
-      setDraft,
-      setPhase,
+      {
+        controllerRef,
+        draft,
+        onError,
+        originalDraftRef,
+        sessionVersion,
+        sessionVersionRef,
+        setDraft,
+        setPhase,
+        stoppedRef,
+      },
     );
   }
 
@@ -93,29 +125,65 @@ export function useVoiceInput(props: {
   };
 }
 
+interface VoiceInputTransitionOptions {
+  controllerRef: MutableRefObject<VoiceInputController | null>;
+  onError: (message: string | null) => void;
+  originalDraftRef: MutableRefObject<string>;
+  sessionVersion: number;
+  sessionVersionRef: MutableRefObject<number>;
+  setDraft: (value: string) => void;
+  setPhase: (phase: VoiceInputPhase) => void;
+  stoppedRef: MutableRefObject<boolean>;
+}
+
+function isVoiceSessionActive(props: {
+  sessionVersion: number;
+  sessionVersionRef: MutableRefObject<number>;
+}) {
+  return props.sessionVersion === props.sessionVersionRef.current;
+}
+
 async function startVoiceInput(
-  draft: string,
-  controllerRef: MutableRefObject<VoiceInputController | null>,
-  originalDraftRef: MutableRefObject<string>,
-  stoppedRef: MutableRefObject<boolean>,
-  onError: (message: string | null) => void,
-  setDraft: (value: string) => void,
-  setPhase: (phase: VoiceInputPhase) => void,
+  props: VoiceInputTransitionOptions & {
+    draft: string;
+  },
 ) {
+  const {
+    controllerRef,
+    draft,
+    onError,
+    originalDraftRef,
+    sessionVersion,
+    sessionVersionRef,
+    setDraft,
+    setPhase,
+    stoppedRef,
+  } = props;
   onError(null);
   originalDraftRef.current = draft;
   stoppedRef.current = false;
   setPhase("starting");
   try {
-    controllerRef.current = await createVoiceInputController((transcript) => {
+    const controller = await createVoiceInputController((transcript) => {
       // Discard late ASR results after stop/cancel
-      if (stoppedRef.current) {
+      if (
+        stoppedRef.current ||
+        !isVoiceSessionActive({ sessionVersion, sessionVersionRef })
+      ) {
         return;
       }
       setDraft(mergeDraftWithTranscript(originalDraftRef.current, transcript));
     });
+    if (!isVoiceSessionActive({ sessionVersion, sessionVersionRef })) {
+      await controller.cancel();
+      return;
+    }
+    controllerRef.current = controller;
     setPhase("recording");
   } catch (error) {
+    if (!isVoiceSessionActive({ sessionVersion, sessionVersionRef })) {
+      return;
+    }
     controllerRef.current = null;
     setDraft(originalDraftRef.current);
     onError(getVoiceErrorMessage(error, "无法启动语音识别，请检查麦克风权限"));
@@ -123,26 +191,36 @@ async function startVoiceInput(
   }
 }
 
-async function stopVoiceInput(
-  controllerRef: MutableRefObject<VoiceInputController | null>,
-  originalDraftRef: MutableRefObject<string>,
-  stoppedRef: MutableRefObject<boolean>,
-  onError: (message: string | null) => void,
-  setDraft: (value: string) => void,
-  setPhase: (phase: VoiceInputPhase) => void,
-) {
+async function stopVoiceInput(props: VoiceInputTransitionOptions) {
+  const {
+    controllerRef,
+    onError,
+    originalDraftRef,
+    sessionVersion,
+    sessionVersionRef,
+    setDraft,
+    setPhase,
+    stoppedRef,
+  } = props;
   const controller = controllerRef.current;
   if (!controller) {
-    setPhase("idle");
+    if (isVoiceSessionActive({ sessionVersion, sessionVersionRef })) {
+      setPhase("idle");
+    }
     return;
   }
 
   // Immediately prevent transcript callback from overwriting draft
   stoppedRef.current = true;
-  setPhase("stopping");
-  onError(null);
+  if (isVoiceSessionActive({ sessionVersion, sessionVersionRef })) {
+    setPhase("stopping");
+    onError(null);
+  }
   try {
     const transcript = await controller.stop();
+    if (!isVoiceSessionActive({ sessionVersion, sessionVersionRef })) {
+      return;
+    }
     if (!transcript.trim()) {
       setDraft(originalDraftRef.current);
       onError("未识别到语音内容");
@@ -150,13 +228,35 @@ async function stopVoiceInput(
       setDraft(mergeDraftWithTranscript(originalDraftRef.current, transcript));
     }
   } catch (error) {
+    if (!isVoiceSessionActive({ sessionVersion, sessionVersionRef })) {
+      return;
+    }
     setDraft(originalDraftRef.current);
     onError(getVoiceErrorMessage(error, "语音识别停止失败"));
   } finally {
     originalDraftRef.current = "";
     controllerRef.current = null;
-    setPhase("idle");
+    if (isVoiceSessionActive({ sessionVersion, sessionVersionRef })) {
+      setPhase("idle");
+    }
   }
+}
+
+export async function resetVoiceInputSessionState(props: {
+  controllerRef: MutableRefObject<VoiceInputController | null>;
+  onError: (message: string | null) => void;
+  originalDraftRef: MutableRefObject<string>;
+  setPhase: (phase: VoiceInputPhase) => void;
+  stoppedRef: MutableRefObject<boolean>;
+}) {
+  const { controllerRef, onError, originalDraftRef, setPhase, stoppedRef } = props;
+  const controller = controllerRef.current;
+  stoppedRef.current = true;
+  controllerRef.current = null;
+  originalDraftRef.current = "";
+  onError(null);
+  setPhase("idle");
+  await controller?.cancel().catch(() => undefined);
 }
 
 async function createVoiceInputController(
@@ -191,7 +291,7 @@ async function createVoiceInputController(
       await capture?.stop();
       await uploadQueue;
       await finishAsrSession(sessionId);
-      await waitForTerminal(events);
+      await waitForStopReady(events);
       const error = events.getError();
       events.close();
       if (error) {
@@ -213,11 +313,19 @@ function createEventStreamState(
 ): EventStreamState {
   let transcriptBuffer = createVoiceTranscriptBuffer();
   let errorMessage: string | null = null;
+  let stopReady = false;
   let terminal = false;
-  let resolveTerminal: (() => void) | null = null;
-  const terminalPromise = new Promise<void>((resolve) => {
-    resolveTerminal = resolve;
+  let resolveStopReady: (() => void) | null = null;
+  const stopReadyPromise = new Promise<void>((resolve) => {
+    resolveStopReady = resolve;
   });
+  const markStopReady = () => {
+    if (stopReady) {
+      return;
+    }
+    stopReady = true;
+    resolveStopReady?.();
+  };
 
   const source = openAsrEventStream(
     sessionId,
@@ -235,8 +343,8 @@ function createEventStreamState(
         () => terminal,
         () => {
           terminal = true;
-          resolveTerminal?.();
         },
+        markStopReady,
       );
     },
     (message) => {
@@ -248,7 +356,7 @@ function createEventStreamState(
         },
         () => {
           terminal = true;
-          resolveTerminal?.();
+          markStopReady();
         },
       );
     },
@@ -264,8 +372,8 @@ function createEventStreamState(
     getLatestText() {
       return readVoiceTranscript(transcriptBuffer);
     },
-    waitForTerminal() {
-      return terminalPromise;
+    waitForStopReady() {
+      return stopReadyPromise;
     },
   };
 }
@@ -277,6 +385,7 @@ export function consumeAsrEvent(
   setError: (message: string | null) => void,
   isTerminal: () => boolean,
   markTerminal: () => void,
+  markStopReady?: () => void,
 ) {
   if (
     (event.type === "interim_result" || event.type === "final_result") &&
@@ -290,7 +399,6 @@ export function consumeAsrEvent(
       ),
     );
   }
-
   if (event.type === "error") {
     setError(event.error?.trim() || "语音识别失败");
   }
@@ -303,6 +411,7 @@ export function consumeAsrEvent(
     if (!isTerminal()) {
       markTerminal();
     }
+    markStopReady?.();
   }
 }
 
@@ -319,15 +428,22 @@ export function applyAsrStreamError(
   markTerminal();
 }
 
-async function waitForTerminal(events: EventStreamState): Promise<void> {
-  await Promise.race([
-    events.waitForTerminal(),
-    new Promise<void>((_, reject) => {
-      window.setTimeout(() => {
-        reject(new Error("语音识别完成超时"));
-      }, FINISH_TIMEOUT_MS);
-    }),
-  ]);
+async function waitForStopReady(events: EventStreamState): Promise<void> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      events.waitForStopReady(),
+      new Promise<void>((_, reject) => {
+        timeoutId = window.setTimeout(() => {
+          reject(new Error("语音识别完成超时"));
+        }, FINISH_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timeoutId !== undefined) {
+      clearTimeout(timeoutId);
+    }
+  }
 }
 
 async function createMicrophoneCapture(

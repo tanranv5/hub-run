@@ -273,6 +273,69 @@ test("provider switch blocks the entire app instead of only the session list", (
   assert.match(markup, /切换 Provider，页面暂时不可操作/);
 });
 
+test("create-session overlay can show a dedicated global loading description", () => {
+  const markup = renderToStaticMarkup(
+    React.createElement(AppScreen as unknown as React.ComponentType<any>, {
+      authEnabled: true,
+      bootstrapError: null,
+      blockingOverlayDescription: "正在等待新会话首条消息出现，页面暂时不可操作。",
+      blockingOverlayLabel: "正在等待新会话首条消息出现...",
+      browser: {
+        sessions: [SESSION],
+        nextBefore: null,
+        selectedSessionId: SESSION.id,
+        streamStatus: {
+          phase: "idle",
+          lastEventAt: null,
+          retryCount: 0,
+        },
+        loading: false,
+        loadingMore: false,
+      },
+      contextDetails: null,
+      contextLabel: null,
+      controls: {
+        models: [],
+        projects: [SESSION.project],
+        selectedProject: SESSION.project,
+        selectedModelId: null,
+        selectedEffort: null,
+        newSessionCwd: SESSION.project,
+        loading: false,
+        creatingSession: false,
+        error: null,
+      },
+      desktopSidebarOpen: true,
+      effortOptions: [],
+      refreshing: false,
+      onCreateSession: () => {},
+      onCloseSidebar: () => {},
+      onLoadMore: () => {},
+      onLogout: () => {},
+      onMessageSent: async () => undefined,
+      onNewSessionCwdChange: () => {},
+      onOpenBrowser: () => {},
+      onRefresh: () => {},
+      onSelectEffort: () => {},
+      onSelectModel: () => {},
+      onSelectProject: () => {},
+      onSelectProvider: () => {},
+      onSelectSession: () => {},
+      onToggleDesktopSidebar: () => {},
+      panelRefreshVersion: 1,
+      provider: PROVIDER,
+      providers: [PROVIDER],
+      sessionCacheRef: { current: new Map() },
+      selectedSession: SESSION,
+      sendMessage: async () => ({ sessionId: SESSION.id, turnId: null, outputText: null }),
+      sidebarOpen: false,
+    }),
+  );
+
+  assert.match(markup, /aria-label="正在等待新会话首条消息出现\.\.\."|aria-label="正在等待新会话首条消息出现..."/);
+  assert.match(markup, /正在等待新会话首条消息出现，页面暂时不可操作/);
+});
+
 test("conversation panel keeps composer focused on send controls instead of provider badges", () => {
   const markup = renderToStaticMarkup(
     React.createElement(ConversationPanel as unknown as React.ComponentType<any>, {
@@ -769,7 +832,8 @@ test("composer shows generating state near the send button instead of timeline b
     }),
   );
 
-  assert.match(markup, />中断</);
+  assert.match(markup, /aria-label="中断当前回合"/);
+  assert.doesNotMatch(markup, />中断</);
   assert.match(markup, /placeholder="生成中\.\.\."|placeholder="生成中..."/);
   assert.doesNotMatch(markup, /Codex 已接受，正在生成\.\.\./);
 });
@@ -817,6 +881,7 @@ test("composer shows task completion placeholder after the current turn finishes
   );
 
   assert.match(markup, /placeholder="任务完成"/);
+  assert.doesNotMatch(markup, /aria-label="中断当前回合"/);
   assert.doesNotMatch(markup, />中断</);
 });
 

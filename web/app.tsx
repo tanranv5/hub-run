@@ -1,8 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ProviderSummary, SendMessageInput } from "../api/types";
-import { createProviderSession, deleteProviderSession, sendConversationMessage } from "./api";
+import { createProviderSession, deleteProviderSession, getProviderInit, sendConversationMessage } from "./api";
+import {
+  assignCreateSessionBlockingSessionId,
+  CREATE_SESSION_BLOCKING_TIMEOUT_MS,
+  createPendingCreateSessionBlockingTarget,
+  resolveAppBlockingOverlay,
+  shouldReleaseCreateSessionBlocking,
+  type ConversationStreamBinding,
+  type CreateSessionBlockingTarget,
+} from "./app-blocking-overlay";
 import { clearStoredSelectedSession, getStoredControlPreference, getStoredSelectedSession, persistProviderControls, persistSelectedSession, resolveContextDrivenControls, resolveUserSelectedControls } from "./app-preferences";
-import { INITIAL_BROWSER, loadProviderBrowser } from "./browser-state";
+import { INITIAL_BROWSER, loadProviderBrowser, resolvePreferredSessionForProject, resolveInitialSelectedSessionId } from "./browser-state";
+import type { BrowserState } from "./browser-state";
 import {
   applySentSessionSelection,
   createLoadingBrowserState,
@@ -27,12 +37,16 @@ import {
   getEffortOptions,
   INITIAL_PROVIDER_CONTROLS,
   loadProviderControls,
+  resolveProviderControlsFromData,
 } from "./provider-controls";
 import { createDraftSession, insertDraftSession, isDraftSession } from "./draft-session";
 import { preloadSessionPanelCache } from "./conversation-panel-preload";
 import type { SessionPanelCacheEntry } from "./conversation-panel-session-cache";
 import { subscribeAuthLost } from "./realtime-auth";
+import { createIdleRealtimeStreamStatus } from "./realtime-stream-status";
+import { restartRuntimeAndRefresh } from "./runtime-restart";
 import { useProviderSessionsStream } from "./use-provider-sessions-stream";
+import { mergePreferredSession } from "./ui-preferences";
 import { refreshAppData } from "./app-refresh";
 
 export default function App() {
@@ -42,6 +56,11 @@ export default function App() {
   const [providerSwitchTargetId, setProviderSwitchTargetId] = useState<string | null>(null);
   const [panelRefreshVersion, setPanelRefreshVersion] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [runtimeRestarting, setRuntimeRestarting] = useState(false);
+  const [createSessionBlockingTarget, setCreateSessionBlockingTarget] =
+    useState<CreateSessionBlockingTarget | null>(null);
+  const [conversationStreamBinding, setConversationStreamBinding] =
+    useState<ConversationStreamBinding | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   const browserRequestVersionRef = useRef(0);
@@ -102,50 +121,66 @@ export default function App() {
 
     let cancelled = false;
     setControls((current) => ({ ...current, loading: true, error: null }));
-    loadProviderControls(selectedProvider, getStoredControlPreference(selectedProvider.id))
-      .then((nextControls) => {
-        if (!cancelled) {
-          setControls(nextControls);
-        }
-      })
-      .catch((cause) => {
-        if (!cancelled) {
-          setControls((current) => ({
-            ...current,
-            loading: false,
-            error: getErrorMessage(cause, "Failed to load provider controls"),
-          }));
-        }
-      });
+    setBrowser((current) => ({
+      ...current,
+      loading: true,
+      loadingMore: false,
+      error: null,
+    }));
 
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedProvider]);
-
-  useEffect(() => {
-    if (!selectedProvider) {
-      setBrowser(INITIAL_BROWSER);
-      return;
-    }
-    let cancelled = false;
     const preferredSession = getStoredSelectedSession(
       selectedProvider.id,
       controls.selectedProject,
     );
-    refreshBrowserState({
-      loadBrowser: loadBrowserWithPreloadedSelection,
-      preferredSession,
-      preferredSessionId: preferredSession?.id ?? null,
-      provider: selectedProvider,
-      project: controls.selectedProject,
-      shouldAbort: () => cancelled,
-      setBrowser,
-    }).catch((cause) => {
-      if (!cancelled) {
-        console.error(cause);
-      }
-    });
+
+    getProviderInit(selectedProvider.id, 10, controls.selectedProject)
+      .then(async (init) => {
+        if (cancelled) return;
+
+        const nextControls = resolveProviderControlsFromData(
+          init.projects,
+          init.models,
+          getStoredControlPreference(selectedProvider.id),
+        );
+        setControls(nextControls);
+
+        const sessions = mergePreferredSession(init.sessions.sessions, resolvePreferredSessionForProject(preferredSession, controls.selectedProject));
+        const selectedSessionId = resolveInitialSelectedSessionId(
+          sessions,
+          preferredSession?.id ?? null,
+          resolvePreferredSessionForProject(preferredSession, controls.selectedProject),
+        );
+        const nextBrowser: BrowserState = {
+          sessions,
+          deletedSessionIds: new Set(),
+          nextBefore: init.sessions.nextBefore,
+          totalSessionCount: init.sessions.totalCount ?? sessions.length,
+          selectedSessionId,
+          streamStatus: createIdleRealtimeStreamStatus(),
+          loading: false,
+          loadingMore: false,
+          error: null,
+        };
+
+        const nextSession = sessions.find((s) => s.id === selectedSessionId) ?? null;
+        if (nextSession) {
+          await preloadSessionPanelCache({
+            cache: sessionCacheRef.current,
+            providerId: selectedProvider.id,
+            session: nextSession,
+          });
+        }
+
+        if (!cancelled) {
+          setBrowser(nextBrowser);
+        }
+      })
+      .catch((cause) => {
+        if (cancelled) return;
+        const message = getErrorMessage(cause, "Failed to initialize provider");
+        setControls((current) => ({ ...current, loading: false, error: message }));
+        setBrowser((current) => ({ ...current, loading: false, error: message }));
+      });
 
     return () => {
       cancelled = true;
@@ -196,6 +231,50 @@ export default function App() {
     setProviderSwitchTargetId(null);
   }, [browser.loading, controls.loading, providerSwitchTargetId, selectedProvider?.id]);
 
+  useEffect(() => {
+    if (
+      !shouldReleaseCreateSessionBlocking({
+        conversationStream: conversationStreamBinding,
+        selectedProviderId: selectedProvider?.id ?? null,
+        selectedSessionId: selectedSession?.id ?? null,
+        target: createSessionBlockingTarget,
+      })
+    ) {
+      return;
+    }
+    setCreateSessionBlockingTarget(null);
+  }, [
+    conversationStreamBinding,
+    createSessionBlockingTarget,
+    selectedProvider?.id,
+    selectedSession?.id,
+  ]);
+
+  useEffect(() => {
+    if (!createSessionBlockingTarget) {
+      return;
+    }
+
+    const elapsedMs = Date.now() - createSessionBlockingTarget.startedAt;
+    const remainingMs = Math.max(
+      0,
+      CREATE_SESSION_BLOCKING_TIMEOUT_MS - elapsedMs,
+    );
+    if (remainingMs === 0) {
+      setCreateSessionBlockingTarget(null);
+      return;
+    }
+
+    const timeoutId = globalThis.setTimeout(() => {
+      setCreateSessionBlockingTarget((current) =>
+        current?.startedAt === createSessionBlockingTarget.startedAt
+          ? null
+          : current,
+      );
+    }, remainingMs);
+    return () => globalThis.clearTimeout(timeoutId);
+  }, [createSessionBlockingTarget]);
+
   const providerModelPayload = useMemo(() => {
     if (!selectedProvider?.capabilities.modelSelection) return {};
     return {
@@ -215,6 +294,13 @@ export default function App() {
       return;
     }
 
+    const blockingTarget =
+      selectedProvider.capabilities.stream && selectedProvider.capabilities.emptyCreateSession
+        ? createPendingCreateSessionBlockingTarget(selectedProvider.id)
+        : null;
+    if (blockingTarget) {
+      setCreateSessionBlockingTarget(blockingTarget);
+    }
     setControls((current) => ({ ...current, creatingSession: true, error: null }));
     try {
       if (!selectedProvider.capabilities.emptyCreateSession) {
@@ -228,6 +314,11 @@ export default function App() {
         cwd,
         ...providerModelPayload,
       });
+      if (blockingTarget) {
+        setCreateSessionBlockingTarget(
+          assignCreateSessionBlockingSessionId(blockingTarget, created.sessionId),
+        );
+      }
       setControls((current) => ({ ...current, creatingSession: false, newSessionCwd: cwd }));
       const requestVersion = browserRequestVersionRef.current;
       await refreshBrowserState({
@@ -239,6 +330,7 @@ export default function App() {
         shouldAbort: () => requestVersion !== browserRequestVersionRef.current,
       });
     } catch (cause) {
+      setCreateSessionBlockingTarget(null);
       setControls((current) => ({ ...current, creatingSession: false, error: getErrorMessage(cause, "Failed to create session") }));
     }
   }
@@ -363,21 +455,63 @@ export default function App() {
         bumpRefreshVersion: () => {
           setPanelRefreshVersion((value) => value + 1);
         },
-        reloadConversation: async () => {
-          if (!selectedProvider || !selectedSession || isDraftSession(selectedSession)) {
-            return;
-          }
-          await preloadSessionPanelCache({
-            cache: sessionCacheRef.current,
-            providerId: selectedProvider.id,
-            session: selectedSession,
+        reloadConversation: reloadSelectedConversation,
+      });
+    } catch (cause) {
+      console.error(cause);
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  async function reloadSelectedConversation() {
+    if (!selectedProvider || !selectedSession || isDraftSession(selectedSession)) {
+      return;
+    }
+    await preloadSessionPanelCache({
+      cache: sessionCacheRef.current,
+      providerId: selectedProvider.id,
+      session: selectedSession,
+    });
+  }
+
+  async function reloadSelectedBrowser() {
+    if (!selectedProvider) {
+      return;
+    }
+    const requestVersion = browserRequestVersionRef.current;
+    await refreshBrowserState({
+      loadBrowser: loadBrowserWithPreloadedSelection,
+      preferredSessionId: selectedSession?.id ?? null,
+      project: controls.selectedProject,
+      provider: selectedProvider,
+      setBrowser,
+      shouldAbort: () => requestVersion !== browserRequestVersionRef.current,
+    });
+  }
+
+  async function handleRestartRuntime() {
+    if (runtimeRestarting) {
+      return;
+    }
+
+    setRuntimeRestarting(true);
+    try {
+      await restartRuntimeAndRefresh({
+        refresh: async () => {
+          await refreshAppData({
+            bumpRefreshVersion: () => {
+              setPanelRefreshVersion((value) => value + 1);
+            },
+            reloadConversation: reloadSelectedConversation,
+            reloadProviders: reloadSelectedBrowser,
           });
         },
       });
     } catch (cause) {
       console.error(cause);
     } finally {
-      setRefreshing(false);
+      setRuntimeRestarting(false);
     }
   }
 
@@ -395,22 +529,27 @@ export default function App() {
     );
   }
 
+  const blockingOverlay = resolveAppBlockingOverlay({
+    createSessionTarget: createSessionBlockingTarget,
+    providerSwitchLabel: providerSwitchTargetId
+      ? (providerSwitchLabel ?? "Provider")
+      : null,
+    runtimeRestarting,
+  });
+
   return (
     <AppScreen
       authEnabled={Boolean(bootstrap.auth?.authEnabled)}
+      blockingOverlayDescription={blockingOverlay?.description ?? null}
       bootstrapError={bootstrap.error}
-      blockingOverlayLabel={
-        providerSwitchTargetId
-          ? `正在切换到 ${providerSwitchLabel ?? "Provider"}...`
-          : null
-      }
+      blockingOverlayLabel={blockingOverlay?.label ?? null}
       browser={browser}
       contextDetails={contextDetails}
       contextLabel={contextLabel}
       controls={controls}
       desktopSidebarOpen={desktopSidebarOpen}
       effortOptions={effortOptions}
-      refreshing={refreshing}
+      refreshing={refreshing || runtimeRestarting}
       onCreateSession={() => {
         handleCreateSession().catch(console.error);
       }}
@@ -431,6 +570,17 @@ export default function App() {
       onLogout={() => handleLogout(setBootstrap)}
       onMessageSent={async (sessionId, initialDisplay) => {
         const requestVersion = browserRequestVersionRef.current;
+        if (
+          selectedProvider?.capabilities.stream &&
+          selectedSession?.isDraft &&
+          sessionId !== selectedSession.id
+        ) {
+          setCreateSessionBlockingTarget({
+            providerId: selectedProvider.id,
+            sessionId,
+            startedAt: Date.now(),
+          });
+        }
         setBrowser((current) => {
           // Only switch if still on the originating session or a draft being resolved
           const currentIsDraft = current.sessions.some(
@@ -456,11 +606,13 @@ export default function App() {
           shouldAbort: () => requestVersion !== browserRequestVersionRef.current,
         });
       }}
+      onConversationStreamStatusChange={setConversationStreamBinding}
       onNewSessionCwdChange={(value) => setControls((current) => ({ ...current, newSessionCwd: value }))}
       onOpenBrowser={() => setSidebarOpen(true)}
       onRefresh={() => {
         void handleRefresh();
       }}
+      onRestartRuntime={handleRestartRuntime}
       onSelectEffort={handleSelectEffort}
       onSelectModel={handleSelectModel}
       onSelectProject={(value) => setControls((current) => ({ ...current, selectedProject: value }))}
@@ -473,6 +625,7 @@ export default function App() {
       panelRefreshVersion={panelRefreshVersion}
       provider={selectedProvider}
       providers={bootstrap.providers}
+      restartingRuntime={runtimeRestarting}
       sessionCacheRef={sessionCacheRef}
       selectedSession={selectedSession}
       sendMessage={handleSendMessage}

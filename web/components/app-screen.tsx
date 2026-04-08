@@ -5,7 +5,9 @@ import type {
   SessionSummary,
 } from "../../api/types";
 import type { MutableRefObject } from "react";
+import { useEffect, useState } from "react";
 import type { BrowserState } from "../browser-state";
+import type { ConversationStreamBinding } from "../app-blocking-overlay";
 import type { SessionPanelCacheEntry } from "../conversation-panel-session-cache";
 import type { ProviderControlsState } from "../provider-controls";
 import type { SendConversationResult } from "../conversation-panel-state-types";
@@ -16,6 +18,7 @@ import ConversationPanel from "./conversation-panel";
 
 interface AppScreenProps {
   authEnabled: boolean;
+  blockingOverlayDescription?: string | null;
   bootstrapError: string | null;
   blockingOverlayLabel?: string | null;
   browser: BrowserState;
@@ -27,12 +30,14 @@ interface AppScreenProps {
   refreshing: boolean;
   onCreateSession: () => void;
   onCloseSidebar: () => void;
+  onConversationStreamStatusChange?: (binding: ConversationStreamBinding) => void;
   onLoadMore: () => void;
   onLogout: () => void;
   onMessageSent: (sessionId: string, initialDisplay?: string | null) => Promise<void>;
   onNewSessionCwdChange: (value: string) => void;
   onOpenBrowser: () => void;
   onRefresh: () => void;
+  onRestartRuntime: () => Promise<void>;
   onSelectEffort: (value: ProviderControlsState["selectedEffort"]) => void;
   onSelectModel: (value: string | null) => void;
   onSelectProject: (value: string | null) => void;
@@ -43,6 +48,7 @@ interface AppScreenProps {
   panelRefreshVersion: number;
   provider: ProviderSummary | null;
   providers: ProviderSummary[];
+  restartingRuntime?: boolean;
   sessionCacheRef: MutableRefObject<Map<string, SessionPanelCacheEntry>>;
   selectedSession: SessionSummary | null;
   sendMessage: (input: SendMessageInput) => Promise<SendConversationResult>;
@@ -52,6 +58,7 @@ interface AppScreenProps {
 export default function AppScreen(props: AppScreenProps) {
   const {
     authEnabled,
+    blockingOverlayDescription = null,
     bootstrapError,
     blockingOverlayLabel = null,
     browser,
@@ -63,12 +70,14 @@ export default function AppScreen(props: AppScreenProps) {
     refreshing,
     onCreateSession,
     onCloseSidebar,
+    onConversationStreamStatusChange,
     onLoadMore,
     onLogout,
     onMessageSent,
     onNewSessionCwdChange,
     onOpenBrowser,
     onRefresh,
+    onRestartRuntime,
     onSelectEffort,
     onSelectModel,
     onSelectProject,
@@ -79,11 +88,19 @@ export default function AppScreen(props: AppScreenProps) {
     panelRefreshVersion,
     provider,
     providers,
+    restartingRuntime = false,
     sessionCacheRef,
     selectedSession,
     sendMessage,
     sidebarOpen,
   } = props;
+
+  const errorMessage = bootstrapError ?? browser.error;
+  const [dismissedError, setDismissedError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setDismissedError(null);
+  }, [errorMessage]);
 
   return (
     <div
@@ -101,7 +118,10 @@ export default function AppScreen(props: AppScreenProps) {
         onLogout={onLogout}
       />
       <main className="relative flex flex-1 overflow-hidden">
-        <ErrorBanner message={bootstrapError ?? browser.error} />
+        <ErrorBanner
+          message={dismissedError === errorMessage ? null : errorMessage}
+          onDismiss={() => setDismissedError(errorMessage)}
+        />
         <div className="relative flex h-full w-full">
           <BrowserSidebar
             browser={browser}
@@ -137,15 +157,21 @@ export default function AppScreen(props: AppScreenProps) {
               sendMessage={sendMessage}
               onMessageSent={onMessageSent}
               onOpenBrowser={onOpenBrowser}
+              onRestartRuntime={onRestartRuntime}
+              onConversationStreamStatusChange={onConversationStreamStatusChange}
               onSelectEffort={onSelectEffort}
               onSelectModel={onSelectModel}
               onToggleDesktopSidebar={onToggleDesktopSidebar}
+              restartingRuntime={restartingRuntime}
             />
           </div>
         </div>
       </main>
       {blockingOverlayLabel ? (
-        <BlockingScreenOverlay label={blockingOverlayLabel} />
+        <BlockingScreenOverlay
+          description={blockingOverlayDescription ?? undefined}
+          label={blockingOverlayLabel}
+        />
       ) : null}
     </div>
   );

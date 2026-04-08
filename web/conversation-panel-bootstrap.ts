@@ -1,5 +1,5 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import type { ProviderId, SessionSummary } from "../api/types";
+import type { ConversationSearchMode, ProviderId, SessionSummary } from "../api/types";
 import { isDraftSession } from "./draft-session";
 import {
   getErrorMessage,
@@ -80,6 +80,7 @@ export function bootstrapConversationPanel(props: {
   draftRef?: MutableRefObject<string>;
   generationRef: MutableRefObject<number>;
   loadPage?: typeof loadInitialPage;
+  messageViewMode?: ConversationSearchMode;
   previousSessionRef: MutableRefObject<SessionIdentity | null>;
   providerId: ProviderId | null;
   session: SessionSummary | null;
@@ -92,6 +93,7 @@ export function bootstrapConversationPanel(props: {
     draftRef,
     generationRef,
     loadPage = loadInitialPage,
+    messageViewMode,
     previousSessionRef,
     providerId,
     session,
@@ -144,7 +146,7 @@ export function bootstrapConversationPanel(props: {
     return;
   }
 
-  loadPage(providerId, session.id)
+  loadPage(providerId, session.id, { mode: messageViewMode })
     .then((nextState) => {
       if (generation === generationRef.current) {
         setState((current) =>

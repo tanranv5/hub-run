@@ -61,7 +61,7 @@ function getToneClassName(tone: ConversationStatusTone) {
     case "neutral":
       return "bg-muted";
     case "active":
-      return "bg-accent";
+      return "bg-accent animate-pulse";
     case "success":
       return "bg-accent-2";
     case "danger":

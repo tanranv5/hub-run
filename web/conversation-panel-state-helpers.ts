@@ -1,4 +1,5 @@
 import type { ConversationMessage, SendImageInput } from "../api/types";
+import { sanitizeConversationText } from "../api/providers/display-text";
 
 const OPTIMISTIC_PREFIX = "optimistic-user:";
 const IMMEDIATE_ASSISTANT_PREFIX = "immediate-assistant:";
@@ -24,8 +25,17 @@ export function hasConversationChanged(
   baselineMessages: ConversationMessage[],
   nextMessages: ConversationMessage[],
 ): boolean {
-  return createConversationSignature(baselineMessages) !==
-    createConversationSignature(nextMessages);
+  if (baselineMessages === nextMessages) return false;
+  if (baselineMessages.length !== nextMessages.length) return true;
+  if (baselineMessages.length === 0) return false;
+  const first = baselineMessages[0]!;
+  const nextFirst = nextMessages[0]!;
+  if (first.id !== nextFirst.id) return true;
+  const last = baselineMessages[baselineMessages.length - 1]!;
+  const nextLast = nextMessages[nextMessages.length - 1]!;
+  return last.id !== nextLast.id ||
+    last.text !== nextLast.text ||
+    last.timestamp !== nextLast.timestamp;
 }
 
 export function stripOptimisticUserMessages(
@@ -36,6 +46,52 @@ export function stripOptimisticUserMessages(
 
 export function isOptimisticUserMessage(message: ConversationMessage): boolean {
   return message.id.startsWith(OPTIMISTIC_PREFIX);
+}
+
+export function preserveUnacknowledgedOptimisticMessages(
+  currentMessages: ConversationMessage[],
+  nextMessages: ConversationMessage[],
+): ConversationMessage[] {
+  return currentMessages
+    .filter(isOptimisticUserMessage)
+    .reduce((messages, optimisticMessage) => {
+      if (
+        messages.some((message) => message.id === optimisticMessage.id) ||
+        hasAcknowledgedUserMessage(messages, optimisticMessage)
+      ) {
+        return messages;
+      }
+      return insertBeforeTrailingTaskStartedStatuses(messages, optimisticMessage);
+    }, nextMessages);
+}
+
+export function dropAcknowledgedOptimisticUserMessages(
+  messages: ConversationMessage[],
+): ConversationMessage[] {
+  const acknowledgedIndexes = new Set<number>();
+  const pendingByKey = new Map<string, Array<{ index: number; time: number | null }>>();
+
+  messages.forEach((message, index) => {
+    const key = readUserMessageAckKey(message);
+    if (!key) {
+      return;
+    }
+    if (isOptimisticUserMessage(message)) {
+      const pending = pendingByKey.get(key) ?? [];
+      pending.push({ index, time: readMessageTime(message) });
+      pendingByKey.set(key, pending);
+      return;
+    }
+    acknowledgePendingOptimisticMessage(
+      pendingByKey.get(key),
+      readMessageTime(message),
+      acknowledgedIndexes,
+    );
+  });
+
+  return acknowledgedIndexes.size === 0
+    ? messages
+    : messages.filter((_, index) => !acknowledgedIndexes.has(index));
 }
 
 export function appendImmediateAssistantMessage(
@@ -95,6 +151,103 @@ function isStatusMessage(message: ConversationMessage): boolean {
   return message.role === "system" && message.kind === "text" && message.title === "status";
 }
 
+function hasAcknowledgedUserMessage(
+  messages: ConversationMessage[],
+  optimisticMessage: ConversationMessage,
+) {
+  const optimisticKey = readUserMessageAckKey(optimisticMessage);
+  if (!optimisticKey) {
+    return false;
+  }
+  const optimisticTime = readMessageTime(optimisticMessage);
+  return messages.some((message) =>
+    message.id !== optimisticMessage.id &&
+    !isOptimisticUserMessage(message) &&
+    readUserMessageAckKey(message) === optimisticKey &&
+    canAcknowledgeOptimisticMessage(optimisticTime, readMessageTime(message))
+  );
+}
+
+function readUserMessageAckKey(message: ConversationMessage): string | null {
+  if (message.role !== "user") {
+    return null;
+  }
+  if (message.kind === "text") {
+    const text = sanitizeConversationText(message.text).trim();
+    return text ? `text:${text}` : null;
+  }
+  if (message.kind !== "image" || message.block?.type !== "image") {
+    return null;
+  }
+  const imageUrl = message.block.imageUrl?.trim();
+  if (imageUrl) {
+    return `imageUrl:${imageUrl}`;
+  }
+  const imagePath = message.block.imagePath?.trim();
+  return imagePath ? `imagePath:${imagePath}` : null;
+}
+
+function acknowledgePendingOptimisticMessage(
+  pending: Array<{ index: number; time: number | null }> | undefined,
+  messageTime: number | null,
+  acknowledgedIndexes: Set<number>,
+) {
+  if (!pending || pending.length === 0) {
+    return;
+  }
+  const pendingIndex = pending.findIndex((entry) =>
+    canAcknowledgeOptimisticMessage(entry.time, messageTime)
+  );
+  if (pendingIndex < 0) {
+    return;
+  }
+  const [matched] = pending.splice(pendingIndex, 1);
+  if (matched) {
+    acknowledgedIndexes.add(matched.index);
+  }
+}
+
+function canAcknowledgeOptimisticMessage(
+  optimisticTime: number | null,
+  messageTime: number | null,
+) {
+  return optimisticTime === null || messageTime === null || messageTime >= optimisticTime;
+}
+
+function insertBeforeTrailingTaskStartedStatuses(
+  messages: ConversationMessage[],
+  optimisticMessage: ConversationMessage,
+) {
+  const insertionIndex = findTrailingTaskStartedStart(messages);
+  return [
+    ...messages.slice(0, insertionIndex),
+    optimisticMessage,
+    ...messages.slice(insertionIndex),
+  ];
+}
+
+function findTrailingTaskStartedStart(messages: ConversationMessage[]) {
+  let index = messages.length;
+  while (index > 0 && isTaskStartedStatusMessage(messages[index - 1] as ConversationMessage)) {
+    index -= 1;
+  }
+  return index;
+}
+
+export function isTaskStartedStatusMessage(message: ConversationMessage) {
+  return message.role === "system" &&
+    message.title === "status" &&
+    /^任务已开始/.test(message.text);
+}
+
+function readMessageTime(message: ConversationMessage): number | null {
+  if (!message.timestamp) {
+    return null;
+  }
+  const parsed = Date.parse(message.timestamp);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function buildOptimisticUserMessages(
   input: { text?: string; images?: SendImageInput[] },
   now: number,
@@ -132,19 +285,4 @@ function buildOptimisticTextMessage(text: string, now: number): ConversationMess
     text,
     timestamp: new Date(now).toISOString(),
   };
-}
-
-function createConversationSignature(messages: ConversationMessage[]): string {
-  return messages
-    .map((message) =>
-      [
-        message.id,
-        message.role,
-        message.kind,
-        message.title ?? "",
-        message.text,
-        message.timestamp ?? "",
-      ].join("|"),
-    )
-    .join("\n");
 }

@@ -4,6 +4,9 @@ import {
   MIN_MESSAGE_FONT_SCALE,
 } from "../conversation-reading-styles";
 
+const READING_TOOLBAR_ICON_BUTTON_CLASS = "inline-flex h-7 w-7 items-center justify-center rounded-md border border-bdr bg-surface text-txt transition hover:bg-surface-hover md:h-8 md:w-8";
+const READING_TOOLBAR_SCALE_BUTTON_CLASS = `${READING_TOOLBAR_ICON_BUTTON_CLASS} text-xs font-semibold leading-none disabled:cursor-not-allowed disabled:opacity-45`;
+
 interface ConversationReadingToolbarProps {
   fontScale: number;
   messageViewMode: ConversationSearchMode;
@@ -67,37 +70,44 @@ export default function ConversationReadingToolbar(
   const canDecreaseFontScale = fontScale > MIN_MESSAGE_FONT_SCALE;
   const canIncreaseFontScale = fontScale < MAX_MESSAGE_FONT_SCALE;
 
+  const modeLabel = `消息模式：${getConversationMessageViewLabel(messageViewMode)}`;
+  const decreaseFontLabel = `缩小消息字体，当前档位 ${fontScale}/6`;
+  const increaseFontLabel = `放大消息字体，当前档位 ${fontScale}/6`;
+
   return (
     <div
       data-slot="conversation-reading-toolbar"
-      className="absolute right-4 top-3 z-10 flex items-center gap-2 rounded-xl border border-bdr bg-panel/95 px-2 py-2 shadow-sm backdrop-blur md:right-6 md:top-4"
+      className="absolute right-3 top-2 z-10 flex animate-[toolbar-in_0.3s_ease-out] items-center gap-1.5 rounded-xl border border-bdr bg-panel/95 px-1.5 py-1.5 shadow-sm backdrop-blur transition-shadow hover:shadow-md md:right-6 md:top-4 md:gap-2 md:px-2 md:py-2"
     >
       <button
         type="button"
         onClick={onCycleMessageViewMode}
-        aria-label={`消息模式：${getConversationMessageViewLabel(messageViewMode)}`}
+        aria-label={modeLabel}
+        title={modeLabel}
         data-slot="conversation-reading-mode-toggle"
-        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-bdr bg-surface text-txt transition hover:bg-surface-hover"
+        className={READING_TOOLBAR_ICON_BUTTON_CLASS}
       >
         <MessageViewIcon mode={messageViewMode} />
       </button>
       <button
         type="button"
         onClick={onDecreaseFontScale}
-        aria-label={`缩小消息字体，当前档位 ${fontScale}/6`}
+        aria-label={decreaseFontLabel}
+        title={decreaseFontLabel}
         data-slot="conversation-reading-font-decrease"
         disabled={!canDecreaseFontScale}
-        className="inline-flex h-8 min-w-8 items-center justify-center rounded-md border border-bdr bg-surface px-2.5 text-sm font-semibold text-txt transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-45"
+        className={READING_TOOLBAR_SCALE_BUTTON_CLASS}
       >
         A-
       </button>
       <button
         type="button"
         onClick={onIncreaseFontScale}
-        aria-label={`放大消息字体，当前档位 ${fontScale}/6`}
+        aria-label={increaseFontLabel}
+        title={increaseFontLabel}
         data-slot="conversation-reading-font-increase"
         disabled={!canIncreaseFontScale}
-        className="inline-flex h-8 min-w-8 items-center justify-center rounded-md border border-bdr bg-surface px-2.5 text-sm font-semibold text-txt transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-45"
+        className={READING_TOOLBAR_SCALE_BUTTON_CLASS}
       >
         A+
       </button>

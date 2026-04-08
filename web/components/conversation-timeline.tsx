@@ -173,9 +173,9 @@ export default memo(function ConversationTimeline(props: ConversationTimelinePro
       <div
         ref={containerRef}
         onScroll={syncPinnedState}
-        className="h-full overflow-y-auto px-4 pb-4 pt-16 md:px-6 md:pb-6 md:pt-[4.5rem]"
+        className="h-full overflow-y-auto px-3 pb-3 pt-12 md:px-6 md:pb-6 md:pt-[4.5rem]"
       >
-        <div className="space-y-4">
+        <div className="space-y-2.5 md:space-y-4">
           {hasOlderMessages ? (
             <div className="flex justify-center pb-2">
               <div className="flex flex-wrap items-center justify-center gap-2">

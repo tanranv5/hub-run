@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { ConversationMessage } from "../api/types";
 import { INITIAL_PANEL_STATE } from "../web/conversation-panel-state-types";
+import {
+  acceptPanelSendLifecycle,
+  beginPanelSendLifecycle,
+} from "../web/conversation-panel-send";
+import { appendOptimisticUserInputMessages } from "../web/conversation-panel-state-helpers";
 import * as conversationStreamState from "../web/conversation-stream-state";
 const {
   applyConversationSnapshot,
@@ -44,6 +49,18 @@ const SERVER_USER_MESSAGE: ConversationMessage = {
   kind: "text",
   text: "刚发出去的新问题",
   timestamp: "2026-03-22T00:00:03.000Z",
+};
+
+const SERVER_IMAGE_MESSAGE: ConversationMessage = {
+  id: "user-image-2",
+  role: "user",
+  kind: "image",
+  text: "",
+  timestamp: "2026-03-22T00:00:03.000Z",
+  block: {
+    type: "image",
+    imageUrl: "data:image/png;base64,AAAA",
+  },
 };
 
 const TASK_STARTED_MESSAGE: ConversationMessage = {
@@ -234,6 +251,42 @@ test("conversation delta drops optimistic user message once the server confirms 
   assert.deepEqual(
     nextState.messages.map((message) => message.id),
     ["user-1", "user-2", "assistant-3"],
+  );
+});
+
+test("conversation delta removes confirmed optimistic text and image while the send is still active", () => {
+  const submitted = beginPanelSendLifecycle(
+    {
+      ...INITIAL_PANEL_STATE,
+      messages: appendOptimisticUserInputMessages(
+        [USER_MESSAGE],
+        {
+          text: OPTIMISTIC_USER_MESSAGE.text,
+          images: [{ name: "shot.png", url: "data:image/png;base64,AAAA" }],
+        },
+        2_000,
+      ),
+    },
+    "codex",
+    "thread-1",
+    2_000,
+  );
+  const current = acceptPanelSendLifecycle(
+    submitted,
+    "codex",
+    "thread-1",
+    "turn-1",
+    2_100,
+  );
+
+  const nextState = applyConversationDelta(current, {
+    messages: [SERVER_USER_MESSAGE, SERVER_IMAGE_MESSAGE, TASK_STARTED_MESSAGE],
+    nextOffset: 900,
+  });
+
+  assert.deepEqual(
+    nextState.messages.map((message) => message.id),
+    ["user-1", "user-2", "user-image-2", "status-1"],
   );
 });
 

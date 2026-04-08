@@ -1,5 +1,5 @@
 import { Check, ChevronDown, ChevronUp, Copy, PanelLeft, Search, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { SessionSummary } from "../../api/types";
 import type { ConversationSearchScope } from "../conversation-panel-search";
 import type { ConversationStatus } from "../conversation-status";
@@ -80,11 +80,28 @@ export default function ConversationHeader(props: ConversationHeaderProps) {
     onToggleSearch,
   } = props;
   const [copied, setCopied] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const title = getSessionTitle(session.display);
   const projectLabel = session.projectName || session.project;
   const relativeTime = formatTime(session.timestamp);
   const searchPlaceholder = searchScope === "all" ? "搜索全部历史" : "搜索当前页面";
   const searchNavigationDisabled = searchLoading || searchStatusLabel.startsWith("0/0");
+
+  useEffect(() => {
+    function handleGlobalKey(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key === "k") {
+        event.preventDefault();
+        if (collapsed) return;
+        if (!searchOpen && onToggleSearch) {
+          onToggleSearch();
+        } else if (searchOpen) {
+          searchInputRef.current?.focus();
+        }
+      }
+    }
+    window.addEventListener("keydown", handleGlobalKey);
+    return () => window.removeEventListener("keydown", handleGlobalKey);
+  }, [collapsed, onToggleSearch, searchOpen]);
 
   async function handleCopySessionId() {
     if (!navigator.clipboard) {
@@ -99,7 +116,7 @@ export default function ConversationHeader(props: ConversationHeaderProps) {
     return (
       <div
         data-slot="conversation-header-collapsed"
-        className="flex-none border-b border-bdr px-4 py-2 md:px-6"
+        className="flex-none border-b border-bdr px-3 py-1.5 md:px-6 md:py-2"
       >
         <div className="flex items-center gap-2">
           <ConversationSessionStatus conversationStatus={conversationStatus} />
@@ -123,8 +140,8 @@ export default function ConversationHeader(props: ConversationHeaderProps) {
   }
 
   return (
-    <div className="flex-none border-b border-bdr px-4 py-3 md:px-6 md:py-4">
-      <div className="flex items-start gap-3 md:items-center">
+    <div className="flex-none border-b border-bdr px-3 py-2 md:px-6 md:py-4">
+      <div className="flex items-start gap-2 md:items-center md:gap-3">
         <div className="flex min-w-0 flex-1 items-start gap-3">
           <button
             type="button"
@@ -135,7 +152,7 @@ export default function ConversationHeader(props: ConversationHeaderProps) {
             <PanelLeft className="h-4 w-4" />
           </button>
           <div data-region="conversation-header-meta" className="min-w-0 flex-1">
-            <h2 className="truncate text-base font-semibold text-txt md:text-lg">
+            <h2 className="truncate text-sm font-semibold text-txt md:text-lg">
               {title}
             </h2>
             <p className="mt-1 flex items-center justify-between gap-2 text-xs text-muted">
@@ -143,7 +160,7 @@ export default function ConversationHeader(props: ConversationHeaderProps) {
                 <span className="truncate">{projectLabel}</span>
                 <span className="shrink-0">{relativeTime}</span>
               </span>
-                <span className="ml-auto inline-flex shrink-0 items-center gap-2">
+                <span className="ml-auto inline-flex shrink-0 items-center gap-1.5 md:gap-2">
                 <button
                   type="button"
                   aria-label="搜索当前会话"
@@ -153,7 +170,7 @@ export default function ConversationHeader(props: ConversationHeaderProps) {
                 >
                   <Search className="h-4 w-4" />
                 </button>
-                <span className="group relative inline-flex">
+                <span className="hidden group relative md:inline-flex">
                   <button
                     type="button"
                     aria-label={COPY_TOOLTIP_LABEL}
@@ -202,6 +219,8 @@ export default function ConversationHeader(props: ConversationHeaderProps) {
               >
                 <Search className="h-4 w-4 text-muted" />
                 <input
+                  ref={searchInputRef}
+                  autoFocus
                   value={searchQuery}
                   onChange={(event) => onSearchQueryChange?.(event.target.value)}
                   onKeyDown={(event) => {

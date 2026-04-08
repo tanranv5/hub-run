@@ -4,7 +4,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ProviderSummary, SessionSummary } from "../api/types";
 import BrowserSidebar from "../web/components/browser-sidebar";
-import { canInterruptConversation } from "../web/components/conversation-panel";
+import { ConversationBody, canInterruptConversation } from "../web/components/conversation-panel";
 import ConversationHeader from "../web/components/conversation-header";
 import ConversationReadingToolbar from "../web/components/conversation-reading-toolbar";
 import ConversationSearchResultsPage from "../web/components/conversation-search-results-page";
@@ -280,13 +280,13 @@ test("conversation reading toolbar stays fixed at the top-right of the message a
     markup,
     attribute: "aria-label",
     value: "缩小消息字体，当前档位 4/6",
-    classFragment: "h-8 min-w-8",
+    classFragment: "h-8 w-8",
   });
   assertButtonClassContains({
     markup,
     attribute: "aria-label",
     value: "放大消息字体，当前档位 4/6",
-    classFragment: "h-8 min-w-8",
+    classFragment: "h-8 w-8",
   });
 });
 
@@ -581,6 +581,149 @@ test("conversation header status shows stalled when the latest turn has no progr
 
   assert.match(markup, /长时间无输出，可能已卡死/);
   assert.match(markup, /bg-danger/);
+});
+
+test("conversation body exposes a stalled-session recovery bar before the timeline", () => {
+  const stalledStatus = resolveConversationStatus({
+    interrupting: false,
+    lifecycle: null,
+    loading: false,
+    pendingUserInputRequests: [],
+    providerId: "codex",
+    respondingRequestId: null,
+    sendAvailable: true,
+    streamStatus: { phase: "idle", lastEventAt: null, retryCount: 0 },
+    threadState: {
+      threadId: SESSION.id,
+      activeTurnId: null,
+      isGenerating: false,
+      requestedTurnId: "turn-stalled",
+      requestedTurnStatus: null,
+      stalled: true,
+      stallReason: "noRecentActivity",
+    } as any,
+  });
+
+  const markup = renderToStaticMarkup(
+    React.createElement(ConversationBody as unknown as React.ComponentType<any>, {
+      canInterrupt: true,
+      contextDetails: null,
+      contextLabel: null,
+      conversationStatus: stalledStatus,
+      draft: "",
+      effortOptions: [],
+      error: null,
+      hasOlderMessages: false,
+      hasBufferedLatest: false,
+      loading: false,
+      loadingOlder: false,
+      messageFontScale: 1,
+      messageWindowFrozen: false,
+      messageViewMode: "all",
+      messages: [],
+      modelOptions: [],
+      olderLoadCount: 0,
+      pendingImages: [],
+      pendingUserInputRequests: [],
+      providerSendAvailable: true,
+      respondingRequestId: null,
+      interrupting: false,
+      selectedEffort: null,
+      selectedModelId: null,
+      sending: false,
+      summary: null,
+      voicePhase: "idle",
+      onCycleMessageViewMode: () => {},
+      onDecreaseFontScale: () => {},
+      onDraftChange: () => {},
+      onIncreaseFontScale: () => {},
+      onInterrupt: () => {},
+      onLoadOlder: () => {},
+      onLoadOlderToStart: () => {},
+      onMessageWindowFrozenChange: () => {},
+      onPendingImagesChange: () => {},
+      onRecoverConversation: () => {},
+      onRespondUserInput: () => {},
+      onSelectEffort: () => {},
+      onSelectModel: () => {},
+      onSend: () => {},
+      onViewLatest: () => {},
+      onVoiceClick: () => {},
+    }),
+  );
+
+  assert.match(markup, /data-slot="conversation-recovery-bar"/);
+  assert.match(markup, />当前回合长时间无输出，可先尝试恢复当前会话</);
+  assert.match(markup, /aria-label="恢复当前会话"/);
+  assert.match(markup, /data-slot="conversation-recovery-bar"[^>]*mt-16/);
+  assert.doesNotMatch(markup, /aria-label="重启 hub-run 运行时"/);
+});
+
+test("conversation body keeps the reading toolbar visible while all-history search results are shown", () => {
+  const idleStatus = resolveConversationStatus({
+    interrupting: false,
+    lifecycle: null,
+    loading: false,
+    pendingUserInputRequests: [],
+    providerId: "codex",
+    respondingRequestId: null,
+    sendAvailable: true,
+    streamStatus: { phase: "idle", lastEventAt: null, retryCount: 0 },
+    threadState: null,
+  });
+
+  const markup = renderToStaticMarkup(
+    React.createElement(ConversationBody as unknown as React.ComponentType<any>, {
+      canInterrupt: false,
+      contextDetails: null,
+      contextLabel: null,
+      conversationStatus: idleStatus,
+      draft: "",
+      effortOptions: [],
+      error: null,
+      hasOlderMessages: false,
+      hasBufferedLatest: false,
+      loading: false,
+      loadingOlder: false,
+      messageFontScale: 2,
+      messageWindowFrozen: false,
+      messageViewMode: "compact",
+      messages: [],
+      modelOptions: [],
+      olderLoadCount: 0,
+      pendingImages: [],
+      pendingUserInputRequests: [],
+      providerSendAvailable: true,
+      respondingRequestId: null,
+      interrupting: false,
+      searchMode: "all-results",
+      searchResultsPage: React.createElement("div", { "data-slot": "search-results-stub" }, "results"),
+      selectedEffort: null,
+      selectedModelId: null,
+      sending: false,
+      summary: null,
+      voicePhase: "idle",
+      onCycleMessageViewMode: () => {},
+      onDecreaseFontScale: () => {},
+      onDraftChange: () => {},
+      onIncreaseFontScale: () => {},
+      onInterrupt: () => {},
+      onLoadOlder: () => {},
+      onLoadOlderToStart: () => {},
+      onMessageWindowFrozenChange: () => {},
+      onPendingImagesChange: () => {},
+      onRespondUserInput: () => {},
+      onSelectEffort: () => {},
+      onSelectModel: () => {},
+      onSend: () => {},
+      onViewLatest: () => {},
+      onVoiceClick: () => {},
+    }),
+  );
+
+  assert.match(markup, /data-slot="conversation-reading-toolbar"/);
+  assert.match(markup, /data-slot="search-results-stub"/);
+  assert.match(markup, /aria-label="消息模式：精简"/);
 });
 
 test("conversation header status uses a neutral ready color before any task starts", () => {

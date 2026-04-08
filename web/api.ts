@@ -19,6 +19,7 @@ import type {
   SendMessageResult,
   SessionsPage,
 } from "../api/types";
+import { notifyAuthLost } from "./realtime-auth";
 
 export interface AuthStatus {
   authEnabled: boolean;
@@ -36,8 +37,6 @@ interface ProjectsPayload {
 interface ModelsPayload {
   models: ProviderModelOption[];
 }
-
-import { notifyAuthLost } from "./realtime-auth";
 
 export class AuthLostError extends Error {
   constructor(message: string) {
@@ -140,6 +139,29 @@ export async function getProviderModels(
   return payload.models;
 }
 
+export interface ProviderInitResult {
+  sessions: SessionsPage;
+  projects: string[];
+  models: ProviderModelOption[];
+}
+
+export async function getProviderInit(
+  providerId: ProviderId,
+  limit: number,
+  project: string | null = null,
+): Promise<ProviderInitResult> {
+  const search = new URLSearchParams();
+  search.set("limit", String(limit));
+  if (project) {
+    search.set("project", project);
+  }
+  const response = await fetch(
+    `/api/providers/${providerId}/init?${search.toString()}`,
+    { credentials: "include" },
+  );
+  return readJson<ProviderInitResult>(response);
+}
+
 export async function createProviderSession(
   providerId: ProviderId,
   input: CreateSessionInput,
@@ -171,11 +193,15 @@ export async function getConversationPage(
   sessionId: string,
   before: string | null,
   limit: number,
+  mode?: ConversationSearchMode,
 ): Promise<ConversationPage> {
   const search = new URLSearchParams();
   search.set("limit", String(limit));
   if (before) {
     search.set("before", before);
+  }
+  if (mode && mode !== "all") {
+    search.set("mode", mode);
   }
 
   const response = await fetch(
@@ -356,6 +382,17 @@ export async function interruptProviderSession(
   return readJson<{ ok: boolean }>(response);
 }
 
+export async function restartHubRuntime(): Promise<{
+  ok: boolean;
+  restarting: boolean;
+}> {
+  const response = await fetch("/api/runtime/restart", {
+    method: "POST",
+    credentials: "include",
+  });
+  return readJson<{ ok: boolean; restarting: boolean }>(response);
+}
+
 export async function listProviderUserInputRequests(
   providerId: ProviderId,
   sessionId: string,
@@ -388,4 +425,16 @@ export async function respondProviderUserInputRequest(
     },
   );
   return readJson<{ ok: boolean }>(response);
+}
+
+export async function checkPathExists(
+  path: string,
+): Promise<{ exists: boolean; isDirectory: boolean }> {
+  const search = new URLSearchParams();
+  search.set("path", path);
+  const response = await fetch(
+    `/api/runtime/path-exists?${search.toString()}`,
+    { credentials: "include" },
+  );
+  return readJson<{ exists: boolean; isDirectory: boolean }>(response);
 }

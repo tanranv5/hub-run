@@ -131,6 +131,7 @@ export default function BrowserSidebar(props: BrowserSidebarProps) {
   );
   const dragRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const widthRef = useRef(DESKTOP_SIDEBAR_DEFAULT_WIDTH);
+  const resizeCleanupRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     setDesktopWidth(readDesktopSidebarWidth(getBrowserStorage()));
@@ -140,11 +141,16 @@ export default function BrowserSidebar(props: BrowserSidebarProps) {
     widthRef.current = desktopWidth;
   }, [desktopWidth]);
 
+  useEffect(() => () => {
+    resizeCleanupRef.current?.();
+  }, []);
+
   function handleResizeStart(event: ReactPointerEvent<HTMLButtonElement>) {
     if (event.button !== 0) {
       return;
     }
 
+    resizeCleanupRef.current?.();
     dragRef.current = {
       startX: event.clientX,
       startWidth: widthRef.current,
@@ -169,8 +175,10 @@ export default function BrowserSidebar(props: BrowserSidebarProps) {
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", finishResize);
       window.removeEventListener("pointercancel", finishResize);
+      resizeCleanupRef.current = null;
     }
 
+    resizeCleanupRef.current = finishResize;
     window.addEventListener("pointermove", handlePointerMove);
     window.addEventListener("pointerup", finishResize);
     window.addEventListener("pointercancel", finishResize);
@@ -206,37 +214,48 @@ export default function BrowserSidebar(props: BrowserSidebarProps) {
           onPointerDown={handleResizeStart}
           className="absolute inset-y-0 right-0 z-10 hidden w-3 translate-x-1/2 cursor-col-resize items-center justify-center bg-transparent lg:flex"
         >
-          <span className="h-18 w-px rounded-full bg-[var(--theme-border)] transition hover:bg-[var(--theme-border-strong)]" />
+          <span className="h-18 w-px rounded-full bg-[var(--theme-border)] transition hover:bg-[var(--theme-border-strong)] active:w-0.5 active:bg-accent" />
         </button>
       </div>
-      {open ? (
-        <div className="fixed inset-0 z-40 bg-black/60 p-3 backdrop-blur lg:hidden">
-          <button
-            type="button"
-            onClick={onClose}
-            className="absolute inset-0"
-            aria-label="关闭会话面板"
+      <div
+        className={`fixed inset-0 z-40 p-3 lg:hidden transition-[visibility,opacity] duration-300 ${
+          open ? "visible opacity-100" : "invisible opacity-0"
+        }`}
+      >
+        <div
+          className={`absolute inset-0 bg-black/60 backdrop-blur transition-opacity duration-300 ${
+            open ? "opacity-100" : "opacity-0"
+          }`}
+        />
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute inset-0"
+          aria-label="关闭会话面板"
+        />
+        <div
+          className={`relative ml-auto h-full w-full max-w-md overflow-y-auto rounded-[30px] border border-bdr bg-panel p-3 shadow-[0_30px_80px_rgba(2,6,23,0.28)] transition-transform duration-300 ease-out dark:shadow-[0_30px_80px_rgba(2,6,23,0.6)] ${
+            open ? "translate-x-0" : "translate-x-[105%]"
+          }`}
+        >
+          <SidebarContent
+            browser={browser}
+            creatingSession={creatingSession}
+            errorMessage={errorMessage}
+            refreshing={refreshing}
+            newSessionCwd={newSessionCwd}
+            projects={projects}
+            selectedProject={selectedProject}
+            provider={provider}
+            onCreateSession={onCreateSession}
+            onLoadMore={onLoadMore}
+            onNewSessionCwdChange={onNewSessionCwdChange}
+            onSelectProject={onSelectProject}
+            onSelectSession={onSelectSession}
+            onDeleteSession={onDeleteSession}
           />
-          <div className="relative ml-auto h-full w-full max-w-md overflow-y-auto rounded-[30px] border border-bdr bg-panel p-3 shadow-[0_30px_80px_rgba(2,6,23,0.28)] dark:shadow-[0_30px_80px_rgba(2,6,23,0.6)]">
-            <SidebarContent
-              browser={browser}
-              creatingSession={creatingSession}
-              errorMessage={errorMessage}
-              refreshing={refreshing}
-              newSessionCwd={newSessionCwd}
-              projects={projects}
-              selectedProject={selectedProject}
-              provider={provider}
-              onCreateSession={onCreateSession}
-              onLoadMore={onLoadMore}
-              onNewSessionCwdChange={onNewSessionCwdChange}
-              onSelectProject={onSelectProject}
-              onSelectSession={onSelectSession}
-              onDeleteSession={onDeleteSession}
-            />
-          </div>
         </div>
-      ) : null}
+      </div>
     </>
   );
 }

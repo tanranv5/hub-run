@@ -1,6 +1,7 @@
 import { existsSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
+import { filterConversationMessages } from "../conversation-search";
 import { encodeSessionKey } from "../session-ref";
 import type {
   ConversationAnchor,
@@ -246,8 +247,31 @@ function createAdapter(
     listSessions: async () => withSessionKeys(source.id, await source.readSessions()),
     listProjects: source.readProjects,
     listModels: source.listModels,
-    getConversationPage: (sessionId, before, limit) =>
-      source.readConversationPage(sessionId, before, limit),
+    getConversationPage: async (sessionId, before, limit, mode) => {
+      if (!mode || mode === "all") {
+        return source.readConversationPage(sessionId, before, limit);
+      }
+      const rawLimit = Math.min(limit * 5, 100);
+      const page = await source.readConversationPage(sessionId, before, rawLimit);
+      const filtered = filterConversationMessages(page.messages, mode);
+      const messages = filtered.slice(-limit);
+      let nextBefore = page.nextBefore;
+      if (filtered.length > limit && messages.length > 0) {
+        const firstReturnedIndex = page.messages.indexOf(messages[0]);
+        if (firstReturnedIndex > 0 && before !== null) {
+          nextBefore = before;
+        } else if (firstReturnedIndex > 0) {
+          // First page (before=null): use the raw page cursor but signal
+          // there are more filtered messages to fetch.
+          nextBefore = page.nextBefore ?? String(firstReturnedIndex);
+        }
+      }
+      return {
+        messages,
+        nextBefore,
+        summary: page.summary,
+      };
+    },
     ...(source.searchConversation
       ? {
           searchConversation: source.searchConversation,

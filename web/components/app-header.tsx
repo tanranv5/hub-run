@@ -2,6 +2,9 @@ import { LogOut, Menu, RefreshCw, Moon, Sun, Monitor } from "lucide-react";
 import type { ProviderSummary } from "../../api/types";
 import { useTheme, type ThemeMode } from "../hooks/use-theme";
 
+const HEADER_ICON_BUTTON_CLASS = "inline-flex h-8 w-8 items-center justify-center rounded-md border border-bdr bg-surface text-txt transition hover:bg-surface-hover";
+const HEADER_ICON_BUTTON_DISABLED_CLASS = `${HEADER_ICON_BUTTON_CLASS} disabled:cursor-not-allowed disabled:opacity-60`;
+
 interface AppHeaderProps {
   authEnabled: boolean;
   provider: ProviderSummary | null;
@@ -58,11 +61,11 @@ function HeaderActions(props: HeaderActionsProps) {
   const { authEnabled, refreshing, onLogout, onRefresh, theme, onToggleTheme } = props;
 
   return (
-    <div className="flex shrink-0 items-center gap-2">
+    <div className="flex shrink-0 items-center gap-1.5 md:gap-2">
       <button
         type="button"
         onClick={onToggleTheme}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-bdr bg-surface text-txt transition hover:bg-surface-hover"
+        className={HEADER_ICON_BUTTON_CLASS}
         title={`切换主题 (当前: ${theme})`}
         aria-label="切换主题"
       >
@@ -75,20 +78,19 @@ function HeaderActions(props: HeaderActionsProps) {
         aria-busy={refreshing}
         aria-label={refreshing ? "刷新中" : "刷新消息"}
         title={refreshing ? "刷新中..." : "刷新消息"}
-        className="inline-flex h-8 items-center gap-2 rounded-md border border-bdr bg-surface px-3 text-sm text-txt transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
+        className={HEADER_ICON_BUTTON_DISABLED_CLASS}
       >
         <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-        <span className="hidden sm:inline">{refreshing ? "刷新中" : "刷新消息"}</span>
       </button>
       {authEnabled ? (
         <button
           type="button"
           onClick={onLogout}
           aria-label="退出"
-          className="inline-flex h-8 items-center gap-2 rounded-md border border-bdr bg-surface px-3 text-sm text-txt transition hover:bg-surface-hover"
+          title="退出"
+          className={HEADER_ICON_BUTTON_CLASS}
         >
           <LogOut className="h-4 w-4" />
-          <span className="hidden sm:inline">退出</span>
         </button>
       ) : null}
     </div>
@@ -110,19 +112,19 @@ export default function AppHeader(props: AppHeaderProps) {
 
   return (
     <header className="flex-none border-b border-bdr bg-panel/80 backdrop-blur">
-      <div className="flex w-full items-center justify-between gap-3 px-3 py-2 md:px-5 md:py-3 lg:px-6">
-        <div className="flex min-w-0 items-center gap-3">
+      <div className="flex w-full items-center justify-between gap-2 px-2.5 py-1.5 md:gap-3 md:px-5 md:py-3 lg:px-6">
+        <div className="flex min-w-0 items-center gap-2 md:gap-3">
           <button
             type="button"
             onClick={onOpenBrowser}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-bdr bg-surface text-txt transition hover:bg-surface-hover lg:hidden"
+            className={`${HEADER_ICON_BUTTON_CLASS} lg:hidden`}
             aria-label="打开会话面板"
           >
             <Menu className="h-4 w-4" />
           </button>
           <div className="min-w-0">
             <div className="flex items-center gap-3">
-              <h1 className="truncate text-lg font-bold tracking-wide text-txt md:text-xl">
+              <h1 className="truncate text-sm font-bold tracking-wide text-txt md:text-xl">
                 Hub-Run
               </h1>
               <ProviderSelect

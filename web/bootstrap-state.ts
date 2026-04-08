@@ -35,7 +35,10 @@ export async function bootstrapApp(
 ) {
   setBootstrap((current) => ({ ...current, loading: true, error: null }));
   try {
-    const auth = await getAuthStatus();
+    const [auth, providers] = await Promise.all([
+      getAuthStatus(),
+      getProviders().catch(() => [] as ProviderSummary[]),
+    ]);
     if (auth.authEnabled && !auth.authenticated) {
       setBootstrap((current) => ({
         ...current,
@@ -47,9 +50,17 @@ export async function bootstrapApp(
       return;
     }
 
-    setBootstrap((current) => ({ ...current, auth }));
-    await refreshProviders(setBootstrap);
-    setBootstrap((current) => ({ ...current, loading: false }));
+    setBootstrap((current) => ({
+      ...current,
+      auth,
+      providers,
+      selectedProviderId:
+        current.selectedProviderId &&
+        providers.some((p) => p.id === current.selectedProviderId)
+          ? current.selectedProviderId
+          : findDefaultProvider(providers),
+      loading: false,
+    }));
   } catch (cause) {
     setBootstrap((current) => ({
       ...current,

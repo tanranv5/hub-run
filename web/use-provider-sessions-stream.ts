@@ -79,9 +79,26 @@ export function shouldConnectSessionsStream(
 
 export function readSessionsStreamState(browser: BrowserState) {
   return {
-    loaded: browser.sessions.length,
+    loaded: resolveLoadedSessionsCount(browser),
     hasDraftSession: browser.sessions.some((session) => session.isDraft),
   };
+}
+
+function resolveLoadedSessionsCount(browser: BrowserState) {
+  if (browser.nextBefore) {
+    const parsed = Number.parseInt(browser.nextBefore, 10);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+  if (
+    typeof browser.totalSessionCount === "number" &&
+    Number.isFinite(browser.totalSessionCount) &&
+    browser.totalSessionCount > 0
+  ) {
+    return browser.totalSessionCount;
+  }
+  return Math.max(1, browser.sessions.length);
 }
 
 function connectSessionsStream(props: {

@@ -1,6 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import type { ConversationMessage, ProviderId } from "../api/types";
-import { sanitizeConversationText } from "../api/providers/display-text";
+import type { ConversationMessage, ConversationSearchMode, ProviderId } from "../api/types";
 import {
   sameThreadState,
   sameUserInputRequests,
@@ -15,6 +14,7 @@ import {
   hasConversationChanged,
   isLocalTerminalStatusMessage,
   isOptimisticUserMessage,
+  preserveUnacknowledgedOptimisticMessages,
   stripRedundantLocalTerminalStatusMessages,
 } from "./conversation-panel-state-helpers";
 import type {
@@ -22,10 +22,6 @@ import type {
   PanelState,
 } from "./conversation-panel-state-types";
 import { INITIAL_PANEL_STATE } from "./conversation-panel-state-types";
-
-function normalizeUserMessageText(text: string): string {
-  return sanitizeConversationText(text);
-}
 
 export const PANEL_REFRESH_INTERVAL_MS = 1_200;
 const STALE_STREAM_ACTIVITY_MS = PANEL_REFRESH_INTERVAL_MS;
@@ -66,9 +62,15 @@ export function mergePolledPanelState(props: {
   );
   const nextBufferedWindow = buildBufferedConversationWindow(nextMessages, nextState);
   const conversationChanged = hasConversationChanged(current.messages, nextMessages);
-  if (isPollStateUnchanged(current, nextState, runtimeMerged, conversationChanged)) {
+  if (isPollStateUnchanged(current, nextState, runtimeMerged, conversationChanged, nextMessages)) {
     return current;
   }
+
+  const keepLoading =
+    current.loading &&
+    current.streamStatus.phase !== "live" &&
+    !conversationChanged &&
+    !hasConversationLoadEvidence(nextMessages, runtimeMerged.threadState);
 
   return {
     ...runtimeMerged,
@@ -77,7 +79,7 @@ export function mergePolledPanelState(props: {
     summary: current.messageWindowFrozen ? current.summary : nextState.summary,
     streamOffset: nextState.streamOffset ?? current.streamOffset,
     streamStatus: current.streamStatus,
-    loading: false,
+    loading: keepLoading,
     loadingOlder: false,
     error: null,
     pendingTerminalSyncTurnId: null,
@@ -91,6 +93,7 @@ export function mergePolledPanelState(props: {
 
 export async function pollLatestConversation(props: {
   includeRuntime?: boolean;
+  mode?: ConversationSearchMode;
   providerId: ProviderId;
   sessionId: string;
   setState: Dispatch<SetStateAction<PanelState>>;
@@ -98,14 +101,15 @@ export async function pollLatestConversation(props: {
 }) {
   const {
     includeRuntime = true,
+    mode,
     providerId,
     sessionId,
     setState,
     shouldAbort,
   } = props;
   const nextState = includeRuntime
-    ? await loadInitialPage(providerId, sessionId)
-    : await loadConversationPageState(providerId, sessionId);
+    ? await loadInitialPage(providerId, sessionId, { mode })
+    : await loadConversationWindow(providerId, sessionId, mode);
   if (shouldAbort()) {
     return;
   }
@@ -123,13 +127,6 @@ export async function pollLatestConversation(props: {
       providerId,
     });
   });
-}
-
-async function loadConversationPageState(
-  providerId: ProviderId,
-  sessionId: string,
-) {
-  return loadConversationWindow(providerId, sessionId);
 }
 
 export function shouldRefreshConversationDuringRuntime(props: {
@@ -166,6 +163,7 @@ function isPollStateUnchanged(
   nextState: PanelState,
   runtimeMerged: PanelState,
   conversationChanged: boolean,
+  nextMessages: ConversationMessage[],
 ): boolean {
   return (
     !current.loading &&
@@ -188,7 +186,7 @@ function isPollStateUnchanged(
     sameBufferedConversationWindow(
       current.bufferedConversationWindow,
       current.messageWindowFrozen
-        ? buildBufferedConversationWindow(resolvePolledMessages(current, nextState), nextState)
+        ? buildBufferedConversationWindow(nextMessages, nextState)
         : null,
     )
   );
@@ -208,11 +206,7 @@ function resolvePolledMessages(
   }
 
   const baseMessages = current.bufferedConversationWindow?.messages ?? current.messages;
-  const optimisticMessages = baseMessages.filter(isOptimisticUserMessage);
-  if (optimisticMessages.length === 0) {
-    return nextState.messages;
-  }
-  return optimisticMessages.reduce(preservePolledOptimisticMessage, nextState.messages);
+  return preserveUnacknowledgedOptimisticMessages(baseMessages, nextState.messages);
 }
 
 function hasRuntimeRefreshWork(current: PanelState) {
@@ -221,16 +215,6 @@ function hasRuntimeRefreshWork(current: PanelState) {
     current.pendingUserInputRequests.length > 0 ||
     current.pendingTerminalSyncTurnId !== null
   );
-}
-
-function preservePolledOptimisticMessage(
-  messages: ConversationMessage[],
-  optimisticMessage: ConversationMessage,
-) {
-  if (hasAcknowledgedPolledUserMessage(messages, optimisticMessage)) {
-    return messages;
-  }
-  return insertBeforeTrailingTaskStartedStatuses(messages, optimisticMessage);
 }
 
 function buildBufferedConversationWindow(
@@ -261,7 +245,7 @@ function mergeTerminalStatusMessages(
 
 function buildConversationOnlyPollState(
   current: PanelState,
-  nextState: Awaited<ReturnType<typeof loadConversationPageState>>,
+  nextState: Awaited<ReturnType<typeof loadConversationWindow>>,
 ): PanelState {
   return {
     ...INITIAL_PANEL_STATE,
@@ -277,56 +261,30 @@ function sameBufferedConversationWindow(
   current: BufferedConversationWindow | null,
   next: BufferedConversationWindow | null,
 ) {
-  return JSON.stringify(current) === JSON.stringify(next);
+  if (current === next) return true;
+  if (!current || !next) return false;
+  return current.messages === next.messages &&
+    current.nextBefore === next.nextBefore &&
+    current.streamOffset === next.streamOffset &&
+    (current.summary?.id ?? "") === (next.summary?.id ?? "") &&
+    (current.summary?.text ?? "") === (next.summary?.text ?? "");
 }
 
-function hasAcknowledgedPolledUserMessage(
+function hasConversationLoadEvidence(
   messages: ConversationMessage[],
-  optimisticMessage: ConversationMessage,
+  threadState: PanelState["threadState"],
 ) {
-  const optimisticTime = readMessageTime(optimisticMessage);
-  const optimisticKey = normalizeUserMessageText(optimisticMessage.text);
-  return messages.some((message) =>
-    message.role === "user" &&
-    message.kind === "text" &&
-    !isOptimisticUserMessage(message) &&
-    normalizeUserMessageText(message.text) === optimisticKey &&
-    (optimisticTime === null ||
-      readMessageTime(message) === null ||
-      (readMessageTime(message) as number) >= optimisticTime)
+  return messages.some((m) => {
+    if (m.role === "assistant") return true;
+    return (m.role === "user" || m.role === "system") && m.text.trim().length > 0;
+  }) || Boolean(
+    threadState && (
+      threadState.activeTurnId ||
+      threadState.isGenerating ||
+      threadState.requestedTurnId ||
+      threadState.requestedTurnStatus ||
+      threadState.stalled ||
+      threadState.desynced
+    ),
   );
-}
-
-function insertBeforeTrailingTaskStartedStatuses(
-  messages: ConversationMessage[],
-  optimisticMessage: ConversationMessage,
-) {
-  const insertionIndex = findTrailingTaskStartedStart(messages);
-  return [
-    ...messages.slice(0, insertionIndex),
-    optimisticMessage,
-    ...messages.slice(insertionIndex),
-  ];
-}
-
-function findTrailingTaskStartedStart(messages: ConversationMessage[]) {
-  let index = messages.length;
-  while (index > 0 && isTaskStartedStatusMessage(messages[index - 1] as ConversationMessage)) {
-    index -= 1;
-  }
-  return index;
-}
-
-function isTaskStartedStatusMessage(message: ConversationMessage) {
-  return message.role === "system" &&
-    message.title === "status" &&
-    /^任务已开始/.test(message.text);
-}
-
-function readMessageTime(message: ConversationMessage): number | null {
-  if (!message.timestamp) {
-    return null;
-  }
-  const parsed = Date.parse(message.timestamp);
-  return Number.isFinite(parsed) ? parsed : null;
 }

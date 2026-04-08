@@ -4,21 +4,18 @@ import type {
   ProviderConversationStreamSnapshot,
   ProviderId,
 } from "../api/types";
-import { sanitizeConversationText } from "../api/providers/display-text";
 import type {
   BufferedConversationWindow,
   PanelState,
 } from "./conversation-panel-state-types";
 import {
+  dropAcknowledgedOptimisticUserMessages,
   isOptimisticUserMessage,
+  isTaskStartedStatusMessage,
+  preserveUnacknowledgedOptimisticMessages,
   stripRedundantLocalTerminalStatusMessages,
 } from "./conversation-panel-state-helpers";
 import { createLiveRealtimeStreamStatus } from "./realtime-stream-status";
-import { isSendLifecycleActive } from "./conversation-send-state";
-
-function normalizeUserMessageText(text: string): string {
-  return sanitizeConversationText(text);
-}
 
 export function buildConversationStreamUrl(
   providerId: ProviderId,
@@ -58,7 +55,7 @@ function mergeSnapshotMessages(
 ) {
   const normalizedSnapshot = normalizeConversationMessages(snapshotMessages);
   const mergedSnapshot = mergeSnapshotBaseMessages(currentMessages, normalizedSnapshot);
-  return preserveOptimisticUserMessages(currentMessages, mergedSnapshot);
+  return preserveUnacknowledgedOptimisticMessages(currentMessages, mergedSnapshot);
 }
 
 function mergeSnapshotBaseMessages(
@@ -92,9 +89,8 @@ export function applyConversationDelta(
     baseMessages,
     normalizeConversationMessages(update.messages),
   );
-  const sendActive = current.sendLifecycle && isSendLifecycleActive(current.sendLifecycle);
   const messages = stripRedundantLocalTerminalStatusMessages(
-    sendActive ? appended : dropAcknowledgedOptimisticMessages(appended),
+    dropAcknowledgedOptimisticUserMessages(appended),
   );
   return applyLatestConversationWindow(current, {
     ...getLatestConversationWindow(current),
@@ -130,51 +126,6 @@ function appendUnseenMessages(
     return currentMessages;
   }
   return [...currentMessages, ...appended];
-}
-
-function preserveOptimisticUserMessages(
-  currentMessages: ConversationMessage[],
-  nextMessages: ConversationMessage[],
-) {
-  const optimisticMessages = currentMessages.filter(isOptimisticUserMessage);
-  if (optimisticMessages.length === 0) {
-    return nextMessages;
-  }
-
-  return optimisticMessages.reduce((messages, optimisticMessage) => {
-    if (hasAcknowledgedUserMessage(messages, optimisticMessage)) {
-      return messages;
-    }
-    return insertBeforeTrailingTaskStartedStatuses(messages, optimisticMessage);
-  }, nextMessages);
-}
-
-function dropAcknowledgedOptimisticMessages(messages: ConversationMessage[]) {
-  const acknowledgedIndexes = new Set<number>();
-  const pendingByText = new Map<string, number[]>();
-
-  messages.forEach((message, index) => {
-    if (isOptimisticUserMessage(message)) {
-      const key = normalizeUserMessageText(message.text);
-      const pending = pendingByText.get(key) ?? [];
-      pending.push(index);
-      pendingByText.set(key, pending);
-      return;
-    }
-    if (!isAcknowledgingUserMessage(message)) {
-      return;
-    }
-    const pending = pendingByText.get(normalizeUserMessageText(message.text));
-    if (!pending || pending.length === 0) {
-      return;
-    }
-    acknowledgedIndexes.add(pending.shift() as number);
-  });
-
-  if (acknowledgedIndexes.size === 0) {
-    return messages;
-  }
-  return messages.filter((_, index) => !acknowledgedIndexes.has(index));
 }
 
 function normalizeConversationMessages(messages: ConversationMessage[]) {
@@ -245,55 +196,6 @@ function getLatestConversationWindow(current: PanelState): BufferedConversationW
   };
 }
 
-function hasAcknowledgedUserMessage(
-  messages: ConversationMessage[],
-  optimisticMessage: ConversationMessage,
-) {
-  const optimisticTime = readMessageTime(optimisticMessage);
-  const optimisticKey = normalizeUserMessageText(optimisticMessage.text);
-  return messages.some((message) =>
-    isAcknowledgingUserMessage(message) &&
-    normalizeUserMessageText(message.text) === optimisticKey &&
-    (optimisticTime === null ||
-      readMessageTime(message) === null ||
-      (readMessageTime(message) as number) >= optimisticTime)
-  );
-}
-
-function insertBeforeTrailingTaskStartedStatuses(
-  messages: ConversationMessage[],
-  optimisticMessage: ConversationMessage,
-) {
-  const insertionIndex = findTrailingTaskStartedStart(messages);
-  return [
-    ...messages.slice(0, insertionIndex),
-    optimisticMessage,
-    ...messages.slice(insertionIndex),
-  ];
-}
-
-function findTrailingTaskStartedStart(messages: ConversationMessage[]) {
-  let index = messages.length;
-  while (index > 0 && isTaskStartedStatusMessage(messages[index - 1] as ConversationMessage)) {
-    index -= 1;
-  }
-  return index;
-}
-
 function isAcknowledgingUserMessage(message: ConversationMessage) {
   return message.role === "user" && message.kind === "text" && !isOptimisticUserMessage(message);
-}
-
-function isTaskStartedStatusMessage(message: ConversationMessage) {
-  return message.role === "system" &&
-    message.title === "status" &&
-    /^任务已开始/.test(message.text);
-}
-
-function readMessageTime(message: ConversationMessage): number | null {
-  if (!message.timestamp) {
-    return null;
-  }
-  const parsed = Date.parse(message.timestamp);
-  return Number.isFinite(parsed) ? parsed : null;
 }

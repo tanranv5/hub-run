@@ -1,12 +1,22 @@
-export function ErrorBanner(props: { message: string | null }) {
-  const { message } = props;
+export function ErrorBanner(props: { message: string | null; onDismiss?: () => void }) {
+  const { message, onDismiss } = props;
   if (!message) {
     return null;
   }
 
   return (
-    <div className="mb-4 rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:text-rose-100">
-      {message}
+    <div className="mb-4 flex items-start gap-2 rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:text-rose-100">
+      <span className="min-w-0 flex-1">{message}</span>
+      {onDismiss ? (
+        <button
+          type="button"
+          aria-label="关闭错误提示"
+          onClick={onDismiss}
+          className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition hover:bg-rose-500/15"
+        >
+          ×
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -42,7 +52,7 @@ export function BlockingScreenOverlay(props: {
   description?: string;
   label: string;
 }) {
-  const { description = "切换 Provider，页面暂时不可操作。", label } = props;
+  const { description = "页面暂时不可操作，请稍候。", label } = props;
 
   return (
     <div

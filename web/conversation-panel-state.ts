@@ -2,12 +2,12 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { MutableRefObject } from "react";
 import type {
   ConversationLocateResult,
+  ConversationSearchMode,
   ProviderUserInputRequest,
   SendImageInput,
   SendMessageInput,
   SessionSummary,
 } from "../api/types";
-import { interruptProviderSession } from "./api";
 import {
   bootstrapConversationPanel,
   type SessionIdentity,
@@ -21,12 +21,14 @@ import { useConversationRuntimeStream } from "./use-conversation-runtime-stream"
 import { isDraftSession } from "./draft-session";
 import {
   getErrorMessage,
+  loadInitialPage,
   loadOlderMessages,
   loadOlderMessagesUntilStart,
 } from "./conversation-panel-state-ops";
 import { interruptConversationTurn } from "./conversation-panel-interrupt";
 import {
   PANEL_REFRESH_INTERVAL_MS,
+  mergePolledPanelState,
   pollLatestConversation,
   shouldRefreshConversationDuringRuntime,
 } from "./conversation-panel-poll-state";
@@ -54,6 +56,7 @@ function readCurrentConversationWindow(state: PanelState): BufferedConversationW
 }
 
 export function useConversationPanelState(props: {
+  messageViewModeRef?: MutableRefObject<ConversationSearchMode>;
   providerId: "codex" | "claude" | null;
   refreshVersion: number;
   sessionCacheRef: MutableRefObject<Map<string, SessionPanelCacheEntry>>;
@@ -63,6 +66,7 @@ export function useConversationPanelState(props: {
   onMessageSent: (sessionId: string, initialDisplay?: string | null) => Promise<void>;
 }) {
   const {
+    messageViewModeRef,
     onMessageSent,
     providerId,
     refreshVersion,
@@ -109,6 +113,7 @@ export function useConversationPanelState(props: {
     setImages([]);
     bootstrapConversationPanel({
       generationRef,
+      messageViewMode: messageViewModeRef?.current,
       previousSessionRef,
       providerId,
       session,
@@ -135,6 +140,7 @@ export function useConversationPanelState(props: {
 
     const poll = () => {
       pollLatestConversation({
+        mode: messageViewModeRef?.current,
         providerId,
         sessionId: session.id,
         setState,
@@ -199,6 +205,7 @@ export function useConversationPanelState(props: {
 
       pollLatestConversation({
         includeRuntime: false,
+        mode: messageViewModeRef?.current,
         providerId,
         sessionId: session.id,
         setState,
@@ -254,6 +261,7 @@ export function useConversationPanelState(props: {
       olderLoadCount: current.olderLoadCount + 1,
     }));
     await loadOlderMessages({
+      mode: messageViewModeRef?.current,
       nextBefore: state.nextBefore,
       providerId,
       sessionId: session.id,
@@ -271,6 +279,7 @@ export function useConversationPanelState(props: {
       messageWindowFrozen: true,
     }));
     await loadOlderMessagesUntilStart({
+      mode: messageViewModeRef?.current,
       nextBefore: state.nextBefore,
       providerId,
       sessionId: session.id,
@@ -362,12 +371,36 @@ export function useConversationPanelState(props: {
     });
   }
 
+  async function handleRefreshConversation(mode?: ConversationSearchMode) {
+    if (!providerId || !session || isDraftSession(session)) {
+      return;
+    }
+    const generation = generationRef.current;
+    try {
+      const nextState = await loadInitialPage(providerId, session.id, { mode });
+      if (generation !== generationRef.current) {
+        return;
+      }
+      setState((current) =>
+        mergePolledPanelState({
+          current,
+          nextState,
+          now: Date.now(),
+          providerId,
+        })
+      );
+    } catch (cause) {
+      console.warn("Failed to refresh conversation while switching mode", cause);
+    }
+  }
+
   return {
     draft,
     hasOlderMessages,
     handleInterrupt,
     handleLoadOlder,
     handleLoadOlderToStart,
+    handleRefreshConversation,
     images,
     handleRespondUserInput,
     handleSend,

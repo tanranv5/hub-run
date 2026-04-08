@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import type { ProviderId } from "../api/types";
+import type { ConversationSearchMode, ProviderId } from "../api/types";
 import { getConversationPage } from "./api";
 import { getCodexSendStatus, loadRuntimeState } from "./conversation-panel-codex-runtime";
 import { appendMissingRuntimeTerminalStatusMessage } from "./conversation-panel-send";
@@ -34,16 +34,18 @@ export async function loadInitialPage(
   deps: {
     getPage?: typeof getConversationPage;
     loadRuntime?: typeof loadRuntimeState;
+    mode?: ConversationSearchMode;
     now?: () => number;
   } = {},
 ): Promise<PanelState> {
   const {
     getPage = getConversationPage,
     loadRuntime = loadRuntimeState,
+    mode,
     now = () => Date.now(),
   } = deps;
   const [page, runtime] = await Promise.all([
-    getPage(providerId, sessionId, null, PAGE_SIZE),
+    getPage(providerId, sessionId, null, PAGE_SIZE, mode),
     loadRuntime(providerId, sessionId),
   ]);
   const messages = appendMissingRuntimeTerminalStatusMessage(
@@ -73,8 +75,9 @@ export async function loadInitialPage(
 export async function loadConversationWindow(
   providerId: ProviderId,
   sessionId: string,
+  mode?: ConversationSearchMode,
 ) {
-  const page = await getConversationPage(providerId, sessionId, null, PAGE_SIZE);
+  const page = await getConversationPage(providerId, sessionId, null, PAGE_SIZE, mode);
   return {
     messages: page.messages,
     nextBefore: page.nextBefore,
@@ -83,16 +86,17 @@ export async function loadConversationWindow(
 }
 
 export async function loadOlderMessages(props: {
+  mode?: ConversationSearchMode;
   nextBefore: string;
   providerId: ProviderId;
   sessionId: string;
   setState: Dispatch<SetStateAction<PanelState>>;
 }) {
-  const { nextBefore, providerId, sessionId, setState } = props;
+  const { mode, nextBefore, providerId, sessionId, setState } = props;
   setState((current) => ({ ...current, loadingOlder: true, error: null }));
 
   try {
-    const page = await getConversationPage(providerId, sessionId, nextBefore, PAGE_SIZE);
+    const page = await getConversationPage(providerId, sessionId, nextBefore, PAGE_SIZE, mode);
     setState((current) => applyOlderPage(current, page, false));
   } catch (cause) {
     setState((current) => ({
@@ -105,6 +109,7 @@ export async function loadOlderMessages(props: {
 
 export async function loadOlderMessagesUntilStart(props: {
   loadPage?: ConversationPageLoader;
+  mode?: ConversationSearchMode;
   nextBefore: string;
   providerId: ProviderId;
   sessionId: string;
@@ -112,6 +117,7 @@ export async function loadOlderMessagesUntilStart(props: {
 }) {
   const {
     loadPage = getConversationPage,
+    mode,
     nextBefore,
     providerId,
     sessionId,
@@ -122,7 +128,7 @@ export async function loadOlderMessagesUntilStart(props: {
   try {
     let cursor: string | null = nextBefore;
     while (cursor) {
-      const page = await loadPage(providerId, sessionId, cursor, PAGE_SIZE);
+      const page = await loadPage(providerId, sessionId, cursor, PAGE_SIZE, mode);
       cursor = page.nextBefore;
       setState((current) => applyOlderPage(current, page, cursor !== null));
     }

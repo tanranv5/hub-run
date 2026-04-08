@@ -168,7 +168,7 @@ function EmptyState(props: { loading: boolean }) {
 
   return (
     <div className="flex flex-1 items-center justify-center p-5 text-sm text-muted">
-      {loading ? "正在加载..." : "暂无会话。"}
+      {loading ? "正在加载..." : "暂无会话记录，创建一个新会话开始吧"}
     </div>
   );
 }

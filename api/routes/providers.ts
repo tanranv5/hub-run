@@ -214,6 +214,25 @@ export function createProvidersRouter(
     return c.json({ models: await adapter.listModels() });
   });
 
+  router.get("/:providerId/init", async (c) => {
+    const adapter = findAdapter(registry, c.req.param("providerId"));
+    if (!adapter) {
+      return c.json({ error: { code: "INTERNAL_ERROR", message: "Provider not found" } }, 404);
+    }
+    const summary = getProviderSummary(adapter);
+    const [sessions, projects, models] = await Promise.all([
+      adapter.listSessions().then((all) => {
+        const filtered = filterSessionsByProject(all, c.req.query("project"));
+        return paginateSessions(filtered, null, parseLimit(c.req.query("limit")));
+      }),
+      adapter.listProjects(),
+      summary.capabilities.modelSelection
+        ? adapter.listModels()
+        : Promise.resolve([]),
+    ]);
+    return c.json({ sessions, projects, models });
+  });
+
   router.post("/:providerId/sessions", async (c) => {
     const rejected = rejectInvalidWriteOrigin(c, config);
     if (rejected) {
@@ -298,6 +317,7 @@ export function createProvidersRouter(
         c.req.param("sessionId"),
         c.req.query("before") ?? null,
         parseLimit(c.req.query("limit")),
+        parseSearchMode(c.req.query("mode")),
       );
       return c.json(page);
     } catch (error) {

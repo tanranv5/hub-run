@@ -323,6 +323,61 @@ test("poll merge drops optimistic user message once the server confirms it even 
   );
 });
 
+test("poll merge drops optimistic image once the server confirms the same image block", () => {
+  const current = {
+    ...createAcceptedPanelState(),
+    messages: [
+      BASE_MESSAGE,
+      {
+        id: "optimistic-user:2000:image:0",
+        role: "user" as const,
+        kind: "image" as const,
+        text: "shot.png",
+        timestamp: "2026-03-20T12:00:02.000Z",
+        block: {
+          type: "image" as const,
+          imageUrl: "data:image/png;base64,AAAA",
+        },
+      },
+    ],
+  };
+  const merged = mergePolledPanelState({
+    current,
+    nextState: {
+      ...INITIAL_PANEL_STATE,
+      messages: [
+        BASE_MESSAGE,
+        {
+          id: "user-image-2",
+          role: "user" as const,
+          kind: "image" as const,
+          text: "",
+          timestamp: "2026-03-20T12:00:03.000Z",
+          block: {
+            type: "image" as const,
+            imageUrl: "data:image/png;base64,AAAA",
+          },
+        },
+        {
+          id: "status-1",
+          role: "system" as const,
+          kind: "text" as const,
+          title: "status",
+          text: "任务已开始（turn=turn-1）。",
+          timestamp: "2026-03-20T12:00:04.000Z",
+        },
+      ],
+    } as PanelState,
+    providerId: "codex",
+    now: 1_760,
+  });
+
+  assert.deepEqual(
+    merged.messages.map((message) => message.id),
+    [BASE_MESSAGE.id, "user-image-2", "status-1"],
+  );
+});
+
 test("poll merge buffers the latest window while history browsing is frozen", () => {
   const current = {
     ...createAcceptedPanelState(),
