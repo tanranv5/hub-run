@@ -160,3 +160,52 @@ test("loadInitialPage does not duplicate runtime completed status when task_comp
     ["msg-1", "status-complete-1"],
   );
 });
+
+test("loadInitialPage forwards mode to the page loader", async () => {
+  let capturedMode: string | undefined;
+
+  await loadInitialPage("codex", "thread-1", {
+    getPage: async (_providerId, _sessionId, _before, _limit, mode) => {
+      capturedMode = mode;
+      return {
+        messages: [],
+        nextBefore: null,
+        summary: null,
+      };
+    },
+    loadRuntime: async () => ({
+      pendingUserInputRequests: [],
+      threadState: null,
+    }),
+    mode: "text",
+  });
+
+  assert.equal(capturedMode, "text");
+});
+
+test("loadOlderMessagesUntilStart forwards mode to each page load", async () => {
+  const stateStore = createPanelStateStore({
+    ...INITIAL_PANEL_STATE,
+    messages: [],
+    nextBefore: "cursor-2",
+  });
+  const capturedModes: string[] = [];
+
+  await loadOlderMessagesUntilStart({
+    loadPage: async (_providerId, _sessionId, before, _limit, mode) => {
+      capturedModes.push(`${before}:${mode ?? "missing"}`);
+      return {
+        messages: [],
+        nextBefore: before === "cursor-2" ? "cursor-1" : null,
+        summary: null,
+      };
+    },
+    mode: "compact",
+    nextBefore: "cursor-2",
+    providerId: "codex",
+    sessionId: "thread-1",
+    setState: stateStore.setValue,
+  });
+
+  assert.deepEqual(capturedModes, ["cursor-2:compact", "cursor-1:compact"]);
+});

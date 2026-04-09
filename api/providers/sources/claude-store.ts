@@ -1,6 +1,7 @@
 import { mkdir, readFile, rename, writeFile } from "fs/promises";
 import { join } from "path";
 import {
+  filterConversationMessages,
   locateConversationMessages,
   searchConversationMessagePage,
   searchConversationMessages,
@@ -143,6 +144,7 @@ export function createClaudeSessionStore(rootPath: string) {
       sessionId: string,
       before: string | null,
       limit: number,
+      mode: ConversationSearchMode = "all",
     ): Promise<ConversationPage> => {
       const sessionFiles = await loadSessionFiles(state, projectsDir, historyPath);
       const sessionFile = sessionFiles.get(sessionId);
@@ -157,6 +159,7 @@ export function createClaudeSessionStore(rootPath: string) {
           sessionId,
           limit,
           summary,
+          mode,
         );
       }
 
@@ -168,6 +171,7 @@ export function createClaudeSessionStore(rootPath: string) {
           limit,
           cursor,
           summary,
+          mode,
         );
       }
       if (cursor?.kind === "prefix") {
@@ -177,13 +181,15 @@ export function createClaudeSessionStore(rootPath: string) {
           limit,
           cursor,
           summary,
+          mode,
         );
       }
 
       const conversation = await readFullConversation(sessionFile.filePath, sessionId);
+      const messages = filterByMode(conversation.messages, mode);
       return {
         ...paginateMessages(
-          conversation.messages,
+          messages,
           isNumericBeforeCursor(before) ? before : null,
           limit,
         ),
@@ -326,6 +332,13 @@ export function createClaudeSessionStore(rootPath: string) {
       state.snapshotCache.delete(sessionId);
     },
   };
+}
+
+function filterByMode(
+  messages: ConversationPage["messages"],
+  mode: ConversationSearchMode,
+) {
+  return mode === "all" ? messages : filterConversationMessages(messages, mode);
 }
 
 async function loadHistoryEntries(

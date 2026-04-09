@@ -1,4 +1,5 @@
-import type { ConversationPage } from "../../types";
+import { filterConversationMessages } from "../../conversation-search";
+import type { ConversationPage, ConversationSearchMode } from "../../types";
 import {
   encodeMessageWindowCursor,
   readJsonLinesFromOffset,
@@ -15,8 +16,9 @@ export async function readLatestClaudeConversationPage(
   sessionId: string,
   limit: number,
   summary: ConversationPage["summary"],
+  mode: ConversationSearchMode = "all",
 ): Promise<ConversationPage> {
-  const recent = await readRecentChunk(filePath, sessionId, limit);
+  const recent = await readRecentChunk(filePath, sessionId, limit, mode);
   const end = recent.messages.length;
   const start = Math.max(0, end - limit);
   return {
@@ -32,16 +34,18 @@ export async function readTailClaudeConversationPage(
   limit: number,
   cursor: { offset: number; before: number | null },
   summary: ConversationPage["summary"],
+  mode: ConversationSearchMode = "all",
 ): Promise<ConversationPage> {
   const lines = await readJsonLinesFromOffset(filePath, cursor.offset);
   const conversation = parseClaudeConversationEntries(lines, sessionId);
+  const messages = filterByMode(conversation.messages, mode);
   const end = Math.min(
-    cursor.before ?? conversation.messages.length,
-    conversation.messages.length,
+    cursor.before ?? messages.length,
+    messages.length,
   );
   const start = Math.max(0, end - limit);
   return {
-    messages: conversation.messages.slice(start, end),
+    messages: messages.slice(start, end),
     nextBefore: buildRecentNextBefore(cursor.offset, start),
     summary,
   };
@@ -53,13 +57,15 @@ export async function readPrefixClaudeConversationPage(
   limit: number,
   cursor: { offset: number; before: number | null },
   summary: ConversationPage["summary"],
+  mode: ConversationSearchMode = "all",
 ): Promise<ConversationPage> {
   const lines = await readJsonPrefixLines(filePath, cursor.offset);
   const conversation = parseClaudeConversationEntries(lines, sessionId);
-  const end = cursor.before ?? conversation.messages.length;
+  const messages = filterByMode(conversation.messages, mode);
+  const end = cursor.before ?? messages.length;
   const start = Math.max(0, end - limit);
   return {
-    messages: conversation.messages.slice(start, end),
+    messages: messages.slice(start, end),
     nextBefore:
       start > 0
         ? encodeMessageWindowCursor("prefix", cursor.offset, start)
@@ -89,6 +95,7 @@ async function readRecentChunk(
   filePath: string,
   sessionId: string,
   limit: number,
+  mode: ConversationSearchMode,
 ) {
   const targetMessages = Math.max(limit * RECENT_MESSAGE_MULTIPLIER, limit + 1);
   let lineCount = Math.max(RECENT_MIN_LINES, targetMessages * 8);
@@ -96,12 +103,20 @@ async function readRecentChunk(
   while (true) {
     const window = await readJsonTailWindow(filePath, lineCount);
     const conversation = parseClaudeConversationEntries(window.lines, sessionId);
-    if (conversation.messages.length >= targetMessages || window.exhausted) {
+    const messages = filterByMode(conversation.messages, mode);
+    if (messages.length >= targetMessages || window.exhausted) {
       return {
-        messages: conversation.messages,
+        messages,
         startOffset: window.startOffset,
       };
     }
     lineCount *= 2;
   }
+}
+
+function filterByMode(
+  messages: ConversationPage["messages"],
+  mode: ConversationSearchMode,
+) {
+  return mode === "all" ? messages : filterConversationMessages(messages, mode);
 }

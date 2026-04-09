@@ -26,6 +26,11 @@ export interface AuthStatus {
   authenticated: boolean;
 }
 
+export interface RuntimeHealth {
+  ok: boolean;
+  bootId: string | null;
+}
+
 interface ProvidersPayload {
   providers: ProviderSummary[];
 }
@@ -385,12 +390,34 @@ export async function interruptProviderSession(
 export async function restartHubRuntime(): Promise<{
   ok: boolean;
   restarting: boolean;
+  bootId: string | null;
 }> {
   const response = await fetch("/api/runtime/restart", {
     method: "POST",
     credentials: "include",
   });
-  return readJson<{ ok: boolean; restarting: boolean }>(response);
+  const payload = await readJson<{
+    ok: boolean;
+    restarting: boolean;
+    bootId?: string | null;
+  }>(response);
+  return {
+    ok: payload.ok,
+    restarting: payload.restarting,
+    bootId: typeof payload.bootId === "string" ? payload.bootId : null,
+  };
+}
+
+export async function getRuntimeHealth(): Promise<RuntimeHealth> {
+  const response = await fetch("/api/health", {
+    credentials: "include",
+    cache: "no-store",
+  });
+  const payload = await readJson<{ ok: boolean; bootId?: string | null }>(response);
+  return {
+    ok: payload.ok,
+    bootId: typeof payload.bootId === "string" ? payload.bootId : null,
+  };
 }
 
 export async function listProviderUserInputRequests(

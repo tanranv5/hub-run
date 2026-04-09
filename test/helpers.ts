@@ -6,3 +6,14 @@ export function readCookie(setCookie: string | null): string {
   const [cookie] = setCookie.split(";");
   return cookie;
 }
+
+export function restoreEnvVar(
+  name: string,
+  previousValue: string | undefined,
+): void {
+  if (previousValue === undefined) {
+    delete process.env[name];
+    return;
+  }
+  process.env[name] = previousValue;
+}

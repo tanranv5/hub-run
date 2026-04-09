@@ -167,7 +167,7 @@ function PathValidationHint(props: {
   }
   return (
     <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">
-      路径不存在，创建会话时将自动新建该目录
+      路径不存在，hub-run 不会自动创建该目录，请先手动创建
     </p>
   );
 }

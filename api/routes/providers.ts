@@ -311,13 +311,17 @@ export function createProvidersRouter(
     if (!adapter) {
       return c.json({ error: { code: "INTERNAL_ERROR", message: "Provider not found" } }, 404);
     }
+    const mode = parseSearchMode(c.req.query("mode"));
+    if (!mode) {
+      return c.json({ error: { code: "INTERNAL_ERROR", message: "mode is invalid" } }, 400);
+    }
 
     try {
       const page = await adapter.getConversationPage(
         c.req.param("sessionId"),
         c.req.query("before") ?? null,
         parseLimit(c.req.query("limit")),
-        parseSearchMode(c.req.query("mode")),
+        mode,
       );
       return c.json(page);
     } catch (error) {

@@ -1,4 +1,4 @@
-import { restartHubRuntime } from "./api";
+import { getRuntimeHealth, restartHubRuntime } from "./api";
 
 const DEFAULT_RUNTIME_HEALTH_INTERVAL_MS = 250;
 const DEFAULT_RUNTIME_HEALTH_TIMEOUT_MS = 15_000;
@@ -9,6 +9,7 @@ export async function waitForRuntimeHealth(props: {
   fetchImpl?: typeof fetch;
   initialDelayMs?: number;
   intervalMs?: number;
+  previousBootId?: string | null;
   timeoutMs?: number;
 } = {}): Promise<void> {
   const {
@@ -16,6 +17,7 @@ export async function waitForRuntimeHealth(props: {
     fetchImpl = fetch,
     initialDelayMs = DEFAULT_RUNTIME_HEALTH_INITIAL_DELAY_MS,
     intervalMs = DEFAULT_RUNTIME_HEALTH_INTERVAL_MS,
+    previousBootId = null,
     timeoutMs = DEFAULT_RUNTIME_HEALTH_TIMEOUT_MS,
   } = props;
 
@@ -31,7 +33,14 @@ export async function waitForRuntimeHealth(props: {
         credentials: "include",
       });
       if (response.ok) {
-        return;
+        const payload = (await response.json().catch(() => null)) as
+          | { bootId?: string | null }
+          | null;
+        const nextBootId =
+          typeof payload?.bootId === "string" ? payload.bootId : null;
+        if (!previousBootId || (nextBootId && nextBootId !== previousBootId)) {
+          return;
+        }
       }
     } catch {
       // runtime is still restarting — keep polling until timeout
@@ -44,16 +53,24 @@ export async function waitForRuntimeHealth(props: {
 
 export async function restartRuntimeAndRefresh(props: {
   refresh: () => Promise<void>;
+  readRuntimeHealth?: typeof getRuntimeHealth;
   restartRuntime?: typeof restartHubRuntime;
   waitForHealth?: typeof waitForRuntimeHealth;
 }) {
   const {
     refresh,
+    readRuntimeHealth = getRuntimeHealth,
     restartRuntime = restartHubRuntime,
     waitForHealth = waitForRuntimeHealth,
   } = props;
-  await restartRuntime();
-  await waitForHealth();
+  const initialHealth = await readRuntimeHealth().catch(() => ({
+    ok: false,
+    bootId: null,
+  }));
+  const restart = await restartRuntime();
+  await waitForHealth({
+    previousBootId: restart.bootId ?? initialHealth.bootId,
+  });
   await refresh();
 }
 

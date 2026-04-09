@@ -5,6 +5,7 @@ import type { AsrRegistry } from "./asr/types";
 import { createAuthGuard } from "./auth";
 import { createAsrRegistry } from "./asr/registry";
 import { createAsrService } from "./asr/service";
+import { RUNTIME_BOOT_ID } from "./runtime-boot";
 import { createRuntimeController, type RuntimeController } from "./runtime-control";
 import { createAuthRouter } from "./routes/auth";
 import { createAsrRouter } from "./routes/asr";
@@ -27,7 +28,7 @@ export function createApp(config: RuntimeConfig, dependencies: AppDependencies =
     dependencies.runtimeController ?? createRuntimeController();
   const authGuard = createAuthGuard(config);
 
-  app.get("/api/health", (c) => c.json({ ok: true }));
+  app.get("/api/health", (c) => c.json({ ok: true, bootId: RUNTIME_BOOT_ID }));
   app.route("/api/auth", createAuthRouter(config));
   app.use("/api/providers/*", authGuard);
   app.route("/api/providers", createProvidersRouter(providers, config));

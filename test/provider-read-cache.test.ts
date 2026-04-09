@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { createApp } from "../api/app";
 import { buildRuntimeConfig } from "../api/config";
-import { readCookie } from "./helpers";
+import { readCookie, restoreEnvVar } from "./helpers";
 
 async function login(app: ReturnType<typeof createApp>): Promise<string> {
   const response = await app.request("/api/auth/login", {
@@ -83,6 +83,7 @@ test("codex latest page uses opaque tail cursor for long session and supports ol
   }
   await writeFile(sessionFile, `${lines.join("\n")}\n`, "utf-8");
 
+  const previousHome = process.env.HOME;
   try {
     const app = createFixtureApp(homeDir);
     const cookie = await login(app);
@@ -108,6 +109,7 @@ test("codex latest page uses opaque tail cursor for long session and supports ol
     assert.equal(olderPayload.messages[0]?.text, "message-896");
     assert.equal(olderPayload.messages[1]?.text, "message-897");
   } finally {
+    restoreEnvVar("HOME", previousHome);
     await rm(homeDir, { recursive: true, force: true });
   }
 });
@@ -159,6 +161,7 @@ test("codex watcher invalidates cached session display after file change", async
 
   await writeSession("旧标题");
 
+  const previousHome = process.env.HOME;
   try {
     const app = createFixtureApp(homeDir);
     const cookie = await login(app);
@@ -178,6 +181,7 @@ test("codex watcher invalidates cached session display after file change", async
     const secondPayload = await secondResponse.json();
     assert.equal(secondPayload.sessions[0]?.display, "新标题");
   } finally {
+    restoreEnvVar("HOME", previousHome);
     await rm(homeDir, { recursive: true, force: true });
   }
 });

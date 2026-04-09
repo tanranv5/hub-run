@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { existsSync, statSync } from "node:fs";
 import { rejectInvalidWriteOrigin } from "../auth";
 import type { RuntimeConfig } from "../config";
+import { RUNTIME_BOOT_ID } from "../runtime-boot";
 import { RuntimeControllerError, type RuntimeController } from "../runtime-control";
 
 function buildRuntimeRestartError(error: unknown) {
@@ -42,7 +43,7 @@ export function createRuntimeRouter(
 
     try {
       await runtimeController.restart();
-      return c.json({ ok: true, restarting: true });
+      return c.json({ ok: true, restarting: true, bootId: RUNTIME_BOOT_ID });
     } catch (error) {
       const response = buildRuntimeRestartError(error);
       return c.json(response.payload, response.status);

@@ -7,6 +7,7 @@ import test from "node:test";
 import type { AsrRegistry } from "../api/asr/types";
 import { createApp } from "../api/app";
 import { buildRuntimeConfig, type HubRunOptions } from "../api/config";
+import { RUNTIME_BOOT_ID } from "../api/runtime-boot";
 import { RuntimeControllerError, type RuntimeController } from "../api/runtime-control";
 import type { ProviderAdapter, ProviderId } from "../api/types";
 import { readCookie } from "./helpers";
@@ -88,7 +89,11 @@ test("runtime restart route restarts the runtime for authenticated same-origin r
   });
 
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { ok: true, restarting: true });
+  assert.deepEqual(await response.json(), {
+    ok: true,
+    restarting: true,
+    bootId: RUNTIME_BOOT_ID,
+  });
   assert.equal(restartCalls, 1);
 });
 

@@ -1,6 +1,7 @@
 import { mkdir, readFile, rename, stat, writeFile } from "fs/promises";
 import { join } from "path";
 import {
+  filterConversationMessages,
   locateConversationMessages,
   searchConversationMessagePage,
   searchConversationMessages,
@@ -141,6 +142,7 @@ export function createCodexSessionStore(rootPath: string) {
       sessionId: string,
       before: string | null,
       limit: number,
+      mode: ConversationSearchMode = "all",
     ): Promise<ConversationPage> => {
       const sessionFiles = await loadSessionFiles(state, sessionsDir);
       const filePath = sessionFiles.get(sessionId)?.filePath;
@@ -149,18 +151,18 @@ export function createCodexSessionStore(rootPath: string) {
       }
 
       if (!before) {
-        return readLatestCodexConversationPage(filePath, sessionId, limit);
+        return readLatestCodexConversationPage(filePath, sessionId, limit, mode);
       }
 
       const cursor = parseMessageWindowCursor(before);
       if (cursor?.kind === "tail") {
-        return readTailCodexConversationPage(filePath, sessionId, limit, cursor);
+        return readTailCodexConversationPage(filePath, sessionId, limit, cursor, mode);
       }
       if (cursor?.kind === "prefix") {
-        return readPrefixCodexConversationPage(filePath, sessionId, limit, cursor);
+        return readPrefixCodexConversationPage(filePath, sessionId, limit, cursor, mode);
       }
 
-      const messages = await readCodexConversation(filePath, sessionId);
+      const messages = filterByMode(await readCodexConversation(filePath, sessionId), mode);
       return {
         ...paginateMessages(
           messages,
@@ -339,6 +341,13 @@ export function createCodexSessionStore(rootPath: string) {
       return filePath ? readFileSize(filePath) : 0;
     },
   };
+}
+
+function filterByMode(
+  messages: ConversationPage["messages"],
+  mode: ConversationSearchMode,
+) {
+  return mode === "all" ? messages : filterConversationMessages(messages, mode);
 }
 
 function readSessionTimestamp(
