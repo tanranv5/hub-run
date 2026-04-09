@@ -215,6 +215,7 @@ test("provider switch blocks the entire app instead of only the session list", (
     React.createElement(AppScreen as unknown as React.ComponentType<any>, {
       authEnabled: true,
       bootstrapError: null,
+      blockingOverlayDescription: "切换 Provider，页面暂时不可操作。",
       blockingOverlayLabel: "正在切换到 Claude...",
       browser: {
         sessions: [SESSION],
@@ -375,7 +376,8 @@ test("conversation panel keeps composer focused on send controls instead of prov
   assert.match(markup, /md:absolute md:right-3 md:top-3/);
   assert.match(markup, /aria-label="复制会话 ID"/);
   assert.match(markup, /data-slot="composer-actions"/);
-  assert.match(markup, /justify-end gap-2/);
+  assert.match(markup, /justify-end/);
+  assert.match(markup, /gap-1\.5 md:gap-2/);
   assert.match(markup, /ai软着，需要心理ai方面的源代码，是10号字70度斜体排版/);
   assert.match(markup, /hub-run/);
   assert.match(markup, /min-h-0 flex-1 flex-col/);
@@ -386,7 +388,7 @@ test("conversation panel keeps composer focused on send controls instead of prov
     markup,
     attribute: "title",
     value: "开始语音输入",
-    classFragment: "h-8 w-8",
+    classFragment: "h-7 w-7",
   });
 });
 

@@ -359,6 +359,7 @@ export interface ProviderAdapter {
   getConversationStream?(
     sessionId: string,
     offset: number,
+    mode?: ConversationSearchMode,
   ): Promise<ProviderConversationStreamChunk>;
   getConversationStreamCursor?(sessionId: string): Promise<number>;
 }

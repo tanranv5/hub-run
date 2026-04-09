@@ -71,7 +71,7 @@ test("bootstrapConversationPanel keeps optimistic send state when the initial re
     sessionId: string;
   } | null>;
   const stateRef = { current: INITIAL_PANEL_STATE } as MutableRefObject<PanelState>;
-  let loadPageArgCount = 0;
+  let loadPageArgs: unknown[] = [];
   const sessionCacheRef = {
     current: new Map<string, SessionPanelCacheEntry>([
       [
@@ -87,7 +87,7 @@ test("bootstrapConversationPanel keeps optimistic send state when the initial re
   bootstrapConversationPanel({
     generationRef,
     loadPage: async (...args) => {
-      loadPageArgCount = args.length;
+      loadPageArgs = args;
       return deferred.promise;
     },
     previousSessionRef,
@@ -99,19 +99,20 @@ test("bootstrapConversationPanel keeps optimistic send state when the initial re
   });
 
   assert.deepEqual(stateStore.read(), cachedState);
-  assert.equal(loadPageArgCount, 2);
+  assert.deepEqual(loadPageArgs, ["codex", SESSION.id, { mode: undefined }]);
+  const now = Date.now();
   const optimisticState = beginPanelSendLifecycle(
     {
       ...stateStore.read(),
       messages: appendOptimisticUserMessage(
         stateStore.read().messages,
         "刚刚补发的一条消息",
-        2_000,
+        now,
       ),
     },
     "codex",
     SESSION.id,
-    2_000,
+    now,
   );
   stateStore.setValue(optimisticState);
   stateRef.current = optimisticState;

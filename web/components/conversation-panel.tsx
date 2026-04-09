@@ -407,6 +407,9 @@ export default function ConversationPanel(props: ConversationPanelProps) {
   const messageViewModeRef = useRef<ConversationSearchMode>(
     storedReadingPreference?.messageViewMode ?? "all",
   );
+  const [messageViewMode, setMessageViewMode] = useState<ConversationSearchMode>(
+    storedReadingPreference?.messageViewMode ?? "all",
+  );
   const {
     contextDetails = null,
     contextLabel = null,
@@ -447,6 +450,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     state,
   } =
     useConversationPanelState({
+      messageViewMode,
       messageViewModeRef,
       providerId: provider?.id ?? null,
       refreshVersion,
@@ -458,9 +462,6 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     });
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [messageViewMode, setMessageViewMode] = useState<ConversationSearchMode>(
-    storedReadingPreference?.messageViewMode ?? "all",
-  );
   const [messageFontScale, setMessageFontScale] = useState(
     storedReadingPreference?.messageFontScale ?? DEFAULT_MESSAGE_FONT_SCALE,
   );

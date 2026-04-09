@@ -1,5 +1,6 @@
 import type {
   ConversationMessage,
+  ConversationSearchMode,
   ProviderConversationStreamChunk,
   ProviderConversationStreamSnapshot,
   ProviderId,
@@ -22,11 +23,15 @@ export function buildConversationStreamUrl(
   sessionId: string,
   limit: number,
   offset: number | null = null,
+  mode: ConversationSearchMode = "all",
 ) {
   const search = new URLSearchParams();
   search.set("limit", String(limit));
   if (typeof offset === "number" && Number.isFinite(offset) && offset > 0) {
     search.set("offset", String(offset));
+  }
+  if (mode !== "all") {
+    search.set("mode", mode);
   }
   return `/api/providers/${providerId}/sessions/${sessionId}/messages/stream?${search.toString()}`;
 }

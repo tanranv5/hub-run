@@ -48,6 +48,7 @@ test("voice input keeps latest transcript when final result arrives", () => {
     () => {
       stopReady = true;
     },
+    () => true,
   );
 
   assert.equal(readVoiceTranscript(transcriptBuffer), "识别完成");

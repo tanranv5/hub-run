@@ -24,7 +24,7 @@ import {
   type RuntimeManagerConfigFile,
   writeRuntimeConfig,
 } from "./runtime-manager-core";
-import { waitForHealth } from "./runtime-health";
+import { probeHealth, waitForHealth } from "./runtime-health";
 
 interface CliOptions {
   config?: string;
@@ -42,7 +42,7 @@ interface LoadedRuntime {
   instance: RuntimeInstanceConfig;
 }
 
-const HEALTH_ENDPOINT = "/api/auth/status";
+const HEALTH_ENDPOINT = "/api/health";
 const HEALTH_TIMEOUT_MS = 10_000;
 const HEALTH_INTERVAL_MS = 250;
 const HEALTH_REQUEST_TIMEOUT_MS = 1_000;
@@ -72,15 +72,29 @@ function getServiceTarget(label: string): string {
   return `gui/${process.getuid()}/${label}`;
 }
 
-async function waitForRuntimeHealth(host: string, port: number): Promise<void> {
+async function waitForRuntimeHealth(
+  host: string,
+  port: number,
+  previousBootId?: string | null,
+): Promise<void> {
   await waitForHealth({
     endpoint: HEALTH_ENDPOINT,
     host,
     intervalMs: HEALTH_INTERVAL_MS,
     port,
+    previousBootId,
     requestTimeoutMs: HEALTH_REQUEST_TIMEOUT_MS,
     timeoutMs: HEALTH_TIMEOUT_MS,
   });
+}
+
+async function readRuntimeBootId(host: string, port: number): Promise<string | null> {
+  const health = await probeHealth(
+    `http://${host}:${port}${HEALTH_ENDPOINT}`,
+    `http://${host}:${port}`,
+    HEALTH_REQUEST_TIMEOUT_MS,
+  );
+  return health.ok ? health.bootId : null;
 }
 
 function mergeConfig(
@@ -178,27 +192,30 @@ async function installRuntime(options: CliOptions): Promise<void> {
   await ensureRuntimeDirectories(homeDir);
   await writeRuntimeConfig(configPath, config);
   const plistPath = await writeLaunchAgent(homeDir, config, instance);
+  const previousBootId = await readRuntimeBootId(config.host, instance.port).catch(() => null);
   runCommandAllowFailure("launchctl", ["bootout", getServiceTarget(buildLaunchAgentLabel(instance))]);
   runCommand("launchctl", ["bootstrap", `gui/${process.getuid()}`, plistPath]);
-  await waitForRuntimeHealth(config.host, instance.port);
+  await waitForRuntimeHealth(config.host, instance.port, previousBootId);
 }
 
 async function startRuntime(options: CliOptions): Promise<void> {
   const loaded = await loadConfig(options);
   const label = buildLaunchAgentLabel(loaded.instance);
   const plistPath = await writeLaunchAgent(loaded.homeDir, loaded.config, loaded.instance);
+  const previousBootId = await readRuntimeBootId(loaded.config.host, loaded.instance.port).catch(() => null);
   if (runCommandAllowFailure("launchctl", ["print", getServiceTarget(label)])) {
     runCommand("launchctl", ["kickstart", "-k", getServiceTarget(label)]);
   } else {
     runCommand("launchctl", ["bootstrap", `gui/${process.getuid()}`, plistPath]);
   }
-  await waitForRuntimeHealth(loaded.config.host, loaded.instance.port);
+  await waitForRuntimeHealth(loaded.config.host, loaded.instance.port, previousBootId);
 }
 
 async function restartRuntime(options: CliOptions): Promise<void> {
   const loaded = await loadConfig(options);
   const label = buildLaunchAgentLabel(loaded.instance);
   await writeLaunchAgent(loaded.homeDir, loaded.config, loaded.instance);
+  const previousBootId = await readRuntimeBootId(loaded.config.host, loaded.instance.port).catch(() => null);
   if (runCommandAllowFailure("launchctl", ["print", getServiceTarget(label)])) {
     runCommand("launchctl", ["kickstart", "-k", getServiceTarget(label)]);
   } else {
@@ -208,7 +225,7 @@ async function restartRuntime(options: CliOptions): Promise<void> {
       getLaunchAgentPlistPath(loaded.homeDir, loaded.instance),
     ]);
   }
-  await waitForRuntimeHealth(loaded.config.host, loaded.instance.port);
+  await waitForRuntimeHealth(loaded.config.host, loaded.instance.port, previousBootId);
 }
 
 async function stopRuntime(options: CliOptions): Promise<void> {

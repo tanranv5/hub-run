@@ -3,7 +3,6 @@ import { join } from "path";
 import {
   filterConversationMessages,
   locateConversationMessages,
-  searchConversationMessagePage,
   searchConversationMessages,
 } from "../../conversation-search";
 import type {
@@ -30,6 +29,7 @@ import {
   readTailClaudeConversationPage,
 } from "./claude-conversation-pages";
 import { readConversationContextWindow } from "./conversation-context-window";
+import { readConversationSearchPage } from "./conversation-search-page";
 import {
   encodeProjectPath,
   readClaudeHistoryEntries,
@@ -233,12 +233,12 @@ export function createClaudeSessionStore(rootPath: string) {
           nextAnchor: null,
         };
       }
-      const messages = (await readFullConversation(sessionFile.filePath, sessionId)).messages;
-      return searchConversationMessagePage({
+      return readConversationSearchPage({
         anchor,
+        filePath: sessionFile.filePath,
         limit,
-        messages,
         mode,
+        parseMessages: (lines) => parseClaudeConversationEntries(lines, sessionId).messages,
         query,
         recentLimit,
       });

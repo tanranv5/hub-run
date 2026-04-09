@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type {
+  ConversationSearchMode,
   ProviderConversationStreamChunk,
   ProviderConversationStreamSnapshot,
   ProviderId,
@@ -28,19 +29,27 @@ const STREAM_PAGE_SIZE = 10;
 
 export function useConversationStream(props: {
   enabled: boolean;
+  messageViewMode?: ConversationSearchMode;
   providerId: ProviderId | null;
   refreshVersion?: number;
   sessionId: string | null;
   setState: Dispatch<SetStateAction<PanelState>>;
 }) {
-  const { enabled, providerId, refreshVersion = 0, sessionId, setState } = props;
+  const {
+    enabled,
+    messageViewMode = "all",
+    providerId,
+    refreshVersion = 0,
+    sessionId,
+    setState,
+  } = props;
   const offsetRef = useRef<number | null>(null);
   const lastActivityAtRef = useRef<number | null>(null);
 
   useEffect(() => {
     offsetRef.current = null;
     lastActivityAtRef.current = null;
-  }, [providerId, refreshVersion, sessionId]);
+  }, [messageViewMode, providerId, refreshVersion, sessionId]);
 
   useEffect(() => {
     if (!enabled || !providerId || !sessionId) {
@@ -52,6 +61,7 @@ export function useConversationStream(props: {
     }
 
     return connectConversationStream({
+      messageViewMode,
       providerId,
       readLastActivity: () => lastActivityAtRef.current,
       readOffset: () => offsetRef.current,
@@ -64,10 +74,11 @@ export function useConversationStream(props: {
       },
       setState,
     });
-  }, [enabled, providerId, refreshVersion, sessionId, setState]);
+  }, [enabled, messageViewMode, providerId, refreshVersion, sessionId, setState]);
 }
 
 function connectConversationStream(props: {
+  messageViewMode: ConversationSearchMode;
   providerId: ProviderId;
   readLastActivity: () => number | null;
   readOffset: () => number | null;
@@ -77,6 +88,7 @@ function connectConversationStream(props: {
   setState: Dispatch<SetStateAction<PanelState>>;
 }) {
   const {
+    messageViewMode,
     providerId,
     readLastActivity,
     readOffset,
@@ -111,6 +123,7 @@ function connectConversationStream(props: {
         sessionId,
         STREAM_PAGE_SIZE,
         readOffset(),
+        messageViewMode,
       ),
     );
     source.addEventListener("heartbeat", () => {

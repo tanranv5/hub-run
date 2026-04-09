@@ -53,6 +53,7 @@ export async function readConversationSearchPage(props: {
   mode: ConversationSearchMode;
   parseMessages: (lines: JsonlLine[]) => ConversationMessage[];
   query: string;
+  recentLimit?: number | null;
 }): Promise<ConversationSearchPageResult> {
   const {
     anchor,
@@ -61,6 +62,7 @@ export async function readConversationSearchPage(props: {
     mode,
     parseMessages,
     query,
+    recentLimit,
   } = props;
   if (!query.trim()) {
     return createEmptyPage(query, mode);
@@ -77,6 +79,7 @@ export async function readConversationSearchPage(props: {
       messages: parseMessages(window.lines),
       mode,
       query,
+      recentLimit,
     });
     if (page.hits.length >= limit || !hasMoreHits(page, window.exhausted)) {
       return page;

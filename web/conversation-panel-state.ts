@@ -56,6 +56,7 @@ function readCurrentConversationWindow(state: PanelState): BufferedConversationW
 }
 
 export function useConversationPanelState(props: {
+  messageViewMode?: ConversationSearchMode;
   messageViewModeRef?: MutableRefObject<ConversationSearchMode>;
   providerId: "codex" | "claude" | null;
   refreshVersion: number;
@@ -66,6 +67,7 @@ export function useConversationPanelState(props: {
   onMessageSent: (sessionId: string, initialDisplay?: string | null) => Promise<void>;
 }) {
   const {
+    messageViewMode,
     messageViewModeRef,
     onMessageSent,
     providerId,
@@ -96,6 +98,7 @@ export function useConversationPanelState(props: {
 
   useConversationStream({
     enabled: Boolean(streamAvailable && providerId && session && !isDraftSession(session)),
+    messageViewMode,
     providerId,
     refreshVersion,
     sessionId: session?.id ?? null,

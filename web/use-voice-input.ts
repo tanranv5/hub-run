@@ -32,6 +32,7 @@ interface VoiceInputController {
 }
 
 interface EventStreamState {
+  beginStop(): void;
   close(): void;
   getError(): string | null;
   getLatestText(): string;
@@ -290,6 +291,7 @@ async function createVoiceInputController(
     async stop() {
       await capture?.stop();
       await uploadQueue;
+      events.beginStop();
       await finishAsrSession(sessionId);
       await waitForStopReady(events);
       const error = events.getError();
@@ -314,6 +316,7 @@ function createEventStreamState(
   let transcriptBuffer = createVoiceTranscriptBuffer();
   let errorMessage: string | null = null;
   let stopReady = false;
+  let stopping = false;
   let terminal = false;
   let resolveStopReady: (() => void) | null = null;
   const stopReadyPromise = new Promise<void>((resolve) => {
@@ -345,6 +348,7 @@ function createEventStreamState(
           terminal = true;
         },
         markStopReady,
+        () => stopping,
       );
     },
     (message) => {
@@ -363,6 +367,9 @@ function createEventStreamState(
   );
 
   return {
+    beginStop() {
+      stopping = true;
+    },
     close() {
       source.close();
     },
@@ -386,6 +393,7 @@ export function consumeAsrEvent(
   isTerminal: () => boolean,
   markTerminal: () => void,
   markStopReady?: () => void,
+  shouldMarkStopReadyOnFinalResult?: () => boolean,
 ) {
   if (
     (event.type === "interim_result" || event.type === "final_result") &&
@@ -398,6 +406,9 @@ export function consumeAsrEvent(
         event.text,
       ),
     );
+  }
+  if (event.type === "final_result" && shouldMarkStopReadyOnFinalResult?.()) {
+    markStopReady?.();
   }
   if (event.type === "error") {
     setError(event.error?.trim() || "语音识别失败");

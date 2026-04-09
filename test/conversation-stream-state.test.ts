@@ -461,3 +461,10 @@ test("conversation stream url includes limit and offset when provided", () => {
     "/api/providers/codex/sessions/thread-1/messages/stream?limit=10&offset=768",
   );
 });
+
+test("conversation stream url includes mode when not all", () => {
+  assert.equal(
+    buildConversationStreamUrl("codex", "thread-1", 10, 768, "compact"),
+    "/api/providers/codex/sessions/thread-1/messages/stream?limit=10&offset=768&mode=compact",
+  );
+});

@@ -3,7 +3,6 @@ import { join } from "path";
 import {
   filterConversationMessages,
   locateConversationMessages,
-  searchConversationMessagePage,
   searchConversationMessages,
 } from "../../conversation-search";
 import type {
@@ -44,6 +43,7 @@ import {
   readTailCodexConversationPage,
 } from "./codex-conversation-pages";
 import { readConversationContextWindow as readContextWindow } from "./conversation-context-window";
+import { readConversationSearchPage } from "./conversation-search-page";
 import { readCodexSessionContext } from "./codex-session-context";
 import { readHiddenCodexSessionIds } from "./codex-thread-metadata";
 
@@ -207,12 +207,12 @@ export function createCodexSessionStore(rootPath: string) {
           nextAnchor: null,
         };
       }
-      const messages = await readCodexConversation(filePath, sessionId);
-      return searchConversationMessagePage({
+      return readConversationSearchPage({
         anchor,
+        filePath,
         limit,
-        messages,
         mode,
+        parseMessages: (lines) => readCodexConversationEntries(lines, sessionId),
         query,
         recentLimit,
       });
@@ -321,7 +321,11 @@ export function createCodexSessionStore(rootPath: string) {
           }
         },
       }),
-    getConversationStream: async (sessionId: string, offset: number) => {
+    getConversationStream: async (
+      sessionId: string,
+      offset: number,
+      mode: ConversationSearchMode = "all",
+    ) => {
       const filePath = await getSessionFilePath(state, sessionsDir, sessionId);
       if (!filePath) {
         return { messages: [], nextOffset: 0 };
@@ -332,7 +336,7 @@ export function createCodexSessionStore(rootPath: string) {
         ? lines[lines.length - 1].offset + Buffer.byteLength(lines[lines.length - 1].line, "utf-8") + 1
         : offset;
       return {
-        messages: readCodexConversationEntries(lines, sessionId),
+        messages: filterByMode(readCodexConversationEntries(lines, sessionId), mode),
         nextOffset: safeNextOffset,
       };
     },

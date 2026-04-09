@@ -989,6 +989,129 @@ test("codex conversation stream emits recent snapshot and byte-offset deltas", a
   await sse.close();
 });
 
+test("conversation stream forwards mode to both snapshot and delta readers", async () => {
+  let onConversationChange: (() => void) | null = null;
+  let snapshotMode: string | undefined;
+  let deltaMode: string | undefined;
+  const summary = {
+    ...createSummary("/tmp/mode-stream-codex"),
+    capabilities: {
+      ...createSummary("/tmp/mode-stream-codex").capabilities,
+      stream: true,
+    },
+  } as ProviderSummary;
+
+  const adapter: ProviderAdapter = {
+    summary,
+    listSessions: async () => [],
+    listProjects: async () => [],
+    listModels: async () => [],
+    getConversationPage: async (_sessionId, _before, _limit, mode) => {
+      snapshotMode = mode;
+      return {
+        messages: [
+          {
+            id: "snapshot-1",
+            role: "assistant",
+            kind: "text",
+            text: `snapshot:${mode ?? "missing"}`,
+          },
+        ],
+        nextBefore: null,
+        summary: null,
+      };
+    },
+    createSession: async () => ({
+      sessionId: "mode-session",
+      turnId: null,
+    }),
+    sendMessage: async () => ({
+      turnId: null,
+      outputText: null,
+    }),
+    subscribeConversation: (_sessionId, onChange) => {
+      onConversationChange = onChange;
+      return () => {
+        onConversationChange = null;
+      };
+    },
+    getConversationStream: async (_sessionId, _offset, mode) => {
+      deltaMode = mode;
+      return {
+        messages: [
+          {
+            id: "delta-1",
+            role: "assistant",
+            kind: "text",
+            text: `delta:${mode ?? "missing"}`,
+          },
+        ],
+        nextOffset: 1,
+      };
+    },
+    getConversationStreamCursor: async () => 0,
+  };
+
+  const app = createApp(
+    buildRuntimeConfig({
+      host: "127.0.0.1",
+      port: 12001,
+      password: "secret-123",
+    }),
+    {
+      registry: {
+        codex: adapter,
+        claude: createClaudeAdapter(),
+      },
+    },
+  );
+
+  const cookie = await login(app);
+  const controller = new AbortController();
+  const response = await app.request(
+    "/api/providers/codex/sessions/mode-session/messages/stream?limit=2&mode=compact",
+    {
+      headers: { cookie },
+      signal: controller.signal,
+    },
+  );
+
+  assert.equal(response.status, 200);
+  const sse = createSseReader(response, controller);
+  const snapshot = await sse.readJsonEvent<{
+    messages: Array<{ text: string }>;
+  }>("conversation");
+  assert.equal(snapshotMode, "compact");
+  assert.deepEqual(snapshot.messages.map((message) => message.text), ["snapshot:compact"]);
+
+  onConversationChange?.();
+
+  const delta = await sse.readJsonEvent<{
+    messages: Array<{ text: string }>;
+  }>("messages");
+  assert.equal(deltaMode, "compact");
+  assert.deepEqual(delta.messages.map((message) => message.text), ["delta:compact"]);
+
+  await sse.close();
+});
+
+test("conversation stream rejects invalid mode", async () => {
+  const setup = createCodexStreamApp();
+  try {
+    const cookie = await login(setup.app);
+    const response = await setup.app.request(
+      "/api/providers/codex/sessions/codex-session-1/messages/stream?limit=2&mode=weird",
+      {
+        headers: { cookie },
+      },
+    );
+
+    assert.equal(response.status, 400);
+  } finally {
+    await setup.cleanup();
+  }
+});
+
 test("conversation stream coalesces concurrent change notifications into one delta", async () => {
   let onConversationChange: (() => void) | null = null;
   const summary = {

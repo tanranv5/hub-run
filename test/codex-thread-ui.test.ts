@@ -262,7 +262,7 @@ test("conversation reading toolbar stays fixed at the top-right of the message a
   );
 
   assert.match(markup, /data-slot="conversation-reading-toolbar"/);
-  assert.match(markup, /absolute right-4 top-3/);
+  assert.match(markup, /absolute right-3 top-2/);
   assert.match(markup, /消息模式：精简/);
   assert.match(markup, /data-slot="conversation-reading-mode-toggle"/);
   assert.match(markup, /data-slot="conversation-reading-font-decrease"/);
@@ -274,19 +274,19 @@ test("conversation reading toolbar stays fixed at the top-right of the message a
     markup,
     attribute: "aria-label",
     value: "消息模式：精简",
-    classFragment: "h-8 w-8",
+    classFragment: "h-7 w-7",
   });
   assertButtonClassContains({
     markup,
     attribute: "aria-label",
     value: "缩小消息字体，当前档位 4/6",
-    classFragment: "h-8 w-8",
+    classFragment: "h-7 w-7",
   });
   assertButtonClassContains({
     markup,
     attribute: "aria-label",
     value: "放大消息字体，当前档位 4/6",
-    classFragment: "h-8 w-8",
+    classFragment: "h-7 w-7",
   });
 });
 

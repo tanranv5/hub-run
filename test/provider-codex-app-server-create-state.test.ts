@@ -101,7 +101,7 @@ test("codex create rejects missing first message without creating an orphan thre
   });
 
   assert.equal(emptyCreateResponse.status, 400);
-  assert.match(await emptyCreateResponse.text(), /text is required/i);
+  assert.match(await emptyCreateResponse.text(), /text or images is required/i);
 
   const createResponse = await setup.app.request("/api/providers/codex/sessions", {
     method: "POST",

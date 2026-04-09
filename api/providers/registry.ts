@@ -110,6 +110,7 @@ interface AdapterSource {
   getConversationStream?: (
     sessionId: string,
     offset: number,
+    mode?: ConversationSearchMode,
   ) => Promise<{ messages: ConversationPage["messages"]; nextOffset: number }>;
   getConversationStreamCursor?: (sessionId: string) => Promise<number>;
 }

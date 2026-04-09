@@ -4,6 +4,7 @@ import type { SSEStreamingApi } from "hono/streaming";
 import { paginateSessions } from "../providers/shared";
 import { getProviderSummary } from "../providers/registry";
 import type {
+  ConversationSearchMode,
   ProviderAdapter,
   ProviderId,
   ProviderRuntimeStateSnapshot,
@@ -51,6 +52,18 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
 
 function parseTurnId(value: string | undefined): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function parseSearchMode(
+  value: string | undefined,
+): ConversationSearchMode | undefined {
+  if (!value || value === "all") {
+    return "all";
+  }
+  if (value === "compact" || value === "text") {
+    return value;
+  }
+  return undefined;
 }
 
 function filterSessionsByProject(
@@ -153,6 +166,7 @@ function createPumpErrorHandler(
 function createConversationDeltaPump(props: {
   stream: EventStreamWriter;
   isClosed: () => boolean;
+  mode: ConversationSearchMode;
   readConversationStream: ConversationStreamReader;
   sessionId: string;
   readOffset: () => number;
@@ -160,6 +174,7 @@ function createConversationDeltaPump(props: {
 }) {
   const {
     isClosed,
+    mode,
     readConversationStream,
     readOffset,
     sessionId,
@@ -182,6 +197,7 @@ function createConversationDeltaPump(props: {
         await emitConversationDelta(
           stream,
           isClosed,
+          mode,
           readConversationStream,
           sessionId,
           readOffset,
@@ -368,6 +384,13 @@ export function registerProviderStreamRoutes(
     const sessionId = c.req.param("sessionId");
     const limit = parsePositiveInt(c.req.query("limit"), DEFAULT_PAGE_SIZE);
     const requestedOffset = parsePositiveInt(c.req.query("offset"), 0);
+    const mode = parseSearchMode(c.req.query("mode"));
+    if (!mode) {
+      return c.json(
+        { error: { code: "INTERNAL_ERROR", message: "mode is invalid" } },
+        400,
+      );
+    }
 
     return streamSSE(c, async (stream) => {
       let offset = requestedOffset;
@@ -384,6 +407,7 @@ export function registerProviderStreamRoutes(
       const pumpConversationDelta = createConversationDeltaPump({
         stream,
         isClosed: cleanup.isClosed,
+        mode,
         readConversationStream,
         sessionId,
         readOffset: () => offset,
@@ -405,7 +429,7 @@ export function registerProviderStreamRoutes(
           await pumpConversationDelta();
         } else {
           offset = await readConversationStreamCursor(sessionId);
-          const page = await adapter.getConversationPage(sessionId, null, limit);
+          const page = await adapter.getConversationPage(sessionId, null, limit, mode);
           await stream.writeSSE({
             event: "conversation",
             data: JSON.stringify({
@@ -466,6 +490,7 @@ async function emitSessionsUpdate(
 async function emitConversationDelta(
   stream: EventStreamWriter,
   isClosed: () => boolean,
+  mode: ConversationSearchMode,
   readConversationStream: ConversationStreamReader,
   sessionId: string,
   readOffset: () => number,
@@ -475,7 +500,7 @@ async function emitConversationDelta(
     return;
   }
 
-  const payload = await readConversationStream(sessionId, readOffset());
+  const payload = await readConversationStream(sessionId, readOffset(), mode);
   writeOffset(payload.nextOffset);
   if (payload.messages.length === 0) {
     return;

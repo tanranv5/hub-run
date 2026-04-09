@@ -47,11 +47,13 @@ test("composer keeps model and effort on one row and shows compact usage badge",
   assert.match(markup, /bottom-3 left-3/);
   assert.match(markup, /data-slot="composer-controls"/);
   assert.match(markup, /data-slot="composer-actions"/);
-  assert.doesNotMatch(markup, /flex-wrap/);
-  assert.match(markup, /grid-cols-\[minmax\(0,1fr\)_minmax\(6\.25rem,0\.8fr\)\]/);
+  assert.match(markup, /flex-wrap/);
+  assert.match(markup, /md:flex-nowrap/);
   assert.match(markup, />模型</);
   assert.match(markup, />思考</);
   assert.match(markup, /justify-end/);
+  assert.match(markup, /gap-1\.5/);
+  assert.match(markup, /md:gap-2/);
   assert.match(markup, /placeholder="等待输入"/);
   assert.doesNotMatch(markup, />生成中</);
   assert.doesNotMatch(markup, /语音输入待接入/);

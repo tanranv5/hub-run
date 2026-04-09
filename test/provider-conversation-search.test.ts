@@ -287,6 +287,21 @@ test("searchConversationPage paginates by anchor and preserves same-line block o
     assert.equal(thirdPage?.hits.length, 1);
     assert.equal(thirdPage?.hits[0]?.anchor.blockIndex, 0);
     assert.equal(thirdPage?.nextAnchor, null);
+
+    const recentPage = await store.searchConversationPage?.(
+      "search-page-codex",
+      "anchor",
+      "text",
+      null,
+      10,
+      2,
+    );
+    assert.ok(recentPage);
+    assert.equal(recentPage?.totalHits, 2);
+    assert.deepEqual(
+      recentPage?.hits.map((hit) => hit.anchor.blockIndex),
+      [1, 0],
+    );
   } finally {
     store.destroy();
     await rm(homeDir, { recursive: true, force: true });
