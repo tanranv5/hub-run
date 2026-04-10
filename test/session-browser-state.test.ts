@@ -7,6 +7,7 @@ import {
   getProjectLabel,
   getSessionTitle,
   matchesSessionFilter,
+  resolveProjectPathSelection,
   resolveSelectedProject,
 } from "../web/session-browser-state";
 
@@ -68,6 +69,35 @@ test("selected project only resolves on exact project path match", () => {
 
   assert.equal(resolveSelectedProject(projects, "/Users/tanran/.clau"), null);
   assert.equal(resolveSelectedProject(projects, "/Users/tanran/.claude"), "/Users/tanran/.claude");
+});
+
+test("project path selection only commits exact project matches and validates custom paths on submit", () => {
+  const projects = [
+    "/Users/tanran/.claude",
+    "/Users/tanran/aiCode/cw",
+  ];
+
+  assert.deepEqual(
+    resolveProjectPathSelection(projects, "   "),
+    {
+      matchedProject: null,
+      shouldValidatePath: false,
+    },
+  );
+  assert.deepEqual(
+    resolveProjectPathSelection(projects, "/Users/tanran/.claude"),
+    {
+      matchedProject: "/Users/tanran/.claude",
+      shouldValidatePath: false,
+    },
+  );
+  assert.deepEqual(
+    resolveProjectPathSelection(projects, "/Users/tanran/.clau"),
+    {
+      matchedProject: null,
+      shouldValidatePath: true,
+    },
+  );
 });
 
 test("virtual window math keeps only visible rows plus overscan", () => {

@@ -28,6 +28,11 @@ export interface VirtualWindowRange {
   paddingBottom: number;
 }
 
+export interface ProjectPathSelection {
+  matchedProject: string | null;
+  shouldValidatePath: boolean;
+}
+
 export function getProjectLabel(projectPath: string): string {
   return projectPath || "(empty project)";
 }
@@ -72,6 +77,18 @@ export function resolveSelectedProject(
     return null;
   }
   return projects.includes(normalized) ? normalized : null;
+}
+
+export function resolveProjectPathSelection(
+  projects: string[],
+  value: string,
+): ProjectPathSelection {
+  const normalized = value.trim();
+  const matchedProject = resolveSelectedProject(projects, normalized);
+  return {
+    matchedProject,
+    shouldValidatePath: Boolean(normalized) && matchedProject === null,
+  };
 }
 
 export function matchesSessionFilter(

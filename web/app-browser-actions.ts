@@ -4,10 +4,13 @@ import type { BrowserState } from "./browser-state";
 import {
   INITIAL_BROWSER,
   loadProviderBrowser,
+  resolveInitialSelectedSessionId,
+  resolvePreferredSessionForProject,
   SESSION_PAGE_SIZE,
 } from "./browser-state";
 import { getErrorMessage } from "./bootstrap-state";
 import type { ProviderSummary, SessionSummary } from "../api/types";
+import { mergePreferredSession } from "./ui-preferences";
 
 export async function refreshBrowserState(props: {
   loadBrowser?: typeof loadProviderBrowser;
@@ -116,6 +119,34 @@ export function createLoadingBrowserState(_current: BrowserState): BrowserState 
   return {
     ...INITIAL_BROWSER,
     loading: true,
+  };
+}
+
+export function resolveInitBrowserSelection(props: {
+  activeSession?: SessionSummary | null;
+  preferredSession?: SessionSummary | null;
+  preferredSessionId?: string | null;
+  project?: string | null;
+  sessions: SessionSummary[];
+}) {
+  const {
+    activeSession = null,
+    preferredSession = null,
+    preferredSessionId = null,
+    project = null,
+    sessions,
+  } = props;
+  const preferredForProject =
+    resolvePreferredSessionForProject(activeSession, project) ??
+    resolvePreferredSessionForProject(preferredSession, project);
+  const mergedSessions = mergePreferredSession(sessions, preferredForProject);
+  return {
+    selectedSessionId: resolveInitialSelectedSessionId(
+      mergedSessions,
+      preferredSessionId,
+      preferredForProject,
+    ),
+    sessions: mergedSessions,
   };
 }
 

@@ -56,6 +56,7 @@ export function createCodexProvider(rootPath: string) {
         model: input.model ?? null,
         effort: input.effort ?? null,
       });
+      store.rememberSessionDirectoryHint(threadId);
       const sendResult = await sendCodexMessage({
         threadId,
         text: input.text ?? "",

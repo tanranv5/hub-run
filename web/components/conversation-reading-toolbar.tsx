@@ -1,3 +1,4 @@
+import React from "react";
 import type { ConversationSearchMode } from "../../api/types";
 import {
   MAX_MESSAGE_FONT_SCALE,
@@ -8,6 +9,7 @@ const READING_TOOLBAR_ICON_BUTTON_CLASS = "inline-flex h-7 w-7 items-center just
 const READING_TOOLBAR_SCALE_BUTTON_CLASS = `${READING_TOOLBAR_ICON_BUTTON_CLASS} text-xs font-semibold leading-none disabled:cursor-not-allowed disabled:opacity-45`;
 
 interface ConversationReadingToolbarProps {
+  busy?: boolean;
   fontScale: number;
   messageViewMode: ConversationSearchMode;
   onDecreaseFontScale: () => void;
@@ -61,6 +63,7 @@ export default function ConversationReadingToolbar(
   props: ConversationReadingToolbarProps,
 ) {
   const {
+    busy = false,
     fontScale,
     messageViewMode,
     onDecreaseFontScale,
@@ -85,7 +88,8 @@ export default function ConversationReadingToolbar(
         aria-label={modeLabel}
         title={modeLabel}
         data-slot="conversation-reading-mode-toggle"
-        className={READING_TOOLBAR_ICON_BUTTON_CLASS}
+        disabled={busy}
+        className={`${READING_TOOLBAR_ICON_BUTTON_CLASS} disabled:cursor-not-allowed disabled:opacity-45`}
       >
         <MessageViewIcon mode={messageViewMode} />
       </button>
@@ -95,7 +99,7 @@ export default function ConversationReadingToolbar(
         aria-label={decreaseFontLabel}
         title={decreaseFontLabel}
         data-slot="conversation-reading-font-decrease"
-        disabled={!canDecreaseFontScale}
+        disabled={busy || !canDecreaseFontScale}
         className={READING_TOOLBAR_SCALE_BUTTON_CLASS}
       >
         A-
@@ -106,7 +110,7 @@ export default function ConversationReadingToolbar(
         aria-label={increaseFontLabel}
         title={increaseFontLabel}
         data-slot="conversation-reading-font-increase"
-        disabled={!canIncreaseFontScale}
+        disabled={busy || !canIncreaseFontScale}
         className={READING_TOOLBAR_SCALE_BUTTON_CLASS}
       >
         A+

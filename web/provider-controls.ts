@@ -99,16 +99,19 @@ export function resolveProviderControlsFromData(
     null,
     cachedPreference?.modelId ?? null,
   );
-  const preservedProject = currentSelection
-    ? resolveSelectedProject(
-        projects,
-        currentSelection.selectedProject ?? currentSelection.newSessionCwd,
-      )
-    : null;
+  const selectedProject = currentSelection?.selectedProject?.trim() ?? "";
+  const nextProjects = selectedProject && !projects.includes(selectedProject)
+    ? [...projects, selectedProject].sort()
+    : projects;
+  const preservedProject = selectedProject
+    ? selectedProject
+    : currentSelection
+      ? resolveSelectedProject(nextProjects, currentSelection.newSessionCwd)
+      : null;
   const preservedCwd = currentSelection?.newSessionCwd.trim() ?? "";
   return {
     models: visibleModels,
-    projects,
+    projects: nextProjects,
     selectedProject: preservedProject,
     selectedModelId,
     selectedEffort: resolveSelectedEffort(
@@ -130,6 +133,26 @@ export function createLoadingProviderControls(
   return {
     ...INITIAL_PROVIDER_CONTROLS,
     loading: true,
+  };
+}
+
+export function applyCreatedSessionProjectSelection(
+  current: ProviderControlsState,
+  cwd: string,
+): ProviderControlsState {
+  const normalized = cwd.trim();
+  if (!normalized) {
+    return current;
+  }
+
+  const nextProjects = current.projects.includes(normalized)
+    ? current.projects
+    : [...current.projects, normalized].sort();
+  return {
+    ...current,
+    projects: nextProjects,
+    selectedProject: normalized,
+    newSessionCwd: normalized,
   };
 }
 

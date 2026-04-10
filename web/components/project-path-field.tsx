@@ -1,14 +1,14 @@
 import { ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState, type FocusEvent } from "react";
 import { checkPathExists } from "../api";
+import { resolveProjectPathSelection } from "../session-browser-state";
 
 interface ProjectPathFieldProps {
   disabled?: boolean;
   projects: string[];
-  selectedProject: string | null;
   value: string;
   onChange: (value: string) => void;
-  onSelectProject: (value: string | null) => void;
+  onCommitSelection: (value: string, selectedProject: string | null) => void;
 }
 
 export type PathValidationStatus =
@@ -27,28 +27,37 @@ export default function ProjectPathField(props: ProjectPathFieldProps) {
   const {
     disabled = false,
     projects,
-    selectedProject,
     value,
     onChange,
-    onSelectProject,
+    onCommitSelection,
   } = props;
   const [open, setOpen] = useState(false);
   const [pathStatus, setPathStatus] = useState<PathValidationStatus>("idle");
   const validationRef = useRef(0);
+  const { matchedProject, shouldValidatePath } = resolveProjectPathSelection(
+    projects,
+    value,
+  );
 
   useEffect(() => {
     validationRef.current += 1;
     setPathStatus("idle");
   }, [value]);
 
-  async function validatePath() {
+  useEffect(() => {
     const trimmed = value.trim();
-    if (!trimmed || selectedProject) {
-      setPathStatus("idle");
+    if (!trimmed) {
       return;
     }
-    // Skip if it matches a known project
-    if (projects.includes(trimmed)) {
+    if (matchedProject) {
+      validationRef.current += 1;
+      setPathStatus("idle");
+    }
+  }, [matchedProject, value]);
+
+  async function validatePath() {
+    const trimmed = value.trim();
+    if (!trimmed || !shouldValidatePath) {
       setPathStatus("idle");
       return;
     }
@@ -78,6 +87,7 @@ export default function ProjectPathField(props: ProjectPathFieldProps) {
       return;
     }
     setOpen(false);
+    onCommitSelection(value, matchedProject);
     void validatePath();
   }
 
@@ -90,7 +100,6 @@ export default function ProjectPathField(props: ProjectPathFieldProps) {
           onFocus={() => setOpen(true)}
           onChange={(event) => {
             onChange(event.target.value);
-            onSelectProject(null);
             setOpen(true);
           }}
           placeholder="输入项目路径"
@@ -112,8 +121,9 @@ export default function ProjectPathField(props: ProjectPathFieldProps) {
           <button
             type="button"
             onClick={() => {
-              onChange("");
-              onSelectProject(null);
+              const nextValue = "";
+              onChange(nextValue);
+              onCommitSelection(nextValue, null);
               setOpen(false);
             }}
             className="flex w-full items-center border-b border-bdr px-3 py-2 text-left text-sm text-txt hover:bg-surface"
@@ -125,12 +135,13 @@ export default function ProjectPathField(props: ProjectPathFieldProps) {
               key={project}
               type="button"
               onClick={() => {
-                onChange(project);
-                onSelectProject(project);
+                const nextValue = project;
+                onChange(nextValue);
+                onCommitSelection(nextValue, project);
                 setOpen(false);
               }}
               className={`flex w-full flex-col items-start gap-0.5 border-b border-bdr px-3 py-2 text-left last:border-b-0 hover:bg-surface ${
-                selectedProject === project ? "bg-surface-hover" : ""
+                matchedProject === project ? "bg-surface-hover" : ""
               }`}
             >
               <span className="text-sm text-txt">{getProjectName(project)}</span>
@@ -167,7 +178,7 @@ function PathValidationHint(props: {
   }
   return (
     <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">
-      路径不存在，hub-run 不会自动创建该目录，请先手动创建
+      路径不存在，创建会话时将自动新建该目录
     </p>
   );
 }

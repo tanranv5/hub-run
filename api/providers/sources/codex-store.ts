@@ -29,6 +29,7 @@ import {
   safeJsonParse,
 } from "../shared";
 import {
+  findCodexSessionFilePath,
   fallbackCodexSessionIdFromFileName,
   readCodexConversation,
   readCodexConversationEntries,
@@ -56,6 +57,10 @@ interface CodexHistoryEntry {
 interface CodexStoreState {
   historyCache: Map<string, CodexHistoryEntry> | null;
   sessionFiles: Map<string, CodexSessionFile> | null;
+  sessionListCache: SessionSummary[] | null;
+  sessionListPromise: Promise<SessionSummary[]> | null;
+  sessionDirectoryHints: Map<string, string>;
+  sessionFileHints: Map<string, string>;
   displayCache: Map<string, string>;
   deletedSessionIds: Set<string>;
 }
@@ -69,6 +74,10 @@ export function createCodexSessionStore(rootPath: string) {
   const state: CodexStoreState = {
     historyCache: null,
     sessionFiles: null,
+    sessionListCache: null,
+    sessionListPromise: null,
+    sessionDirectoryHints: new Map(),
+    sessionFileHints: new Map(),
     displayCache: new Map(),
     deletedSessionIds: new Set(),
   };
@@ -80,56 +89,37 @@ export function createCodexSessionStore(rootPath: string) {
       relativePath.startsWith("sessions/") && relativePath.endsWith(".jsonl"),
     onHistoryChange: () => {
       state.historyCache = null;
+      invalidateSessionList(state);
     },
     onSessionFileChange: (filePath) => {
       if (!filePath) {
         state.sessionFiles = null;
+        state.sessionFileHints.clear();
         state.displayCache.clear();
+        invalidateSessionList(state);
         return;
       }
-      void updateSessionFile(state, filePath);
+      void updateSessionFile(state, rootPath, filePath);
     },
   });
 
   async function listSessions(): Promise<SessionSummary[]> {
-    const [history, sessionFiles] = await Promise.all([
-      loadHistory(state, historyPath),
-      loadSessionFiles(state, sessionsDir),
-    ]);
-    const hiddenSessionIds = readHiddenCodexSessionIds(stateDbPath);
-    const sessionIds = new Set<string>([...history.keys(), ...sessionFiles.keys()]);
-    const sessions = await Promise.all(
-      [...sessionIds]
-        .filter((sessionId) => !hiddenSessionIds.has(sessionId) && !state.deletedSessionIds.has(sessionId))
-        .map(async (sessionId) => {
-        const sessionFile = sessionFiles.get(sessionId);
-        const historyEntry = history.get(sessionId);
-        const cwd = sessionFile?.meta?.cwd ?? "";
-        return {
-          id: sessionId,
-          display: await readSessionDisplay(
-            state,
-            sessionId,
-            sessionFile,
-            historyEntry,
-          ),
-          timestamp: readSessionTimestamp(sessionFile, historyEntry),
-          project: cwd,
-          projectName: getProjectName(cwd),
-        } satisfies SessionSummary;
-        }),
-    );
-
-    return sessions
-      .filter((session) => isVisibleCodexSession(session.display))
-      .sort((left, right) => right.timestamp - left.timestamp);
+    return loadVisibleSessions(state, historyPath, sessionsDir, stateDbPath);
   }
 
   return {
     listSessions,
     destroy: unwatchRoot,
+    rememberSessionDirectoryHint: (sessionId: string, timestampMs = Date.now()) => {
+      state.sessionDirectoryHints.set(sessionId, buildCodexSessionDirectory(rootPath, timestampMs));
+    },
     listProjects: async () => {
-      const sessions = await listSessions();
+      const sessions = await loadVisibleSessions(
+        state,
+        historyPath,
+        sessionsDir,
+        stateDbPath,
+      );
       const projects = new Set<string>();
       for (const session of sessions) {
         if (session.project) {
@@ -266,13 +256,9 @@ export function createCodexSessionStore(rootPath: string) {
       return stat(filePath).then((s) => s.mtimeMs).catch(() => null);
     },
     deleteSession: async (sessionId: string) => {
-      // Move .jsonl file to archived_sessions
-      const filePath = await getSessionFilePath(state, sessionsDir, sessionId);
+      const filePath = await getSessionFilePathForDelete(state, sessionsDir, sessionId);
       if (filePath) {
-        const archivedDir = join(rootPath, "archived_sessions");
-        await mkdir(archivedDir, { recursive: true });
-        const fileName = filePath.split("/").pop() ?? `${sessionId}.jsonl`;
-        await rename(filePath, join(archivedDir, fileName));
+        await archiveSessionFile(rootPath, sessionId, filePath);
       }
       // Remove from history.jsonl regardless of file existence
       try {
@@ -295,8 +281,10 @@ export function createCodexSessionStore(rootPath: string) {
       }
       state.sessionFiles = null;
       state.historyCache = null;
+      state.sessionFileHints.delete(sessionId);
       state.displayCache.delete(sessionId);
       state.deletedSessionIds.add(sessionId);
+      invalidateSessionList(state);
     },
     subscribeSessions: (onChange: () => void) =>
       watchProviderRoot({
@@ -419,8 +407,51 @@ async function getSessionFilePath(
   sessionsDir: string,
   sessionId: string,
 ) {
+  const hintedPath = state.sessionFileHints.get(sessionId);
+  if (hintedPath) {
+    return hintedPath;
+  }
+
+  const cachedPath = state.sessionFiles?.get(sessionId)?.filePath;
+  if (cachedPath) {
+    return cachedPath;
+  }
+
+  const targetedPath = await findCodexSessionFilePath(sessionsDir, sessionId);
+  if (targetedPath) {
+    state.sessionFileHints.set(sessionId, targetedPath);
+    return targetedPath;
+  }
+
+  if (state.sessionFiles) {
+    return null;
+  }
+
   const sessionFiles = await loadSessionFiles(state, sessionsDir);
   return sessionFiles.get(sessionId)?.filePath ?? null;
+}
+
+async function getSessionFilePathForDelete(
+  state: CodexStoreState,
+  sessionsDir: string,
+  sessionId: string,
+): Promise<string | null> {
+  const hintedPath = state.sessionFileHints.get(sessionId);
+  if (hintedPath) {
+    return hintedPath;
+  }
+
+  const cachedPath = state.sessionFiles?.get(sessionId)?.filePath;
+  if (cachedPath) {
+    return cachedPath;
+  }
+
+  const hintedDirectory = state.sessionDirectoryHints.get(sessionId);
+  if (hintedDirectory) {
+    return findCodexSessionFilePath(hintedDirectory, sessionId);
+  }
+
+  return findCodexSessionFilePath(sessionsDir, sessionId);
 }
 
 async function readFileSize(filePath: string): Promise<number> {
@@ -431,14 +462,41 @@ async function readFileSize(filePath: string): Promise<number> {
 
 async function updateSessionFile(
   state: CodexStoreState,
+  rootPath: string,
   filePath: string,
 ): Promise<void> {
-  if (!state.sessionFiles) {
+  const meta = await readCodexSessionMeta(filePath);
+  const sessionId = meta?.id ?? fallbackCodexSessionIdFromFileName(filePath);
+  removeSessionFileFromCache(state, filePath, sessionId);
+  state.sessionFileHints.set(sessionId, filePath);
+
+  if (state.deletedSessionIds.has(sessionId)) {
+    await archiveSessionFile(rootPath, sessionId, filePath);
+    state.sessionDirectoryHints.delete(sessionId);
+    state.sessionFileHints.delete(sessionId);
+    invalidateSessionList(state);
     return;
   }
 
-  const meta = await readCodexSessionMeta(filePath);
-  const sessionId = meta?.id ?? fallbackCodexSessionIdFromFileName(filePath);
+  if (!state.sessionFiles) {
+    invalidateSessionList(state);
+    return;
+  }
+
+  state.sessionFiles.set(sessionId, { filePath, meta });
+  state.sessionDirectoryHints.delete(sessionId);
+  state.displayCache.delete(sessionId);
+  invalidateSessionList(state);
+}
+
+function removeSessionFileFromCache(
+  state: CodexStoreState,
+  filePath: string,
+  sessionId: string,
+): void {
+  if (!state.sessionFiles) {
+    return;
+  }
 
   for (const [key, value] of state.sessionFiles.entries()) {
     if (value.filePath === filePath || key === sessionId) {
@@ -446,9 +504,17 @@ async function updateSessionFile(
       state.displayCache.delete(key);
     }
   }
+}
 
-  state.sessionFiles.set(sessionId, { filePath, meta });
-  state.displayCache.delete(sessionId);
+async function archiveSessionFile(
+  rootPath: string,
+  sessionId: string,
+  filePath: string,
+): Promise<void> {
+  const archivedDir = join(rootPath, "archived_sessions");
+  await mkdir(archivedDir, { recursive: true });
+  const fileName = filePath.split("/").pop() ?? `${sessionId}.jsonl`;
+  await rename(filePath, join(archivedDir, fileName)).catch(() => {});
 }
 
 function isCodexSessionIndexPath(relativePath: string): boolean {
@@ -469,4 +535,84 @@ function isCodexStateFile(relativePath: string): boolean {
 
 function isVisibleCodexSession(display: string): boolean {
   return !HIDDEN_DISPLAY_VALUES.has(display.trim());
+}
+
+async function loadVisibleSessions(
+  state: CodexStoreState,
+  historyPath: string,
+  sessionsDir: string,
+  stateDbPath: string,
+): Promise<SessionSummary[]> {
+  if (state.sessionListCache) {
+    return state.sessionListCache;
+  }
+  if (state.sessionListPromise) {
+    return state.sessionListPromise;
+  }
+
+  state.sessionListPromise = buildVisibleSessions(state, historyPath, sessionsDir, stateDbPath)
+    .then((sessions) => {
+      state.sessionListCache = sessions;
+      return sessions;
+    })
+    .finally(() => {
+      state.sessionListPromise = null;
+    });
+  return state.sessionListPromise;
+}
+
+async function buildVisibleSessions(
+  state: CodexStoreState,
+  historyPath: string,
+  sessionsDir: string,
+  stateDbPath: string,
+): Promise<SessionSummary[]> {
+  const [history, sessionFiles] = await Promise.all([
+    loadHistory(state, historyPath),
+    loadSessionFiles(state, sessionsDir),
+  ]);
+  const hiddenSessionIds = readHiddenCodexSessionIds(stateDbPath);
+  const sessionIds = [...new Set<string>([...history.keys(), ...sessionFiles.keys()])];
+  const sessions = await Promise.all(
+    sessionIds
+      .filter((sessionId) => !hiddenSessionIds.has(sessionId) && !state.deletedSessionIds.has(sessionId))
+      .map((sessionId) => buildSessionSummary(state, sessionId, sessionFiles.get(sessionId), history.get(sessionId))),
+  );
+  return sessions
+    .filter((session) => isVisibleCodexSession(session.display))
+    .sort((left, right) => right.timestamp - left.timestamp);
+}
+
+async function buildSessionSummary(
+  state: CodexStoreState,
+  sessionId: string,
+  sessionFile: CodexSessionFile | undefined,
+  historyEntry: CodexHistoryEntry | undefined,
+): Promise<SessionSummary> {
+  const cwd = sessionFile?.meta?.cwd ?? "";
+  return {
+    id: sessionId,
+    display: await readSessionDisplay(
+      state,
+      sessionId,
+      sessionFile,
+      historyEntry,
+    ),
+    timestamp: readSessionTimestamp(sessionFile, historyEntry),
+    project: cwd,
+    projectName: getProjectName(cwd),
+  } satisfies SessionSummary;
+}
+
+function invalidateSessionList(state: CodexStoreState): void {
+  state.sessionListCache = null;
+  state.sessionListPromise = null;
+}
+
+function buildCodexSessionDirectory(rootPath: string, timestampMs: number): string {
+  const current = new Date(timestampMs);
+  const year = current.getFullYear();
+  const month = String(current.getMonth() + 1).padStart(2, "0");
+  const day = String(current.getDate()).padStart(2, "0");
+  return join(rootPath, "sessions", String(year), month, day);
 }

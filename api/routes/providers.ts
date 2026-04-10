@@ -1,3 +1,4 @@
+import { mkdir, stat } from "node:fs/promises";
 import { Hono } from "hono";
 import { rejectInvalidWriteOrigin } from "../auth";
 import type { RuntimeConfig } from "../config";
@@ -41,6 +42,27 @@ function parseSearchMode(
     return value;
   }
   return undefined;
+}
+
+async function ensureSessionDirectory(cwd: string) {
+  const current = await stat(cwd).catch((error: NodeJS.ErrnoException) => {
+    if (error?.code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  });
+  if (current) {
+    if (!current.isDirectory()) {
+      throw new Error("cwd must be a directory");
+    }
+    return;
+  }
+
+  await mkdir(cwd, { recursive: true });
+  const created = await stat(cwd);
+  if (!created.isDirectory()) {
+    throw new Error("cwd must be a directory");
+  }
 }
 
 function parseLocateWindow(value: string | undefined): number {
@@ -292,6 +314,7 @@ export function createProvidersRouter(
     }
 
     try {
+      await ensureSessionDirectory(cwd);
       const result = await adapter.createSession({
         cwd,
         ...(text !== undefined ? { text } : {}),

@@ -1,3 +1,6 @@
+import { mkdtemp, rm, stat, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createApp } from "../api/app";
@@ -730,4 +733,119 @@ test("create session route maps provider timeout errors to 503", async () => {
       message: "claude create timed out",
     },
   });
+});
+
+test("create session route creates a missing cwd before delegating to the provider", async (t) => {
+  const tempRoot = await mkdtemp(join(tmpdir(), "hub-run-create-cwd-"));
+  t.after(async () => {
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+
+  const targetCwd = join(tempRoot, "missing", "nested");
+  let capturedCwd: string | null = null;
+  const app = createApp(
+    buildRuntimeConfig({
+      host: "127.0.0.1",
+      port: 12001,
+      password: "secret-123",
+    }),
+    {
+      registry: {
+        ...createSendRegistry(async () => ({
+          turnId: null,
+          outputText: null,
+        })),
+        claude: {
+          ...createSendRegistry(async () => ({
+            turnId: null,
+            outputText: null,
+          })).claude,
+          createSession: async (input) => {
+            capturedCwd = input.cwd;
+            const cwdStat = await stat(input.cwd);
+            assert.equal(cwdStat.isDirectory(), true);
+            return {
+              sessionId: "claude-session-created",
+              outputText: "Claude 首条回复",
+            };
+          },
+        } as ProviderAdapter,
+      },
+    },
+  );
+
+  const cookie = await login(app);
+  const response = await app.request("/api/providers/claude/sessions", {
+    method: "POST",
+    headers: {
+      cookie,
+      origin: "http://127.0.0.1:12001",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      cwd: targetCwd,
+      text: "首条消息",
+    }),
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(capturedCwd, targetCwd);
+  assert.equal((await stat(targetCwd)).isDirectory(), true);
+});
+
+test("create session route rejects cwd paths that already exist as files", async (t) => {
+  const tempRoot = await mkdtemp(join(tmpdir(), "hub-run-create-file-"));
+  t.after(async () => {
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+
+  const targetFile = join(tempRoot, "not-a-directory");
+  await writeFile(targetFile, "content", "utf-8");
+  let called = false;
+  const app = createApp(
+    buildRuntimeConfig({
+      host: "127.0.0.1",
+      port: 12001,
+      password: "secret-123",
+    }),
+    {
+      registry: {
+        ...createSendRegistry(async () => ({
+          turnId: null,
+          outputText: null,
+        })),
+        claude: {
+          ...createSendRegistry(async () => ({
+            turnId: null,
+            outputText: null,
+          })).claude,
+          createSession: async () => {
+            called = true;
+            return {
+              sessionId: "claude-session-created",
+              outputText: "Claude 首条回复",
+            };
+          },
+        } as ProviderAdapter,
+      },
+    },
+  );
+
+  const cookie = await login(app);
+  const response = await app.request("/api/providers/claude/sessions", {
+    method: "POST",
+    headers: {
+      cookie,
+      origin: "http://127.0.0.1:12001",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      cwd: targetFile,
+      text: "首条消息",
+    }),
+  });
+
+  assert.equal(response.status, 400);
+  assert.equal(called, false);
+  assert.match(await response.text(), /cwd must be a directory/i);
 });

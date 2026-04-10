@@ -11,6 +11,7 @@ import {
   createLoadingBrowserState,
   loadMoreBrowserSessions,
   refreshBrowserState,
+  resolveInitBrowserSelection,
   shouldRefreshBrowserAfterSend,
 } from "../web/app-browser-actions";
 
@@ -208,6 +209,31 @@ test("applySentSessionSelection promotes the selected draft session into the rea
   assert.equal(nextState.sessions[0]?.isDraft, undefined);
   assert.equal(nextState.sessions[0]?.display, "从 draft 首次发送");
   assert.equal(nextState.selectedSessionId, "session-real");
+});
+
+test("resolveInitBrowserSelection keeps the active newly-created session visible when init snapshot is still empty", () => {
+  const selection = resolveInitBrowserSelection({
+    activeSession: {
+      id: "session-new",
+      display: "新会话首条消息",
+      timestamp: 100,
+      project: "/tmp/new-project",
+      projectName: "new-project",
+    },
+    preferredSession: null,
+    preferredSessionId: null,
+    project: "/tmp/new-project",
+    sessions: [],
+  });
+
+  assert.deepEqual(selection.sessions, [{
+    id: "session-new",
+    display: "新会话首条消息",
+    timestamp: 100,
+    project: "/tmp/new-project",
+    projectName: "new-project",
+  }]);
+  assert.equal(selection.selectedSessionId, "session-new");
 });
 
 test("stream-backed providers do not need a browser reload after send", () => {

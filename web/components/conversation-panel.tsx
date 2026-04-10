@@ -168,6 +168,7 @@ interface ConversationBodyProps {
   providerSendAvailable: boolean;
   recoveringConversation?: boolean;
   refreshing?: boolean;
+  modeSwitching?: boolean;
   respondingRequestId: string | null;
   interrupting: boolean;
   onRecoverConversation?: () => void;
@@ -220,6 +221,22 @@ function ConversationRefreshOverlay() {
       <div className="flex items-center gap-3 rounded-full border border-bdr bg-surface px-4 py-3 text-sm text-txt shadow-lg shadow-black/5">
         <span className="h-4 w-4 animate-spin rounded-full border-2 border-bdr border-t-accent" />
         <span>刷新中，正在重新拉取当前会话...</span>
+      </div>
+    </div>
+  );
+}
+
+function ConversationModeSwitchOverlay() {
+  return (
+    <div
+      aria-label="正在切换消息模式..."
+      aria-live="polite"
+      role="status"
+      className="absolute inset-0 z-20 flex items-center justify-center bg-[var(--bg)] px-6 py-8"
+    >
+      <div className="flex items-center gap-3 rounded-full border border-bdr bg-surface px-4 py-3 text-sm text-txt shadow-lg shadow-black/5">
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-bdr border-t-accent" />
+        <span>切换中，正在重新渲染当前消息...</span>
       </div>
     </div>
   );
@@ -278,6 +295,7 @@ export const ConversationBody = memo(function ConversationBody(props: Conversati
     interrupting,
     providerSendAvailable,
     refreshing = false,
+    modeSwitching = false,
     respondingRequestId,
     searchContextLoading = false,
     searchMode = "off",
@@ -305,11 +323,12 @@ export const ConversationBody = memo(function ConversationBody(props: Conversati
 
   return (
     <div
-      aria-busy={refreshing}
+      aria-busy={refreshing || modeSwitching}
       className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
     >
       {hideReadingToolbar ? null : (
         <ConversationReadingToolbar
+          busy={modeSwitching}
           fontScale={messageFontScale}
           messageViewMode={messageViewMode}
           onDecreaseFontScale={onDecreaseFontScale}
@@ -395,7 +414,8 @@ export const ConversationBody = memo(function ConversationBody(props: Conversati
           onVoiceClick={onVoiceClick}
         />
       ) : null}
-      {refreshing ? <ConversationRefreshOverlay /> : null}
+      {modeSwitching ? <ConversationModeSwitchOverlay /> : null}
+      {!modeSwitching && refreshing ? <ConversationRefreshOverlay /> : null}
     </div>
   );
 });
@@ -469,6 +489,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     storedReadingPreference?.headerCollapsed ?? false,
   );
   const [messageViewModeBackfillTarget, setMessageViewModeBackfillTarget] = useState<number | null>(null);
+  const [messageViewModeSwitching, setMessageViewModeSwitching] = useState(false);
   const [recoveringConversation, setRecoveringConversation] = useState(false);
   const [composerStoredHeight, setComposerStoredHeight] = useState<number | null>(
     storedReadingPreference?.composerStoredHeight ?? null,
@@ -557,6 +578,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     setSearchOpen(false);
     setComposerBrowseCollapsed(false);
     setMessageViewModeBackfillTarget(null);
+    setMessageViewModeSwitching(false);
     setRecoveringConversation(false);
     setShowRuntimeRestart(false);
     clearSearch();
@@ -739,6 +761,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         providerSendAvailable={provider.status.sendAvailable}
         recoveringConversation={recoveringConversation}
         refreshing={refreshing}
+        modeSwitching={messageViewModeSwitching}
         respondingRequestId={state.respondingRequestId}
         interrupting={state.interrupting}
         onRecoverConversation={() => {
@@ -810,17 +833,28 @@ export default function ConversationPanel(props: ConversationPanelProps) {
           setMessageFontScale((current) => cycleMessageFontScale(current));
         }}
         onCycleMessageViewMode={() => {
+          if (messageViewModeSwitching) {
+            return;
+          }
           const nextMode = cycleMessageViewMode(messageViewMode);
           const previousVisibleCount = visibleMessages.length;
           messageViewModeRef.current = nextMode;
           setMessageViewModeBackfillTarget(null);
+          setMessageViewModeSwitching(true);
           setMessageViewMode(nextMode);
-          handleRefreshConversation(nextMode).then((refreshed) => {
-            if (!refreshed || messageViewModeRef.current !== nextMode) {
-              return;
-            }
-            setMessageViewModeBackfillTarget(previousVisibleCount);
-          }).catch(console.error);
+          handleRefreshConversation(nextMode)
+            .then((refreshed) => {
+              if (!refreshed || messageViewModeRef.current !== nextMode) {
+                return;
+              }
+              setMessageViewModeBackfillTarget(previousVisibleCount);
+            })
+            .catch(console.error)
+            .finally(() => {
+              setMessageViewModeSwitching((current) =>
+                messageViewModeRef.current === nextMode ? false : current,
+              );
+            });
         }}
         onVoiceClick={() => {
           handleVoiceClick().catch(console.error);

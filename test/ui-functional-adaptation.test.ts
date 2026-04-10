@@ -466,6 +466,36 @@ test("session browser shows inline create-session error near project path contro
   assert.match(markup, /aria-live="polite"/);
 });
 
+test("create-session button stays pinned to the top when path hints expand the field", () => {
+  const markup = renderToStaticMarkup(
+    React.createElement(SessionBrowser as unknown as React.ComponentType<any>, {
+      provider: PROVIDER,
+      projects: [SESSION.project],
+      sessions: [SESSION],
+      totalSessionCount: 1,
+      nextBefore: null,
+      loading: false,
+      loadingMore: false,
+      selectedProject: null,
+      selectedSessionId: SESSION.id,
+      newSessionCwd: "/Users/tanran/aiCode/cw/hub-run",
+      creatingSession: false,
+      onNewSessionCwdChange: () => {},
+      onCreateSession: () => {},
+      onLoadMore: () => {},
+      onSelectProject: () => {},
+      onSelectSession: () => {},
+    }),
+  );
+
+  assertButtonClassContains({
+    markup,
+    attribute: "aria-label",
+    value: "新建会话",
+    classFragment: "self-start",
+  });
+});
+
 test("desktop browser sidebar exposes resize handle and default width", () => {
   const markup = renderToStaticMarkup(
     React.createElement(BrowserSidebar as unknown as React.ComponentType<any>, {

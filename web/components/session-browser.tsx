@@ -100,7 +100,6 @@ function CreateSessionControls(props: {
   errorMessage?: string | null;
   newSessionCwd: string;
   projects: string[];
-  selectedProject: string | null;
   provider: ProviderSummary | null;
   onCreateSession: () => void;
   onNewSessionCwdChange: (value: string) => void;
@@ -112,7 +111,6 @@ function CreateSessionControls(props: {
     errorMessage = null,
     newSessionCwd,
     projects,
-    selectedProject,
     provider,
     onCreateSession,
     onNewSessionCwdChange,
@@ -132,13 +130,12 @@ function CreateSessionControls(props: {
         <ProjectPathField
           disabled={disabled}
           projects={projects}
-          selectedProject={selectedProject}
           value={newSessionCwd}
-          onChange={(value) => {
+          onChange={onNewSessionCwdChange}
+          onCommitSelection={(value, nextProject) => {
             onNewSessionCwdChange(value);
-            onSelectProject(resolveSelectedProject(projects, value));
+            onSelectProject(nextProject ?? resolveSelectedProject(projects, value));
           }}
-          onSelectProject={onSelectProject}
         />
         <button
           type="button"
@@ -146,7 +143,7 @@ function CreateSessionControls(props: {
           disabled={creatingSession || disabled}
           aria-label="新建会话"
           title={disabled ? "刷新中..." : creatingSession ? "创建中..." : "新建会话"}
-          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-cyan-400/20 bg-cyan-500/15 text-cyan-700 transition hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-50 dark:text-cyan-100"
+          className="inline-flex h-8 w-8 shrink-0 self-start items-center justify-center rounded-md border border-cyan-400/20 bg-cyan-500/15 text-cyan-700 transition hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-50 dark:text-cyan-100"
         >
           <Plus className="h-4 w-4" />
         </button>
@@ -215,7 +212,6 @@ export default function SessionBrowser(props: SessionBrowserProps) {
         errorMessage={errorMessage}
         newSessionCwd={newSessionCwd}
         projects={projects}
-        selectedProject={selectedProject}
         provider={provider}
         onCreateSession={onCreateSession}
         onNewSessionCwdChange={onNewSessionCwdChange}

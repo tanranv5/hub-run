@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { readJsonLinesWithOffsets } from "../api/providers/jsonl-window";
 import {
+  findCodexSessionFilePath,
   readCodexConversation,
   readCodexConversationEntries,
   readCodexFirstUserSnippet,
@@ -214,6 +215,74 @@ test("codex first user snippet skips turn_aborted wrapper messages and keeps the
   try {
     const display = await readCodexFirstUserSnippet(filePath);
     assert.equal(display, "app-server 可以发生图片没？看看现在codex的发送");
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("codex first user snippet can advance past large prelude windows to find the first real prompt", async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), "hub-run-codex-session-"));
+  const filePath = join(tempDir, "session-large-window.jsonl");
+  const prelude = Array.from({ length: 320 }, (_, index) =>
+    JSON.stringify({
+      type: "event_msg",
+      payload: {
+        type: "token_count",
+        info: {
+          marker: `noise-${index}`,
+        },
+      },
+    })
+  );
+  const lines = [
+    JSON.stringify({
+      type: "session_meta",
+      payload: {
+        id: "session-large-window",
+        cwd: "/Users/tanran/aiCode/cw/hub-run",
+      },
+    }),
+    ...prelude,
+    JSON.stringify({
+      type: "response_item",
+      payload: {
+        type: "message",
+        role: "user",
+        content: [
+          {
+            type: "input_text",
+            text: "首条真实消息在很后面，也要能正确提取出来",
+          },
+        ],
+      },
+    }),
+  ];
+
+  await writeFile(filePath, `${lines.join("\n")}\n`, "utf-8");
+
+  try {
+    const display = await readCodexFirstUserSnippet(filePath);
+    assert.equal(display, "首条真实消息在很后面，也要能正确提取出来");
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("codex session file finder locates nested rollout file by session id suffix", async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), "hub-run-codex-session-"));
+  const nestedDir = join(tempDir, "2026", "04", "10");
+  const filePath = join(
+    nestedDir,
+    "rollout-2026-04-10T13-00-00-session-find-me.jsonl",
+  );
+
+  await mkdir(nestedDir, { recursive: true });
+  await writeFile(join(tempDir, "ignored.jsonl"), "{}", "utf-8");
+  await writeFile(filePath, "", "utf-8");
+
+  try {
+    const foundPath = await findCodexSessionFilePath(tempDir, "session-find-me");
+    assert.equal(foundPath, filePath);
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }

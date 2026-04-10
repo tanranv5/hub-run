@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { ProviderModelOption } from "../api/types";
 import {
+  applyCreatedSessionProjectSelection,
   createLoadingProviderControls,
   getEffortOptions,
   INITIAL_PROVIDER_CONTROLS,
@@ -138,4 +139,36 @@ test("provider init keeps the selected project path visible after refreshing the
 
   assert.equal(nextState.selectedProject, "/tmp/project-b");
   assert.equal(nextState.newSessionCwd, "/tmp/project-b");
+});
+
+test("provider init preserves an active project filter even before the refreshed project list catches up", () => {
+  const nextState = resolveProviderControlsFromData(
+    ["/tmp/project-a"],
+    MODELS,
+    null,
+    {
+      newSessionCwd: "/tmp/new-project",
+      selectedProject: "/tmp/new-project",
+    },
+  );
+
+  assert.deepEqual(nextState.projects, ["/tmp/new-project", "/tmp/project-a"]);
+  assert.equal(nextState.selectedProject, "/tmp/new-project");
+  assert.equal(nextState.newSessionCwd, "/tmp/new-project");
+});
+
+test("created session selection promotes a newly created project into the active filter", () => {
+  const nextState = applyCreatedSessionProjectSelection(
+    {
+      ...INITIAL_PROVIDER_CONTROLS,
+      projects: ["/tmp/project-a"],
+      newSessionCwd: "/tmp/missing-project",
+      selectedProject: null,
+    },
+    "/tmp/missing-project",
+  );
+
+  assert.deepEqual(nextState.projects, ["/tmp/missing-project", "/tmp/project-a"]);
+  assert.equal(nextState.selectedProject, "/tmp/missing-project");
+  assert.equal(nextState.newSessionCwd, "/tmp/missing-project");
 });

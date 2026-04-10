@@ -11,13 +11,14 @@ import {
   type CreateSessionBlockingTarget,
 } from "./app-blocking-overlay";
 import { clearStoredSelectedSession, getStoredControlPreference, getStoredSelectedSession, persistProviderControls, persistSelectedSession, resolveContextDrivenControls, resolveUserSelectedControls } from "./app-preferences";
-import { INITIAL_BROWSER, loadProviderBrowser, SESSION_PAGE_SIZE, resolvePreferredSessionForProject, resolveInitialSelectedSessionId } from "./browser-state";
+import { INITIAL_BROWSER, loadProviderBrowser, SESSION_PAGE_SIZE } from "./browser-state";
 import type { BrowserState } from "./browser-state";
 import {
   applySentSessionSelection,
   createLoadingBrowserState,
   loadMoreBrowserSessions,
   refreshBrowserState,
+  resolveInitBrowserSelection,
   shouldRefreshBrowserAfterSend,
 } from "./app-browser-actions";
 import {
@@ -33,6 +34,7 @@ import type { SendConversationResult } from "./conversation-panel-state-types";
 import LoginScreen from "./components/login-screen";
 import { formatContextDetails, formatContextLabel, useProviderSessionContext } from "./session-context";
 import {
+  applyCreatedSessionProjectSelection,
   createLoadingProviderControls,
   getEffortOptions,
   INITIAL_PROVIDER_CONTROLS,
@@ -46,7 +48,6 @@ import { subscribeAuthLost } from "./realtime-auth";
 import { createIdleRealtimeStreamStatus } from "./realtime-stream-status";
 import { restartRuntimeAndRefresh } from "./runtime-restart";
 import { useProviderSessionsStream } from "./use-provider-sessions-stream";
-import { mergePreferredSession } from "./ui-preferences";
 import { refreshAppData } from "./app-refresh";
 
 export default function App() {
@@ -152,25 +153,27 @@ export default function App() {
         );
         setControls(nextControls);
 
-        const sessions = mergePreferredSession(init.sessions.sessions, resolvePreferredSessionForProject(preferredSession, controls.selectedProject));
-        const selectedSessionId = resolveInitialSelectedSessionId(
-          sessions,
-          preferredSession?.id ?? null,
-          resolvePreferredSessionForProject(preferredSession, controls.selectedProject),
-        );
+        const selection = resolveInitBrowserSelection({
+          activeSession: selectedSession,
+          preferredSession,
+          preferredSessionId: preferredSession?.id ?? null,
+          project: controls.selectedProject,
+          sessions: init.sessions.sessions,
+        });
         const nextBrowser: BrowserState = {
-          sessions,
+          sessions: selection.sessions,
           deletedSessionIds: new Set(),
           nextBefore: init.sessions.nextBefore,
-          totalSessionCount: init.sessions.totalCount ?? sessions.length,
-          selectedSessionId,
+          totalSessionCount: init.sessions.totalCount ?? selection.sessions.length,
+          selectedSessionId: selection.selectedSessionId,
           streamStatus: createIdleRealtimeStreamStatus(),
           loading: false,
           loadingMore: false,
           error: null,
         };
 
-        const nextSession = sessions.find((s) => s.id === selectedSessionId) ?? null;
+        const nextSession =
+          selection.sessions.find((s) => s.id === selection.selectedSessionId) ?? null;
         if (nextSession) {
           await preloadSessionPanelCache({
             cache: sessionCacheRef.current,
@@ -291,6 +294,15 @@ export default function App() {
     };
   }, [selectedProvider, controls.selectedModelId, controls.selectedEffort]);
 
+  function promoteCreatedSessionProject(cwd: string): string | null {
+    const normalized = cwd.trim();
+    if (!normalized) {
+      return null;
+    }
+    setControls((current) => applyCreatedSessionProjectSelection(current, normalized));
+    return normalized;
+  }
+
   async function handleCreateSession() {
     if (!selectedProvider) {
       return;
@@ -322,17 +334,24 @@ export default function App() {
         cwd,
         ...providerModelPayload,
       });
+      const nextProject = cwd.trim() || null;
       if (blockingTarget) {
         setCreateSessionBlockingTarget(
           assignCreateSessionBlockingSessionId(blockingTarget, created.sessionId),
         );
       }
-      setControls((current) => ({ ...current, creatingSession: false, newSessionCwd: cwd }));
+      setControls((current) => ({
+        ...applyCreatedSessionProjectSelection(current, cwd),
+        creatingSession: false,
+      }));
+      if (nextProject !== null && nextProject !== controls.selectedProject) {
+        return;
+      }
       const requestVersion = browserRequestVersionRef.current;
       await refreshBrowserState({
         loadBrowser: loadBrowserWithPreloadedSelection,
         preferredSessionId: created.sessionId,
-        project: controls.selectedProject,
+        project: nextProject,
         provider: selectedProvider,
         setBrowser,
         shouldAbort: () => requestVersion !== browserRequestVersionRef.current,
@@ -578,6 +597,13 @@ export default function App() {
       onLogout={() => handleLogout(setBootstrap)}
       onMessageSent={async (sessionId, initialDisplay) => {
         const requestVersion = browserRequestVersionRef.current;
+        const createdProject =
+          selectedSession?.isDraft && sessionId !== selectedSession.id
+            ? (selectedSession.project.trim() || controls.newSessionCwd.trim())
+            : "";
+        const nextProject = createdProject
+          ? promoteCreatedSessionProject(createdProject)
+          : controls.selectedProject;
         if (
           selectedProvider?.capabilities.stream &&
           selectedSession?.isDraft &&
@@ -603,12 +629,15 @@ export default function App() {
         if (!selectedProvider) {
           return;
         }
+        if (nextProject !== null && nextProject !== controls.selectedProject) {
+          return;
+        }
         if (!shouldRefreshBrowserAfterSend(selectedProvider)) {
           return;
         }
         await refreshBrowserState({
           preferredSessionId: sessionId,
-          project: controls.selectedProject,
+          project: nextProject,
           provider: selectedProvider,
           setBrowser,
           shouldAbort: () => requestVersion !== browserRequestVersionRef.current,

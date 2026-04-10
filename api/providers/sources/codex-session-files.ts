@@ -1,7 +1,9 @@
-import { basename } from "path";
+import { readdir } from "fs/promises";
+import { basename, join } from "path";
 import type { ConversationMessage } from "../../types";
 import {
   readFirstJsonlLine,
+  readJsonHeadWindowFromOffset,
   readJsonLinesWithOffsets,
 } from "../jsonl-window";
 import {
@@ -29,6 +31,8 @@ interface CodexRecord {
   payload?: Record<string, unknown>;
 }
 
+const SNIPPET_SCAN_BATCH_LINES = 128;
+
 export async function readCodexSessionFiles(
   sessionsDir: string,
 ): Promise<Map<string, CodexSessionFile>> {
@@ -44,24 +48,22 @@ export async function readCodexSessionFiles(
 }
 
 export async function readCodexFirstUserSnippet(filePath: string): Promise<string> {
-  const lines = await readJsonLines(filePath);
-
-  for (const line of lines) {
-    const record = safeJsonParse<CodexRecord>(line);
-    const payload = record?.payload;
-    if (!payload || payload.type !== "message" || payload.role !== "user") {
-      continue;
-    }
-
-    const display = readFirstMeaningfulTextBlock(
-      Array.isArray(payload.content) ? payload.content : [],
+  let offset = 0;
+  while (true) {
+    const window = await readJsonHeadWindowFromOffset(
+      filePath,
+      offset,
+      SNIPPET_SCAN_BATCH_LINES,
     );
+    const display = readFirstUserSnippetFromLines(window.lines.map((entry) => entry.line));
     if (display) {
       return display;
     }
+    if (window.exhausted) {
+      return "(no prompt text)";
+    }
+    offset = window.endOffset;
   }
-
-  return "(no prompt text)";
 }
 
 export async function readCodexConversation(
@@ -108,6 +110,40 @@ export function fallbackCodexSessionIdFromFileName(filePath: string): string {
   return match?.[1] ?? fileName;
 }
 
+export async function findCodexSessionFilePath(
+  sessionsDir: string,
+  sessionId: string,
+): Promise<string | null> {
+  const targetSuffix = `-${sessionId}.jsonl`;
+  const exactName = `${sessionId}.jsonl`;
+
+  async function visit(currentPath: string): Promise<string | null> {
+    const entries = await readdir(currentPath, { withFileTypes: true }).catch(() => []);
+    for (const entry of entries) {
+      if (entry.name.startsWith(".")) {
+        continue;
+      }
+      const nextPath = join(currentPath, entry.name);
+      if (entry.isDirectory()) {
+        const nested = await visit(nextPath);
+        if (nested) {
+          return nested;
+        }
+        continue;
+      }
+      if (!entry.isFile() || !entry.name.endsWith(".jsonl")) {
+        continue;
+      }
+      if (entry.name === exactName || entry.name.endsWith(targetSuffix)) {
+        return nextPath;
+      }
+    }
+    return null;
+  }
+
+  return visit(sessionsDir);
+}
+
 function readFirstMeaningfulTextBlock(content: unknown[]): string | null {
   for (const item of content) {
     if (!item || typeof item !== "object") {
@@ -120,6 +156,25 @@ function readFirstMeaningfulTextBlock(content: unknown[]): string | null {
       if (display) {
         return display;
       }
+    }
+  }
+
+  return null;
+}
+
+function readFirstUserSnippetFromLines(lines: string[]): string | null {
+  for (const line of lines) {
+    const record = safeJsonParse<CodexRecord>(line);
+    const payload = record?.payload;
+    if (!payload || payload.type !== "message" || payload.role !== "user") {
+      continue;
+    }
+
+    const display = readFirstMeaningfulTextBlock(
+      Array.isArray(payload.content) ? payload.content : [],
+    );
+    if (display) {
+      return display;
     }
   }
 
