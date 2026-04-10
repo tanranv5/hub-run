@@ -30,15 +30,24 @@ export const INITIAL_BOOTSTRAP: BootstrapState = {
 
 export { getErrorMessage } from "./utils";
 
+interface BootstrapDependencies {
+  login?: typeof loginWithPassword;
+  logout?: typeof logout;
+  readAuthStatus?: typeof getAuthStatus;
+  readProviders?: typeof getProviders;
+}
+
 export async function bootstrapApp(
   setBootstrap: Dispatch<SetStateAction<BootstrapState>>,
+  dependencies: BootstrapDependencies = {},
 ) {
+  const {
+    readAuthStatus = getAuthStatus,
+    readProviders = getProviders,
+  } = dependencies;
   setBootstrap((current) => ({ ...current, loading: true, error: null }));
   try {
-    const [auth, providers] = await Promise.all([
-      getAuthStatus(),
-      getProviders().catch(() => [] as ProviderSummary[]),
-    ]);
+    const auth = await readAuthStatus();
     if (auth.authEnabled && !auth.authenticated) {
       setBootstrap((current) => ({
         ...current,
@@ -49,6 +58,7 @@ export async function bootstrapApp(
       }));
       return;
     }
+    const providers = await readProviders();
 
     setBootstrap((current) => ({
       ...current,
@@ -86,11 +96,13 @@ export async function reloadProviders(
 export async function handleLogin(
   password: string,
   setBootstrap: Dispatch<SetStateAction<BootstrapState>>,
+  dependencies: BootstrapDependencies = {},
 ) {
+  const { login = loginWithPassword } = dependencies;
   setBootstrap((current) => ({ ...current, busy: true, error: null }));
   try {
-    await loginWithPassword(password);
-    await bootstrapApp(setBootstrap);
+    await login(password);
+    await bootstrapApp(setBootstrap, dependencies);
   } catch (cause) {
     setBootstrap((current) => ({
       ...current,
@@ -103,11 +115,13 @@ export async function handleLogin(
 
 export async function handleLogout(
   setBootstrap: Dispatch<SetStateAction<BootstrapState>>,
+  dependencies: BootstrapDependencies = {},
 ) {
+  const { logout: logoutRequest = logout } = dependencies;
   setBootstrap((current) => ({ ...current, busy: true, error: null }));
   try {
-    await logout();
-    await bootstrapApp(setBootstrap);
+    await logoutRequest();
+    await bootstrapApp(setBootstrap, dependencies);
   } catch (cause) {
     setBootstrap((current) => ({
       ...current,

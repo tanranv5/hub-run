@@ -1322,6 +1322,113 @@ test("conversation stream survives synchronous subscription updates on offset re
   await sse.close();
 });
 
+test("conversation stream periodically catches up even when no file-change notification fires", async () => {
+  let deltaReadCount = 0;
+  const summary = {
+    ...createSummary("/tmp/catchup-codex"),
+    capabilities: {
+      ...createSummary("/tmp/catchup-codex").capabilities,
+      stream: true,
+    },
+  } as ProviderSummary;
+
+  const adapter: ProviderAdapter = {
+    summary,
+    listSessions: async () => [
+      {
+        id: "catchup-session",
+        display: "Catchup Session",
+        timestamp: 1_700_000_000_000,
+        project: "/tmp/catchup-project",
+        projectName: "catchup-project",
+      },
+    ],
+    listProjects: async () => ["/tmp/catchup-project"],
+    listModels: async () => [],
+    getConversationPage: async () => ({
+      messages: [
+        {
+          id: "snapshot-1",
+          role: "assistant",
+          kind: "text",
+          text: "snapshot",
+        },
+      ],
+      nextBefore: null,
+      summary: null,
+    }),
+    createSession: async () => ({
+      sessionId: "catchup-session",
+      turnId: null,
+    }),
+    sendMessage: async () => ({
+      turnId: null,
+      outputText: null,
+    }),
+    subscribeConversation: () => () => undefined,
+    getConversationStream: async (_sessionId, offset) => {
+      deltaReadCount += 1;
+      if (offset === 1 && deltaReadCount === 1) {
+        return {
+          messages: [
+            {
+              id: "delta-1",
+              role: "assistant",
+              kind: "text",
+              text: "catch-up delta",
+            },
+          ],
+          nextOffset: 2,
+        };
+      }
+      return {
+        messages: [],
+        nextOffset: offset,
+      };
+    },
+    getConversationStreamCursor: async () => 1,
+  };
+
+  const app = createApp(
+    buildRuntimeConfig({
+      host: "127.0.0.1",
+      port: 12001,
+      password: "secret-123",
+    }),
+    {
+      registry: {
+        codex: adapter,
+        claude: createClaudeAdapter(),
+      },
+    },
+  );
+
+  const cookie = await login(app);
+  const controller = new AbortController();
+  const response = await app.request(
+    "/api/providers/codex/sessions/catchup-session/messages/stream?limit=2",
+    {
+      headers: { cookie },
+      signal: controller.signal,
+    },
+  );
+
+  assert.equal(response.status, 200);
+  const sse = createSseReader(response, controller);
+  await sse.readJsonEvent("conversation");
+
+  const delta = await sse.readJsonEvent<{
+    messages: Array<{ text: string }>;
+    nextOffset: number;
+  }>("messages");
+
+  assert.deepEqual(delta.messages.map((message) => message.text), ["catch-up delta"]);
+  assert.equal(delta.nextOffset, 2);
+  assert.equal(deltaReadCount >= 1, true);
+
+  await sse.close();
+});
+
 test("conversation stream catches async delta pump failures instead of leaking unhandled rejections", async () => {
   let onConversationChange: (() => void) | null = null;
   const summary = {

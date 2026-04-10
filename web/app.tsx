@@ -11,7 +11,7 @@ import {
   type CreateSessionBlockingTarget,
 } from "./app-blocking-overlay";
 import { clearStoredSelectedSession, getStoredControlPreference, getStoredSelectedSession, persistProviderControls, persistSelectedSession, resolveContextDrivenControls, resolveUserSelectedControls } from "./app-preferences";
-import { INITIAL_BROWSER, loadProviderBrowser, resolvePreferredSessionForProject, resolveInitialSelectedSessionId } from "./browser-state";
+import { INITIAL_BROWSER, loadProviderBrowser, SESSION_PAGE_SIZE, resolvePreferredSessionForProject, resolveInitialSelectedSessionId } from "./browser-state";
 import type { BrowserState } from "./browser-state";
 import {
   applySentSessionSelection,
@@ -133,7 +133,11 @@ export default function App() {
       controls.selectedProject,
     );
 
-    getProviderInit(selectedProvider.id, 10, controls.selectedProject)
+    getProviderInit(
+      selectedProvider.id,
+      SESSION_PAGE_SIZE,
+      controls.selectedProject,
+    )
       .then(async (init) => {
         if (cancelled) return;
 
@@ -141,6 +145,10 @@ export default function App() {
           init.projects,
           init.models,
           getStoredControlPreference(selectedProvider.id),
+          {
+            newSessionCwd: controls.newSessionCwd,
+            selectedProject: controls.selectedProject,
+          },
         );
         setControls(nextControls);
 

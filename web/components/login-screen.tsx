@@ -1,3 +1,5 @@
+import type { FormEvent } from "react";
+
 interface LoginScreenProps {
   busy: boolean;
   error: string | null;
@@ -7,7 +9,9 @@ interface LoginScreenProps {
 export default function LoginScreen(props: LoginScreenProps) {
   const { busy, error, onSubmit } = props;
 
-  async function handleSubmit(formData: FormData) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
     const password = String(formData.get("password") ?? "");
     await onSubmit(password);
   }
@@ -28,7 +32,9 @@ export default function LoginScreen(props: LoginScreenProps) {
         </div>
 
         <form
-          action={handleSubmit}
+          onSubmit={(event) => {
+            void handleSubmit(event);
+          }}
           className="space-y-6"
         >
           <div className="space-y-2">

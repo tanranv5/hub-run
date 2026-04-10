@@ -15,6 +15,20 @@ const PAGE_SIZE = 10;
 
 type ConversationPageLoader = typeof getConversationPage;
 
+function mergeConversationPages(
+  olderMessages: PanelState["messages"],
+  currentMessages: PanelState["messages"],
+) {
+  const seenIds = new Set<string>();
+  return [...olderMessages, ...currentMessages].filter((message) => {
+    if (seenIds.has(message.id)) {
+      return false;
+    }
+    seenIds.add(message.id);
+    return true;
+  });
+}
+
 function applyOlderPage(
   current: PanelState,
   page: Awaited<ReturnType<ConversationPageLoader>>,
@@ -22,7 +36,7 @@ function applyOlderPage(
 ): PanelState {
   return {
     ...current,
-    messages: [...page.messages, ...current.messages],
+    messages: mergeConversationPages(page.messages, current.messages),
     nextBefore: page.nextBefore,
     loadingOlder,
   };

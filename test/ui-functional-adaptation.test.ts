@@ -388,7 +388,7 @@ test("conversation panel keeps composer focused on send controls instead of prov
     markup,
     attribute: "title",
     value: "开始语音输入",
-    classFragment: "h-7 w-7",
+    classFragment: "h-8 w-8",
   });
 });
 

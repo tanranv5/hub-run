@@ -4,6 +4,7 @@ import type {
   ProviderSummary,
 } from "../api/types";
 import { getProviderModels, getProviderProjects } from "./api";
+import { resolveSelectedProject } from "./session-browser-state";
 
 const REASONING_EFFORTS: ProviderReasoningEffort[] = [
   "none",
@@ -87,6 +88,10 @@ export function resolveProviderControlsFromData(
     modelId: string | null;
     effort: ProviderReasoningEffort | null;
   } | null = null,
+  currentSelection: {
+    newSessionCwd: string;
+    selectedProject: string | null;
+  } | null = null,
 ): ProviderControlsState {
   const visibleModels = getVisibleModels(rawModels);
   const selectedModelId = resolveSelectedModelId(
@@ -94,10 +99,17 @@ export function resolveProviderControlsFromData(
     null,
     cachedPreference?.modelId ?? null,
   );
+  const preservedProject = currentSelection
+    ? resolveSelectedProject(
+        projects,
+        currentSelection.selectedProject ?? currentSelection.newSessionCwd,
+      )
+    : null;
+  const preservedCwd = currentSelection?.newSessionCwd.trim() ?? "";
   return {
     models: visibleModels,
     projects,
-    selectedProject: null,
+    selectedProject: preservedProject,
     selectedModelId,
     selectedEffort: resolveSelectedEffort(
       visibleModels,
@@ -105,7 +117,7 @@ export function resolveProviderControlsFromData(
       null,
       cachedPreference?.effort ?? null,
     ),
-    newSessionCwd: "",
+    newSessionCwd: preservedProject ?? preservedCwd,
     loading: false,
     creatingSession: false,
     error: null,

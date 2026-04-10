@@ -50,16 +50,43 @@ export class AuthLostError extends Error {
   }
 }
 
+function isJsonResponse(response: Response): boolean {
+  const contentType = response.headers.get("content-type") ?? "";
+  return /[/+]json\b/i.test(contentType);
+}
+
+async function readResponsePreview(response: Response): Promise<string | null> {
+  const text = await response.text().catch(() => "");
+  const normalized = text.trim().replace(/\s+/g, " ");
+  if (!normalized) {
+    return null;
+  }
+  return normalized.slice(0, 120);
+}
+
+async function createUnexpectedJsonError(response: Response): Promise<Error> {
+  const contentType = response.headers.get("content-type") ?? "unknown content type";
+  const preview = await readResponsePreview(response);
+  const detail = preview ? `: ${preview}` : "";
+  return new Error(`Expected JSON response but received ${contentType}${detail}`);
+}
+
 export async function readJson<T>(response: Response): Promise<T> {
   if (!response.ok) {
     if (response.status === 401) {
       notifyAuthLost();
       throw new AuthLostError("Login required");
     }
+    if (!isJsonResponse(response)) {
+      throw await createUnexpectedJsonError(response);
+    }
     const payload = (await response.json().catch(() => null)) as
       | { error?: { message?: string } }
       | null;
     throw new Error(payload?.error?.message ?? `Request failed: ${response.status}`);
+  }
+  if (!isJsonResponse(response)) {
+    throw await createUnexpectedJsonError(response);
   }
 
   return (await response.json()) as T;

@@ -18,7 +18,7 @@ import {
 import ConversationContextBadge from "./conversation-context-badge";
 import type { VoiceInputPhase } from "../use-voice-input";
 
-export const COMPOSER_DEFAULT_HEIGHT_PX = 96;
+export const COMPOSER_DEFAULT_HEIGHT_PX = 128;
 export const COMPOSER_MIN_HEIGHT_PX = 56;
 export const COMPOSER_MAX_HEIGHT_PX = 320;
 export const COMPOSER_COLLAPSED_HEIGHT_PX = 44;
@@ -440,7 +440,7 @@ function ComposerActions(props: {
   const interruptLabel = interrupting ? "正在中断当前回合..." : "中断当前回合";
   const sendButtonClassName = buttonLabel
     ? "inline-flex h-8 min-w-8 items-center justify-center rounded-full bg-accent px-2.5 text-xs font-medium text-bg transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50 md:h-9 md:min-w-9 md:px-3 md:text-sm"
-    : "inline-flex h-7 w-7 items-center justify-center rounded-md bg-accent text-bg transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50 md:h-8 md:w-8";
+    : "inline-flex h-8 w-8 items-center justify-center rounded-md bg-accent text-bg transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50 md:h-9 md:w-9";
 
   return (
     <div
@@ -454,7 +454,7 @@ function ComposerActions(props: {
           title="选择图片"
           onClick={onChooseImage}
           disabled={refreshing || sending}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-bdr bg-surface text-txt transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60 md:h-8 md:w-8"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-bdr bg-surface text-txt transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60 md:h-9 md:w-9"
         >
           <ImagePlus className="h-3.5 w-3.5 md:h-4 md:w-4" />
         </button>
@@ -464,7 +464,7 @@ function ComposerActions(props: {
         onClick={onVoiceClick}
         title={voiceTitle}
         disabled={voiceBusy}
-        className={`inline-flex h-7 w-7 items-center justify-center rounded-md border transition disabled:cursor-not-allowed disabled:opacity-60 md:h-8 md:w-8 ${
+        className={`inline-flex h-8 w-8 items-center justify-center rounded-md border transition disabled:cursor-not-allowed disabled:opacity-60 md:h-9 md:w-9 ${
           voiceRecording
             ? "border-rose-400/30 bg-rose-500/12 text-rose-700 dark:text-rose-100 hover:bg-rose-500/18"
             : "border-bdr bg-surface text-txt hover:bg-surface-hover"
@@ -479,9 +479,17 @@ function ComposerActions(props: {
           aria-label={interruptLabel}
           onClick={() => onInterrupt?.()}
           disabled={refreshing || interrupting}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-rose-400/20 bg-rose-500/10 text-rose-700 dark:text-rose-100 transition hover:bg-rose-500/15 disabled:cursor-not-allowed disabled:opacity-60 md:h-9 md:w-9"
+          className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-rose-400/20 text-rose-700 dark:text-rose-100 transition disabled:cursor-not-allowed disabled:opacity-60 md:h-10 md:w-10 ${
+            interrupting
+              ? "bg-rose-500/16"
+              : "bg-rose-500/10 hover:bg-rose-500/15"
+          }`}
         >
-          <Square className="h-4 w-4" />
+          {interrupting ? (
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          ) : (
+            <Square className="h-4 w-4" />
+          )}
           <span className="sr-only">{interruptLabel}</span>
         </button>
       ) : (

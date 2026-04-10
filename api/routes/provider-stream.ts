@@ -17,6 +17,7 @@ import { findAdapter } from "./providers";
 const HEARTBEAT_INTERVAL_MS = 30_000;
 const HEARTBEAT_SLICE_MS = 1_000;
 const DEFAULT_PAGE_SIZE = 10;
+const CONVERSATION_STREAM_CATCHUP_INTERVAL_MS = 1_200;
 const RUNTIME_STATE_POLL_INTERVAL_MS = 1_200;
 
 interface SessionsWindow {
@@ -121,6 +122,37 @@ async function runHeartbeat(
       data: JSON.stringify({ timestamp: Date.now() }),
     });
     await waitForDuration(stream, isClosed, HEARTBEAT_INTERVAL_MS);
+  }
+}
+
+async function runConversationStreamLoop(props: {
+  isClosed: () => boolean;
+  pumpConversationDelta: () => Promise<void>;
+  stream: HeartbeatStream;
+}) {
+  const { isClosed, pumpConversationDelta, stream } = props;
+  let lastHeartbeatAt = Date.now();
+  let lastCatchupAt = Date.now();
+
+  while (!isClosed()) {
+    await waitForDuration(stream, isClosed, HEARTBEAT_SLICE_MS);
+    if (isClosed()) {
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastCatchupAt >= CONVERSATION_STREAM_CATCHUP_INTERVAL_MS) {
+      lastCatchupAt = now;
+      await pumpConversationDelta();
+    }
+    if (now - lastHeartbeatAt < HEARTBEAT_INTERVAL_MS) {
+      continue;
+    }
+    lastHeartbeatAt = now;
+    await stream.writeSSE({
+      event: "heartbeat",
+      data: JSON.stringify({ timestamp: now }),
+    });
   }
 }
 
@@ -443,7 +475,11 @@ export function registerProviderStreamRoutes(
           backlogPending = false;
           await pumpConversationDelta();
         }
-        await runHeartbeat(stream, cleanup.isClosed);
+        await runConversationStreamLoop({
+          stream,
+          isClosed: cleanup.isClosed,
+          pumpConversationDelta,
+        });
       } finally {
         cleanup.close();
       }

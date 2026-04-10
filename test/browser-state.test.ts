@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { SessionSummary } from "../api/types";
 import {
+  SESSION_PAGE_SIZE,
   resolveInitialSelectedSessionId,
   resolvePreferredSessionForProject,
 } from "../web/browser-state";
@@ -51,4 +52,8 @@ test("resolvePreferredSessionForProject ignores a preferred session from another
     resolvePreferredSessionForProject(PREFERRED_SESSION, "/workspace/other"),
     null,
   );
+});
+
+test("session list first-page size stays fixed at 10 across layouts", () => {
+  assert.equal(SESSION_PAGE_SIZE, 10);
 });

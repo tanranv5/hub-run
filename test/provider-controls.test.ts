@@ -5,6 +5,7 @@ import {
   createLoadingProviderControls,
   getEffortOptions,
   INITIAL_PROVIDER_CONTROLS,
+  resolveProviderControlsFromData,
   resolveSelectedEffort,
   resolveSelectedModelId,
   syncEffortSelection,
@@ -122,4 +123,19 @@ test("provider switch clears stale controls before the new provider metadata loa
   assert.equal(nextState.loading, true);
   assert.equal(nextState.creatingSession, false);
   assert.equal(nextState.error, null);
+});
+
+test("provider init keeps the selected project path visible after refreshing the same provider", () => {
+  const nextState = resolveProviderControlsFromData(
+    ["/tmp/project-a", "/tmp/project-b"],
+    MODELS,
+    null,
+    {
+      newSessionCwd: "/tmp/project-b",
+      selectedProject: "/tmp/project-b",
+    },
+  );
+
+  assert.equal(nextState.selectedProject, "/tmp/project-b");
+  assert.equal(nextState.newSessionCwd, "/tmp/project-b");
 });

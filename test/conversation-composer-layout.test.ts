@@ -55,6 +55,7 @@ test("composer keeps model and effort on one row and shows compact usage badge",
   assert.match(markup, /gap-1\.5/);
   assert.match(markup, /md:gap-2/);
   assert.match(markup, /placeholder="等待输入"/);
+  assert.match(markup, /height:128px/);
   assert.doesNotMatch(markup, />生成中</);
   assert.doesNotMatch(markup, /语音输入待接入/);
   assert.match(markup, /title="开始语音输入"/);

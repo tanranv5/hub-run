@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Dispatch, SetStateAction } from "react";
-import { loadInitialPage } from "../web/conversation-panel-state-ops";
+import {
+  loadInitialPage,
+  loadOlderMessagesUntilStart,
+} from "../web/conversation-panel-state-ops";
 import { INITIAL_PANEL_STATE, type PanelState } from "../web/conversation-panel-state-types";
-import { loadOlderMessagesUntilStart } from "../web/conversation-panel-state-ops";
 
 function createPanelStateStore(initial: PanelState) {
   let value = initial;
@@ -208,4 +210,55 @@ test("loadOlderMessagesUntilStart forwards mode to each page load", async () => 
   });
 
   assert.deepEqual(capturedModes, ["cursor-2:compact", "cursor-1:compact"]);
+});
+
+test("loadOlderMessagesUntilStart de-duplicates overlapped messages when an older page overlaps the current window", async () => {
+  const stateStore = createPanelStateStore({
+    ...INITIAL_PANEL_STATE,
+    messages: [
+      {
+        id: "current-1",
+        role: "assistant",
+        kind: "text",
+        text: "current-1",
+      },
+      {
+        id: "current-2",
+        role: "assistant",
+        kind: "text",
+        text: "current-2",
+      },
+    ],
+    nextBefore: "cursor-overlap",
+  });
+
+  await loadOlderMessagesUntilStart({
+    loadPage: async () => ({
+      messages: [
+        {
+          id: "older-1",
+          role: "user",
+          kind: "text",
+          text: "older-1",
+        },
+        {
+          id: "current-1",
+          role: "assistant",
+          kind: "text",
+          text: "current-1",
+        },
+      ],
+      nextBefore: null,
+      summary: null,
+    }),
+    nextBefore: "cursor-overlap",
+    providerId: "codex",
+    sessionId: "thread-1",
+    setState: stateStore.setValue,
+  });
+
+  assert.deepEqual(
+    stateStore.read().messages.map((message) => message.id),
+    ["older-1", "current-1", "current-2"],
+  );
 });

@@ -811,10 +811,16 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         }}
         onCycleMessageViewMode={() => {
           const nextMode = cycleMessageViewMode(messageViewMode);
+          const previousVisibleCount = visibleMessages.length;
           messageViewModeRef.current = nextMode;
-          setMessageViewModeBackfillTarget(visibleMessages.length);
+          setMessageViewModeBackfillTarget(null);
           setMessageViewMode(nextMode);
-          handleRefreshConversation(nextMode);
+          handleRefreshConversation(nextMode).then((refreshed) => {
+            if (!refreshed || messageViewModeRef.current !== nextMode) {
+              return;
+            }
+            setMessageViewModeBackfillTarget(previousVisibleCount);
+          }).catch(console.error);
         }}
         onVoiceClick={() => {
           handleVoiceClick().catch(console.error);

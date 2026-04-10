@@ -376,13 +376,13 @@ export function useConversationPanelState(props: {
 
   async function handleRefreshConversation(mode?: ConversationSearchMode) {
     if (!providerId || !session || isDraftSession(session)) {
-      return;
+      return false;
     }
     const generation = generationRef.current;
     try {
       const nextState = await loadInitialPage(providerId, session.id, { mode });
       if (generation !== generationRef.current) {
-        return;
+        return false;
       }
       setState((current) =>
         mergePolledPanelState({
@@ -392,8 +392,10 @@ export function useConversationPanelState(props: {
           providerId,
         })
       );
+      return true;
     } catch (cause) {
       console.warn("Failed to refresh conversation while switching mode", cause);
+      return false;
     }
   }
 
