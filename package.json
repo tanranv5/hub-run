@@ -1,6 +1,6 @@
 {
   "name": "hub-run",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Shared web shell for Codex and Claude conversation access",
   "license": "MIT",
   "type": "module",
